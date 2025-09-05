@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>TestingWeb3 - Kulino</title>
+    <link rel="shortcut icon" href="TemplateData/favicon.ico" />
+    <link rel="stylesheet" href="TemplateData/style.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <style>
+      /* minimal safe CSS if TemplateData/style.css missing */
+      html,body { height:100%; margin:0; background:#222; color:#fff; }
+      #unity-container.unity-desktop { width:100%; height:100%; display:flex; align-items:center; justify-content:center; }
+      #unity-loading-bar { position:absolute; top:20px; left:20px; right:20px; max-width:720px; }
+    </style>
+  </head>
+  <body>
+    <div id="unity-container" class="unity-desktop">
+      <canvas id="unity-canvas" width="1280" height="720" tabindex="-1"></canvas>
+      <div id="unity-loading-bar" style="display:none">
+        <div id="unity-logo"></div>
+        <div id="unity-progress-bar-empty"><div id="unity-progress-bar-full"></div></div>
+      </div>
+      <div id="unity-warning"></div>
+      <div id="unity-footer">
+        <div id="unity-fullscreen-button"></div>
+        <div id="unity-build-title">TestingWeb3</div>
+      </div>
+    </div>
+
+    <!-- ===========================
+         KULINO BRIDGE START (paste BEFORE Unity loader)
+         =========================== -->
+
+    <!-- bs58 (for base58 encoding) -->
+    <script src="https://unpkg.com/bs58@4.0.1/dist/index.min.js"></script>
+
+    <script>
+    /***** minimal banner helper used by Unity loader *****/
+    function unityShowBanner(msg, type) {
+      try {
+        var warningBanner = document.querySelector("#unity-warning");
+        function updateBannerVisibility() {
+          warningBanner.style.display = warningBanner.children.length ? "block" : "none";
+        }
+        var div = document.createElement("div");
+        div.textContent = msg;
+        div.style.padding = "8px";
+        div.style.margin = "6px";
+        if (type === "error") div.style.background = "rgba(200,0,0,0.9)";
+        else if (type === "warning") div.style.background = "rgba(200,160,0,0.9)";
+        else div.style.background = "rgba(0,0,0,0.6)";
+        warningBanner.appendChild(div);
+        if (type !== "error") {
+          setTimeout(function() { warningBanner.removeChild(div); updateBannerVisibility(); }, 5000);
+        } else {
+          // keep errors visible
+        }
+        updateBannerVisibility();
+      } catch(e){ console.warn('unityShowBanner error', e); }
+    }
+    </script>
+
+    <script>
+    /*
+      Kulino Bridge
+      - Defines window.requestClaimFromUnity(messageJson)
+      - Signs with Phantom, posts to server, returns result back to Unity via SendMessage('GameManager','OnClaimResult', json)
+      - Also exposes window.__kulino_unity_ready() to be called by loader-then-Unity (we call it in createUnityInstance callback).
+      - NOTE: Server endpoint is http://localhost:3000/api/claim (change if needed).
+    */
+    (function(){
+      const LOGPREF = '[KULINO-BRIDGE]';
+      function dlog(...a){ console.log(LOGPREF, ...a); }
+
+      // queue to send messages to Unity before unityInstance ready
+      const sendQueue = [];
+      let unityReady = false;
+
+      window.__kulino_unity_ready = function(){
+        dlog('Unity reported ready. flushing queue len=', sendQueue.length);
+        unityReady = true;
+        while(sendQueue.length){
+          const item = sendQueue.shift();
+          _doSendToUnity(item.method, item.payload);
+        }
+      };
+
+      function _doSendToUnity(methodName, payloadJson){
+        try {
+          if (window.unityInstance && typeof window.unityInstance.SendMessage === 'function') {
+            dlog('SendMessage ->', methodName, payloadJson);
+            window.unityInstance.SendMessage('GameManager', methodName, payloadJson);
+          } else {
+            console.warn(LOGPREF, 'unityInstance.SendMessage not available, queueing');
+            // fallback: queue
+            sendQueue.push({ method: methodName, payload: payloadJson });
+          }
+        } catch(e){ console.error(LOGPREF, 'SendMessage exception', e); }
+      }
+
+      function sendToUnity(obj){
+        const js = JSON.stringify(obj);
+        if (!unityReady) { sendQueue.push({ method: 'OnClaimResult', payload: js }); dlog('queued OnClaimResult'); }
+        else _doSendToUnity('OnClaimResult', js);
+      }
+
+      // main function called from Unity
+      window.requestClaimFromUnity = async function(messageJson) {
+        dlog('requestClaimFromUnity called with:', messageJson);
+        try {
+          // provider detection (Phantom)
+          const provider = (window.solana && window.solana.isPhantom) ? window.solana :
+                           (window.phantom && window.phantom.solana && window.phantom.solana.isPhantom) ? window.phantom.solana : null;
+          if (!provider) {
+            dlog('phantom not found');
+            sendToUnity({ success:false, error:'phantom_not_installed' });
+            return;
+          }
+
+          // parse payload
+          let payloadObj = (typeof messageJson === 'string') ? JSON.parse(messageJson) : messageJson;
+
+          // connect (if not connected)
+          if (!provider.isConnected) {
+            dlog('connecting to phantom...');
+            await provider.connect();
+            dlog('connected, pk=', provider.publicKey?.toString?.());
+          }
+
+          // attach address and canonicalize fields for signing
+          payloadObj.address = provider.publicKey.toString();
+          const canonical = {
+            address: payloadObj.address,
+            gameId: payloadObj.gameId,
+            amount: payloadObj.amount,
+            nonce: payloadObj.nonce,
+            ts: payloadObj.ts
+          };
+          const messageStr = JSON.stringify(canonical);
+          dlog('message to sign:', messageStr);
+
+          // sign message (Phantom)
+          const encoded = new TextEncoder().encode(messageStr);
+          dlog('calling provider.signMessage(...)');
+          const signed = await provider.signMessage(encoded, 'utf8'); // Phantom will show confirm
+          dlog('signMessage returned', signed);
+
+          // bs58 must be available (we included it). If not -> error returned.
+          if (typeof bs58 === 'undefined' && typeof window.bs58 === 'undefined') {
+            dlog('bs58 missing');
+            sendToUnity({ success:false, error:'bs58_lib_missing' });
+            return;
+          }
+          const sig = (typeof bs58 !== 'undefined') ? bs58.encode(signed.signature) : window.bs58.encode(signed.signature);
+
+          // POST to server
+          dlog('POSTing to server /api/claim');
+          const resp = await fetch('http://localhost:3000/api/claim', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ message: messageStr, signature: sig, publicKey: provider.publicKey.toString() })
+          });
+
+          dlog('server status', resp.status);
+          let data;
+          try { data = await resp.json(); }
+          catch(e){
+            const text = await resp.text().catch(()=>'<no-text>');
+            dlog('server returned non-json:', text);
+            sendToUnity({ success:false, error:'invalid_server_response', raw: text });
+            return;
+          }
+          dlog('server json', data);
+          sendToUnity(data);
+
+        } catch(err) {
+          console.error(LOGPREF, 'requestClaimFromUnity error', err);
+          sendToUnity({ success:false, error: err.message || String(err) });
+        }
+      };
+
+      // quick test helper callable from browser console inside the Unity tab
+      window.testClaimFromConsole = async function(){
+        const payload = { gameId:'unity-demo', amount:1, nonce: crypto.randomUUID(), ts: Date.now() };
+        await window.requestClaimFromUnity(JSON.stringify(payload));
+      };
+
+      window.__kulino_bridge_info = function(){ return { unityReady, queueLen: sendQueue.length, hasProvider: !!(window.solana && window.solana.isPhantom) }; };
+
+      dlog('Kulino bridge loaded.');
+    })();
+    </script>
+
+    <!-- ===========================
+         KULINO BRIDGE END
+         =========================== -->
+
+
+      <script>
+  // Wrapper small: expose RequestClaim to be called from Unity C#
+  function RequestClaim(message) {
+    if (window.requestClaimFromUnity && typeof window.requestClaimFromUnity === 'function') {
+      try {
+        window.requestClaimFromUnity(message);
+      } catch (e) {
+        console.error('[RequestClaim wrapper] error', e);
+      }
+    } else {
+      console.error('[RequestClaim wrapper] requestClaimFromUnity missing');
+      // if unity wants a callback, send failure back:
+      if (window.unityInstance && typeof window.unityInstance.SendMessage === 'function') {
+        const err = JSON.stringify({ success:false, error:'requestClaimFromUnity_missing' });
+        window.unityInstance.SendMessage('GameManager','OnClaimResult', err);
+      }
+    }
+  }
+</script>
+
+
+
+    <!-- ===========================
+         UNITY LOADER (do not remove)
+         - The loader script reference will be in the generated build.
+         - Keep the createUnityInstance code below as in Unity's default index.html.
+         - If you copy a default index.html into template, keep its loader lines.
+         =========================== -->
+
+    <script>
+      // NOTE:
+      // Unity's build generates Build/<PROJECT>.loader.js etc.
+      // When Unity creates the final index.html from this template it will
+      // place correct loader filenames. Keep the pattern below but if your
+      // Unity adds different filenames, make sure they're present in the Build folder.
+      var canvas = document.querySelector("#unity-canvas");
+      var buildUrl = "Build";
+      // loader name: if your actual loader is e.g. WebUnity.loader.js keep it,
+      // otherwise Unity will substitute actual filenames on build.
+      var loaderUrl = buildUrl + "/WebUnity.loader.js";
+      var config = {
+        dataUrl: buildUrl + "/WebUnity.data",
+        frameworkUrl: buildUrl + "/WebUnity.framework.js",
+        codeUrl: buildUrl + "/WebUnity.wasm",
+        streamingAssetsUrl: "StreamingAssets",
+        companyName: "Kulino",
+        productName: "TestingWeb3",
+        productVersion: "1.0",
+        showBanner: unityShowBanner,
+        matchWebGLToCanvasSize: false,
+        devicePixelRatio: 1
+      };
+
+      document.querySelector("#unity-loading-bar").style.display = "block";
+
+      var script = document.createElement("script");
+      script.src = loaderUrl;
+      script.onload = () => {
+        createUnityInstance(canvas, config, (progress) => {
+          document.querySelector("#unity-progress-bar-full").style.width = 100 * progress + "%";
+        }).then((unityInstance) => {
+          document.querySelector("#unity-loading-bar").style.display = "none";
+          window.unityInstance = unityInstance;
+          // tell bridge unity is ready to receive messages
+          if (typeof window.__kulino_unity_ready === 'function') window.__kulino_unity_ready();
+        }).catch((message) => {
+          console.error('createUnityInstance failed', message);
+          alert('Unity failed to load: ' + message);
+        });
+      };
+      script.onerror = (e) => {
+        console.error('Failed to load loader script:', loaderUrl, e);
+        unityShowBanner('Failed to load Unity loader: ' + loaderUrl, 'error');
+      };
+      document.body.appendChild(script);
+    </script>
+  </body>
+</html>

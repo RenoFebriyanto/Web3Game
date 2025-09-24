@@ -8,17 +8,21 @@ public class PlayerEconomy : MonoBehaviour
     const string KEY_COINS = "Kulino_Coins_v1";
     const string KEY_SHARDS = "Kulino_Shards_v1";
     const string KEY_ENERGY = "Kulino_Energy_v1";
+    // (OPTIONAL) you can add KEY_MAXENERGY if you want to persist
+    // const string KEY_MAXENERGY = "Kulino_MaxEnergy_v1";
 
     public long Coins { get; private set; }
     public int Shards { get; private set; }
     public int Energy { get; private set; }
+    public int MaxEnergy { get; private set; } = 100;
 
     public event Action OnEconomyChanged;
 
     [Header("Default starting values (set in Inspector)")]
-    [SerializeField] int defaultEnergy = 5;
-    [SerializeField] long defaultCoins = 10000;
-    [SerializeField] int defaultShards = 10000;
+    [SerializeField] int defaultEnergy = 100;       // <-- default 100
+    [SerializeField] long defaultCoins = 5000;      // <-- default 5000
+    [SerializeField] int defaultShards = 0;         // <-- default 0
+    [SerializeField] int defaultMaxEnergy = 100;    // <-- inspector-editable max
 
     void Awake()
     {
@@ -44,7 +48,13 @@ public class PlayerEconomy : MonoBehaviour
         Shards = PlayerPrefs.GetInt(KEY_SHARDS, defaultShards);
         Energy = PlayerPrefs.GetInt(KEY_ENERGY, defaultEnergy);
 
-        Debug.Log($"[PlayerEconomy] Loaded -> Coins={Coins}, Shards={Shards}, Energy={Energy}");
+        // set MaxEnergy from inspector default if not persisting
+        MaxEnergy = defaultMaxEnergy;
+
+        // clamp energy to max
+        Energy = Mathf.Clamp(Energy, 0, MaxEnergy);
+
+        Debug.Log($"[PlayerEconomy] Loaded -> Coins={Coins}, Shards={Shards}, Energy={Energy}/{MaxEnergy}");
         OnEconomyChanged?.Invoke();
     }
 
@@ -54,7 +64,7 @@ public class PlayerEconomy : MonoBehaviour
         PlayerPrefs.SetInt(KEY_SHARDS, Shards);
         PlayerPrefs.SetInt(KEY_ENERGY, Energy);
         PlayerPrefs.Save();
-        Debug.Log($"[PlayerEconomy] Saved -> Coins={Coins}, Shards={Shards}, Energy={Energy}");
+        Debug.Log($"[PlayerEconomy] Saved -> Coins={Coins}, Shards={Shards}, Energy={Energy}/{MaxEnergy}");
     }
 
     public void AddCoins(long amount)
@@ -99,7 +109,7 @@ public class PlayerEconomy : MonoBehaviour
     {
         Debug.Log($"[PlayerEconomy] AddEnergy({amount}) called");
         if (amount == 0) return;
-        Energy = Mathf.Max(0, Energy + amount);
+        Energy = Mathf.Clamp(Energy + amount, 0, MaxEnergy);
         Save();
         OnEconomyChanged?.Invoke();
     }
@@ -108,7 +118,7 @@ public class PlayerEconomy : MonoBehaviour
     {
         if (amount <= 0) return false;
         if (Energy < amount) return false;
-        Energy -= amount;
+        Energy = Mathf.Max(0, Energy - amount);
         Save();
         OnEconomyChanged?.Invoke();
         return true;
@@ -120,6 +130,7 @@ public class PlayerEconomy : MonoBehaviour
         Debug.Log("[PlayerEconomy] ResetEconomy called");
         Coins = defaultCoins;
         Shards = defaultShards;
+        MaxEnergy = defaultMaxEnergy;
         Energy = defaultEnergy;
         Save();
         OnEconomyChanged?.Invoke();

@@ -1,6 +1,8 @@
+// Assets/Script/Collectibles/UpdatedCoinCollectible.cs
+// This is an updated version of your existing CoinCollectible with mission support
 using UnityEngine;
 
-public class CoinCollectible : MonoBehaviour, IPoolable
+public class UpdatedCoinCollectible : MonoBehaviour, IPoolable
 {
     public int amount = 1;
     public string poolId = "coin";
@@ -35,19 +37,30 @@ public class CoinCollectible : MonoBehaviour, IPoolable
     {
         if (!other.CompareTag("Player")) return;
 
-        // inform InGameManager / PlayerEconomy if you prefer
-        var gm = InGameManager.Instance;
+        // NEW: Notify MissionManager about coin collection (highest priority)
+        var missionManager = MissionManager.Instance;
+        if (missionManager != null)
+        {
+            missionManager.OnCoinCollected(amount);
+        }
+
+        // Inform InGameManager (updated to use new EnhancedInGameManager)
+        var gm = EnhancedInGameManager.Instance;
         if (gm != null)
         {
-            gm.AddCoins(amount); // jika InGameManager memiliki AddCoins
+            gm.AddCoins(amount); // This will also update MissionManager
         }
         else
         {
-            // fallback ke PlayerEconomy (global)
-            if (PlayerEconomy.Instance != null)
-            {
-                PlayerEconomy.Instance.AddCoins(amount);
-            }
+            // Fallback to old InGameManager if it exists
+            
+            
+                // Final fallback to PlayerEconomy (global)
+                if (PlayerEconomy.Instance != null)
+                {
+                    PlayerEconomy.Instance.AddCoins(amount);
+                }
+            
         }
 
         // play coin SFX via a central SFX AudioSource

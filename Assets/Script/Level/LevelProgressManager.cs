@@ -46,7 +46,10 @@ public class LevelProgressManager : MonoBehaviour
         var lm = FindObjectOfType<LevelManager>();
         if (lm != null && num > 0)
         {
-            lm.UnlockNextLevel(num);
+            string nextId = $"level_{num + 1}";
+            // jika LevelManager punya UnlockNextLevel(string)
+            lm.UnlockNextLevel(nextId);
         }
+
     }
 }

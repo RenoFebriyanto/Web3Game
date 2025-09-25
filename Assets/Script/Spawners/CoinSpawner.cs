@@ -57,7 +57,7 @@ public class CoinSpawner : MonoBehaviour
         if (mover != null) mover.SetSpeed(worldScrollSpeed);
         var col = coin.GetComponent<Collider2D>();
         if (col != null) col.isTrigger = true;
-        var rc = coin.GetComponent<CoinCollectible>();
+        var rc = coin.GetComponent<UpdatedCoinCollectible>();
         if (rc != null) rc.amount = value;
     }
 

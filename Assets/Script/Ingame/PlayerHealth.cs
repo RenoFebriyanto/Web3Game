@@ -36,7 +36,7 @@ public class PlayerHealth : MonoBehaviour
     {
         Debug.Log("[PlayerHealth] Player died!");
         // Fallback-safe notification to InGameManager if it exists (doesn't require method presence)
-        var gm = FindObjectOfType<InGameManager>();
+        var gm = FindObjectOfType<EnhancedInGameManager>();
         if (gm != null)
         {
             // SendMessage digunakan supaya tidak error bila InGameManager tidak punya OnPlayerDeath()

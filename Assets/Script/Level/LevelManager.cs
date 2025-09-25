@@ -1,182 +1,281 @@
+// Assets/Script/Level/LevelManager.cs
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
-using UnityEngine.UI;
-#if TMP_PRESENT
-using TMPro;
-#endif
-using UnityEngine.SceneManagement;
-using UnityEngine.Events;
 
-[Serializable]
-public class LevelDefData
-{
-    public int id;
-    public bool locked;
-    public int bestStars; // 0..3
-    public int[] starLanes; // length = 3, lane index per star (0..laneCount-1)
-
-    public LevelDefData() { } // for JsonUtility
-
-    public LevelDefData(int id, bool locked, int laneCount, System.Random rnd)
-    {
-        this.id = id;
-        this.locked = locked;
-        bestStars = 0;
-        starLanes = new int[3];
-        for (int i = 0; i < 3; i++)
-        {
-            starLanes[i] = rnd.Next(0, Math.Max(1, laneCount));
-        }
-    }
-}
-
+/// <summary>
+/// LevelManager
+/// - Mengelola definisi level (list dari LevelDefinition yang didefinisikan terpisah)
+/// - Menyimpan runtime state (unlocked, bestStars) ke PlayerPrefs
+/// - Menyediakan API publik: UnlockNextLevel, UnlockNextLevelByNumber, MarkLevelCompleted, GetState, dll.
+/// - Memancarkan event OnLevelsChanged untuk UI agar rebuild/refresh.
+/// </summary>
 public class LevelManager : MonoBehaviour
 {
+    // --- Public configurables (assign di Inspector) ---
+    [Tooltip("List level definitions. Provide these in the Inspector or load at runtime.")]
+    public List<LevelDefinition> levelDefinitions = new List<LevelDefinition>();
+
+    [Tooltip("If true, automatically unlock levelDefinitions[0] for new players.")]
+    public bool ensureFirstLevelUnlocked = true;
+
+    // --- Singleton ---
     public static LevelManager Instance { get; private set; }
 
-    [Header("UI Prefab / Container")]
-    public GameObject levelItemPrefab;        // prefab untuk tiap tile level (must have LevelItemUI)
-    public RectTransform contentParent;      // Content Rect (GridLayoutGroup parent)
+    // --- Runtime state definitions ---
+    // LevelState stores whether level unlocked and best stars achieved
+    [Serializable]
+    public class LevelState
+    {
+        public bool unlocked = false;
+        public int bestStars = 0;
+    }
 
-    [Header("Generation")]
-    public int levelCount = 50;
-    public int gridColumns = 5;              // jumlah kolom di grid layout
-    public int initiallyUnlocked = 1;        // jumlah level awal terbuka (biasanya 1)
+    // wrapper for saving list to PlayerPrefs via JsonUtility
+    [Serializable]
+    class SaveWrapper
+    {
+        public List<SaveEntry> items = new List<SaveEntry>();
+    }
+    [Serializable]
+    class SaveEntry
+    {
+        public string id;
+        public bool unlocked;
+        public int bestStars;
+    }
 
-    [Header("Persistence")]
-    public string savePrefix = "LevelDef_v1_"; // PlayerPrefs key prefix
+    // runtime map
+    private Dictionary<string, LevelState> runtimeStates = new Dictionary<string, LevelState>();
 
-    List<LevelDefData> defs = new List<LevelDefData>();
+    // PlayerPrefs key
+    const string PREF_KEY = "Kulino_LevelManager_State_v1";
 
+    // Event to inform UI/other systems to refresh when levels changed
+    public event Action OnLevelsChanged;
+
+    // ---------- Unity lifecycle ----------
     void Awake()
     {
-        if (Instance != null && Instance != this) { Destroy(gameObject); return; }
+        // simple singleton pattern
+        if (Instance != null && Instance != this)
+        {
+            Debug.Log("[LevelManager] Duplicate instance found - destroying this.");
+            Destroy(gameObject);
+            return;
+        }
         Instance = this;
+        DontDestroyOnLoad(gameObject);
+
+        // load definitions & state
+        LoadState();
+
+        // ensure first unlocked for new installs
+        if (ensureFirstLevelUnlocked && levelDefinitions != null && levelDefinitions.Count > 0)
+        {
+            var first = levelDefinitions[0];
+            var st = GetOrCreateState(first.id);
+            if (!st.unlocked)
+            {
+                st.unlocked = true;
+                SaveState(); // persist
+                OnLevelsChanged?.Invoke();
+            }
+        }
+
+        Debug.Log($"[LevelManager] Awake - loaded {runtimeStates.Count} saved entries; defs={levelDefinitions?.Count ?? 0}");
     }
 
-    void Start()
-    {
-        if (contentParent == null)
-        {
-            Debug.LogError("[LevelManager] contentParent is null!");
-            return;
-        }
-        var grid = contentParent.GetComponent<UnityEngine.UI.GridLayoutGroup>();
-        if (grid != null)
-        {
-            grid.constraint = UnityEngine.UI.GridLayoutGroup.Constraint.FixedColumnCount;
-            grid.constraintCount = Mathf.Max(1, gridColumns);
-        }
+    // ---------- Public API ----------
 
-        GenerateOrLoad();
-        BuildUI();
-    }
-
-    void GenerateOrLoad()
+    /// <summary>
+    /// Unlock the next level after the given level id.
+    /// Safe no-op if id not found or already last level.
+    /// </summary>
+    public void UnlockNextLevel(string levelId)
     {
-        defs.Clear();
-        System.Random rnd = new System.Random(12345);
-        for (int i = 1; i <= levelCount; i++)
+        if (string.IsNullOrEmpty(levelId)) return;
+        if (levelDefinitions == null || levelDefinitions.Count == 0) return;
+
+        int idx = levelDefinitions.FindIndex(x => x.id == levelId);
+        if (idx < 0) return;
+
+        int nextIdx = idx + 1;
+        if (nextIdx >= levelDefinitions.Count) return;
+
+        var next = levelDefinitions[nextIdx];
+        var stNext = GetOrCreateState(next.id);
+        if (!stNext.unlocked)
         {
-            string key = savePrefix + i;
-            if (PlayerPrefs.HasKey(key))
-            {
-                string json = PlayerPrefs.GetString(key);
-                try
-                {
-                    LevelDefData d = JsonUtility.FromJson<LevelDefData>(json);
-                    if (d.starLanes == null || d.starLanes.Length != 3)
-                    {
-                        d.starLanes = new int[3];
-                        for (int s = 0; s < 3; s++) d.starLanes[s] = rnd.Next(0, Math.Max(1, gridColumns));
-                    }
-                    defs.Add(d);
-                }
-                catch
-                {
-                    defs.Add(new LevelDefData(i, i > initiallyUnlocked, gridColumns, rnd));
-                }
-            }
-            else
-            {
-                defs.Add(new LevelDefData(i, i > initiallyUnlocked, gridColumns, rnd));
-            }
+            stNext.unlocked = true;
+            SaveState();
+            Debug.Log($"[LevelManager] UnlockNextLevel -> unlocked {next.id}");
+            OnLevelsChanged?.Invoke();
         }
     }
 
-    void BuildUI()
+    /// <summary>
+    /// Convenience overload - unlock next level by numeric level number.
+    /// </summary>
+    public void UnlockNextLevelByNumber(int number)
     {
-        for (int i = contentParent.childCount - 1; i >= 0; i--)
-            DestroyImmediate(contentParent.GetChild(i).gameObject);
-
-        for (int i = 0; i < defs.Count; i++)
-        {
-            var def = defs[i];
-            var go = Instantiate(levelItemPrefab, contentParent);
-            var li = go.GetComponent<LevelItemUI>();
-            if (li != null)
-            {
-                li.Setup(def);
-                li.onClick.RemoveAllListeners();
-                li.onClick.AddListener(() => OnLevelClicked(def.id));
-            }
-            else
-            {
-#if TMP_PRESENT
-                var t = go.GetComponentInChildren<TMP_Text>();
-                if (t != null) t.text = (def.id).ToString();
-#else
-                var t = go.GetComponentInChildren<Text>();
-                if (t != null) t.text = (def.id).ToString();
-#endif
-            }
-        }
+        if (levelDefinitions == null) return;
+        var def = levelDefinitions.Find(d => d.number == number);
+        if (def != null) UnlockNextLevel(def.id);
     }
 
-    void OnLevelClicked(int levelId)
+    /// <summary>
+    /// Mark the level as completed with stars (1..3). This will update bestStars and optionally unlock next level.
+    /// </summary>
+    public void MarkLevelCompleted(string levelId, int stars)
     {
-        var def = GetDefinition(levelId);
+        if (string.IsNullOrEmpty(levelId)) return;
+        var def = levelDefinitions?.Find(d => d.id == levelId);
         if (def == null) return;
-        if (def.locked)
+
+        var st = GetOrCreateState(levelId);
+        int clamped = Mathf.Clamp(stars, 0, 3);
+        if (clamped > st.bestStars)
         {
-            Debug.Log("[LevelManager] Level locked " + levelId);
-            return;
+            st.bestStars = clamped;
+            SaveState();
         }
 
-        Debug.Log("[LevelManager] Selected level " + levelId);
-        PlayerPrefs.SetInt("SelectedLevelId", levelId);
-        PlayerPrefs.Save();
+        // automatically unlock next level on first clear (you can change this behaviour)
+        UnlockNextLevel(levelId);
 
-        // NOTE: do NOT auto-load scene here if you manage transitions elsewhere.
-        // If you want automatic load: SceneManager.LoadScene("Gameplay");
+        OnLevelsChanged?.Invoke();
+        Debug.Log($"[LevelManager] MarkLevelCompleted {levelId} stars={clamped}");
     }
 
-    public LevelDefData GetDefinition(int levelId)
+    /// <summary>
+    /// Returns LevelState for given id (or null if not found). Use GetOrCreateState if you want guaranteed entry.
+    /// </summary>
+    public LevelState GetLevelState(string levelId)
     {
-        if (levelId <= 0 || levelId > defs.Count) return null;
-        return defs[levelId - 1];
+        if (string.IsNullOrEmpty(levelId)) return null;
+        runtimeStates.TryGetValue(levelId, out var st);
+        return st;
     }
 
-    public void OnLevelCompleted(int levelId, int starsEarned)
+    /// <summary>
+    /// Get best stars (0..3) for a level
+    /// </summary>
+    public int GetBestStars(string levelId)
     {
-        var def = GetDefinition(levelId);
-        if (def == null) return;
-        def.bestStars = Math.Max(def.bestStars, Mathf.Clamp(starsEarned, 0, 3));
-        if (levelId < levelCount)
+        var s = GetLevelState(levelId);
+        return s != null ? s.bestStars : 0;
+    }
+
+    /// <summary>
+    /// Returns whether level is unlocked.
+    /// </summary>
+    public bool IsUnlocked(string levelId)
+    {
+        var s = GetLevelState(levelId);
+        return s != null && s.unlocked;
+    }
+
+    /// <summary>
+    /// Force unlock (public API)
+    /// </summary>
+    public void ForceUnlock(string levelId)
+    {
+        if (string.IsNullOrEmpty(levelId)) return;
+        var s = GetOrCreateState(levelId);
+        if (!s.unlocked)
         {
-            var next = GetDefinition(levelId + 1);
-            if (next != null) next.locked = false;
+            s.unlocked = true;
+            SaveState();
+            OnLevelsChanged?.Invoke();
         }
-        SaveDefinition(def);
-        BuildUI();
     }
 
-    void SaveDefinition(LevelDefData def)
+    /// <summary>
+    /// Rebuild UI. This is a generic hook: if your LevelManager has a UI build method,
+    /// you can call it here. This implementation simply invokes the OnLevelsChanged event.
+    /// </summary>
+    public void BuildUI()
     {
-        string key = savePrefix + def.id;
-        string json = JsonUtility.ToJson(def);
-        PlayerPrefs.SetString(key, json);
-        PlayerPrefs.Save();
+        // UI should subscribe to OnLevelsChanged and rebuild when event fires.
+        OnLevelsChanged?.Invoke();
+    }
+
+    // ---------- Persistence ----------
+
+    void SaveState()
+    {
+        try
+        {
+            var wrap = new SaveWrapper();
+            wrap.items = runtimeStates.Select(kv => new SaveEntry
+            {
+                id = kv.Key,
+                unlocked = kv.Value.unlocked,
+                bestStars = kv.Value.bestStars
+            }).ToList();
+
+            string json = JsonUtility.ToJson(wrap);
+            PlayerPrefs.SetString(PREF_KEY, json);
+            PlayerPrefs.Save();
+            Debug.Log($"[LevelManager] SaveState -> {wrap.items.Count} entries");
+        }
+        catch (Exception ex)
+        {
+            Debug.LogWarning("[LevelManager] SaveState failed: " + ex.Message);
+        }
+    }
+
+    void LoadState()
+    {
+        runtimeStates.Clear();
+        if (!PlayerPrefs.HasKey(PREF_KEY)) return;
+        try
+        {
+            string json = PlayerPrefs.GetString(PREF_KEY, string.Empty);
+            if (string.IsNullOrEmpty(json)) return;
+            var wrap = JsonUtility.FromJson<SaveWrapper>(json);
+            if (wrap?.items == null) return;
+            foreach (var e in wrap.items)
+            {
+                var st = new LevelState() { unlocked = e.unlocked, bestStars = e.bestStars };
+                runtimeStates[e.id] = st;
+            }
+            Debug.Log($"[LevelManager] LoadState -> loaded {runtimeStates.Count} entries");
+        }
+        catch (Exception ex)
+        {
+            Debug.LogWarning("[LevelManager] LoadState failed: " + ex.Message);
+        }
+    }
+
+    // convenience: persist a single level (calls SaveState for now)
+    public void SaveState(string levelId)
+    {
+        SaveState();
+    }
+
+    // ---------- Helpers ----------
+    private LevelState GetOrCreateState(string id)
+    {
+        if (string.IsNullOrEmpty(id)) return null;
+        if (!runtimeStates.TryGetValue(id, out var s))
+        {
+            s = new LevelState();
+            runtimeStates[id] = s;
+        }
+        return s;
+    }
+
+    // for debugging: print states
+    [ContextMenu("Debug_PrintStates")]
+    void Debug_PrintStates()
+    {
+        Debug.Log($"[LevelManager] Definitions={levelDefinitions?.Count ?? 0}, RuntimeStates={runtimeStates.Count}");
+        foreach (var kv in runtimeStates)
+        {
+            Debug.Log($" - {kv.Key} unlocked={kv.Value.unlocked} bestStars={kv.Value.bestStars}");
+        }
     }
 }

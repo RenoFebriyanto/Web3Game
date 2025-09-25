@@ -18,7 +18,7 @@ public class PlanetDamage : MonoBehaviour
         else
         {
             // Fallback: kirim pesan ke InGameManager (jika ada) tanpa menyebabkan error bila tidak ada method-nya
-            var gm = FindObjectOfType<InGameManager>();
+            var gm = FindObjectOfType<EnhancedInGameManager>();
             if (gm != null)
             {
                 // Try to send a message; DontRequireReceiver agar tidak error bila method tidak ada

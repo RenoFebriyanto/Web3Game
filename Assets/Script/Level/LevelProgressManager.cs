@@ -1,11 +1,9 @@
-// Assets/Script/Level/LevelProgressManager.cs
-using System.Collections.Generic;
 using UnityEngine;
 
 public class LevelProgressManager : MonoBehaviour
 {
     public static LevelProgressManager Instance { get; private set; }
-
+    const string PREF_HIGHEST_UNLOCKED = "Kulino_HighestUnlockedLevel_v1";
     const string PREF_STARS_PREFIX = "Kulino_LevelStars_";
 
     void Awake()
@@ -13,6 +11,28 @@ public class LevelProgressManager : MonoBehaviour
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
         Instance = this;
         DontDestroyOnLoad(gameObject);
+    }
+
+    public int GetHighestUnlocked()
+    {
+        return PlayerPrefs.GetInt(PREF_HIGHEST_UNLOCKED, 1);
+    }
+
+    public bool IsUnlocked(int levelNumber)
+    {
+        return levelNumber <= GetHighestUnlocked();
+    }
+
+    public void UnlockNextLevel(int currentLevelNumber)
+    {
+        int next = currentLevelNumber + 1;
+        int curHigh = GetHighestUnlocked();
+        if (next > curHigh)
+        {
+            PlayerPrefs.SetInt(PREF_HIGHEST_UNLOCKED, next);
+            PlayerPrefs.Save();
+            Debug.Log($"[LevelProgressManager] Unlocked level {next}");
+        }
     }
 
     public void SaveBestStars(string levelId, int stars)
@@ -24,32 +44,11 @@ public class LevelProgressManager : MonoBehaviour
         {
             PlayerPrefs.SetInt(PREF_STARS_PREFIX + levelId, stars);
             PlayerPrefs.Save();
-            Debug.Log($"[LevelProgressManager] Saved better stars for {levelId} = {stars}");
         }
     }
 
     public int GetBestStars(string levelId)
     {
         return PlayerPrefs.GetInt(PREF_STARS_PREFIX + levelId, 0);
-    }
-
-    // called after completion to unlock next level (connects with LevelManager in scene)
-    public void OnLevelCompletedUnlockNext(string levelId)
-    {
-        // parse number from id if using "level_X"
-        int num = -1;
-        if (levelId.StartsWith("level_"))
-        {
-            int.TryParse(levelId.Substring("level_".Length), out num);
-        }
-
-        var lm = FindObjectOfType<LevelManager>();
-        if (lm != null && num > 0)
-        {
-            string nextId = $"level_{num + 1}";
-            // jika LevelManager punya UnlockNextLevel(string)
-            lm.UnlockNextLevel(nextId);
-        }
-
     }
 }

@@ -1,20 +1,15 @@
-// Assets/Script/Movement/CrystalMover.cs
+// FragmentMover.cs
 using UnityEngine;
 
-public class CrystalMover : MonoBehaviour
+public class FragmentMover : MonoBehaviour
 {
     public float speed = 3f;
     public float destroyY = -12f;
-
     public void SetSpeed(float s) { speed = s; }
 
     void Update()
     {
         transform.position += Vector3.down * speed * Time.deltaTime;
-        if (transform.position.y < destroyY)
-        {
-            gameObject.SetActive(false);
-            Destroy(gameObject);
-        }
+        if (transform.position.y < destroyY) Destroy(gameObject);
     }
 }

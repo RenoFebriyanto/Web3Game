@@ -1,19 +1,25 @@
+// Assets/Scripts/Level/LevelConfig.cs
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-[CreateAssetMenu(menuName = "Kulino/LevelConfig", fileName = "LevelConfig_")]
-public class LevelConfig : ScriptableObject
+[Serializable]
+public class LevelConfig
 {
-    [Header("Identity")]
-    public string id = "level_1"; // unique id, eg "level_1"
-    public int number = 1;       // human readable number
+    // Required by many existing scripts
+    public string id = "level_1";    // unique id
+    public int number = 1;           // human-readable number
 
-    [Header("Description (optional)")]
-    public string displayName;
+    // locked/unlocked state (inspector)
+    public bool locked = true;
 
-    [Header("Fragment requirements (what player must collect to complete this level)")]
-    public List<FragmentRequirement> requirements = new List<FragmentRequirement>();
+    // Star/best info can be stored externally (LevelProgressManager) but
+    // some UI scripts referenced a bestStars field — we expose it for safety.
+    [NonSerialized] public int bestStars = 0;
 
-    [Header("Optional UI / tuning")]
-    public bool showPreviewInSelector = true;
+    // Requirements for this level (fragmen, counts, variants)
+    public List<LevelRequirement> requirements = new List<LevelRequirement>();
+
+    // Optional description for editor
+    [TextArea] public string description;
 }

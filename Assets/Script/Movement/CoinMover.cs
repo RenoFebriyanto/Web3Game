@@ -1,3 +1,4 @@
+// CoinMover.cs
 using UnityEngine;
 
 public class CoinMover : MonoBehaviour
@@ -10,10 +11,6 @@ public class CoinMover : MonoBehaviour
     void Update()
     {
         transform.position += Vector3.down * speed * Time.deltaTime;
-        if (transform.position.y < destroyY)
-        {
-            gameObject.SetActive(false);
-            Destroy(gameObject);
-        }
+        if (transform.position.y < destroyY) Destroy(gameObject);
     }
 }

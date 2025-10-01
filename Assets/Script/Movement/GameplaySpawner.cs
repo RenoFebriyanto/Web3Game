@@ -21,6 +21,12 @@ public class GameplaySpawner : MonoBehaviour
     public float spawnY = 10f;
     public float worldScrollSpeed = 3f;
 
+    [Header("Level-Specific Spawning")]
+    public bool spawnLevelFragmentsOnly = true;
+    private FragmentRequirement[] levelRequirements; // TAMBAHKAN INI
+
+    public LevelDatabase levelDatabase;
+
     [Header("Prefabs / registry (assign at least fallback arrays)")]
     public PlanetPrefabRegistry planetRegistry; // optional registry
     public GameObject[] planetPrefabs;
@@ -78,6 +84,8 @@ public class GameplaySpawner : MonoBehaviour
 
     void Start()
     {
+        LoadLevelRequirements();
+
         StartCoroutine(PlanetSpawnLoop());
         StartCoroutine(CoinTickLoop());
         StartCoroutine(BoosterSpawnLoop());
@@ -89,6 +97,29 @@ public class GameplaySpawner : MonoBehaviour
         {
             yield return new WaitForSeconds(planetInterval);
             TrySpawnPlanet();
+        }
+    }
+
+    void LoadLevelRequirements()
+    {
+        string levelId = PlayerPrefs.GetString("SelectedLevelId", "level_1");
+
+        LevelConfig config = null;
+
+        // Load dari database
+        if (levelDatabase != null)
+        {
+            config = levelDatabase.GetById(levelId);
+        }
+
+        if (config != null && config.requirements != null)
+        {
+            levelRequirements = config.requirements.ToArray();
+            Debug.Log($"[GameplaySpawner] Loaded {levelRequirements.Length} requirements from {levelId}");
+        }
+        else
+        {
+            Debug.LogWarning($"[GameplaySpawner] LevelConfig not found: {levelId}");
         }
     }
 
@@ -381,23 +412,32 @@ public class GameplaySpawner : MonoBehaviour
 
     GameObject GetRandomFragmentPrefab()
     {
-        // try registry (ScriptableObject) via reflection if provided
+        // Spawn sesuai level requirements
+        if (spawnLevelFragmentsOnly && levelRequirements != null && levelRequirements.Length > 0)
+        {
+            var req = levelRequirements[Random.Range(0, levelRequirements.Length)];
+
+            if (fragmentRegistrySO != null)
+            {
+                var registry = fragmentRegistrySO as FragmentPrefabRegistry;
+                if (registry != null)
+                {
+                    return registry.GetPrefab(req.type, req.colorVariant);
+                }
+            }
+        }
+
+        // Fallback: reflection method (kode lama Anda)
         if (fragmentRegistrySO != null)
         {
-            MethodInfo mi = fragmentRegistrySO.GetType().GetMethod("GetRandomPrefab", BindingFlags.Instance | BindingFlags.Public);
+            System.Reflection.MethodInfo mi = fragmentRegistrySO.GetType().GetMethod("GetRandomPrefab");
             if (mi != null)
             {
                 var val = mi.Invoke(fragmentRegistrySO, null) as GameObject;
                 if (val != null) return val;
             }
-
-            FieldInfo fi = fragmentRegistrySO.GetType().GetField("prefabs", BindingFlags.Instance | BindingFlags.Public);
-            if (fi != null)
-            {
-                var arr = fi.GetValue(fragmentRegistrySO) as GameObject[];
-                if (arr != null && arr.Length > 0) return arr[Random.Range(0, arr.Length)];
-            }
         }
+
         return GetRandomFromArray(fragmentPrefabs);
     }
 

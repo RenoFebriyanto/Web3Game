@@ -6,7 +6,6 @@ public class FragmentCollectible : MonoBehaviour
     [HideInInspector] public FragmentType fragmentType;
     [HideInInspector] public int colorVariant;
 
-    // Method ini dipanggil saat spawner create fragment
     public void Initialize(FragmentType type, int variant)
     {
         fragmentType = type;
@@ -17,7 +16,8 @@ public class FragmentCollectible : MonoBehaviour
     {
         if (!other.CompareTag("Player")) return;
 
-        var missionUI = FindObjectOfType<FragmentMissionUI>();
+        // Fix: ganti FindObjectOfType dengan FindFirstObjectByType
+        var missionUI = FindFirstObjectByType<FragmentMissionUI>();
         if (missionUI != null)
         {
             missionUI.OnFragmentCollected(fragmentType, colorVariant);

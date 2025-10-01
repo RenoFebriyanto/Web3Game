@@ -31,6 +31,24 @@ public class QuestManager : MonoBehaviour
             CreateDefaultQuests();
         }
 
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+        Instance = this;
+
+        // Pastikan root object
+        if (transform.parent != null)
+        {
+            Debug.LogWarning($"[{GetType().Name}] Should be root object for DontDestroyOnLoad");
+        }
+        else
+        {
+            DontDestroyOnLoad(gameObject);
+        }
+
+
         LoadStates();
         EnsureStatesForDefinitions();
         TryDailyWeeklyResetIfNeeded();

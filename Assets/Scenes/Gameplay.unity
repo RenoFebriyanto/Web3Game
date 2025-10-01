@@ -593,13 +593,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 53169549c44095d49ba8ccacdcb4e404, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  database: {fileID: 11400000, guid: 9d11e391857961a4d8bbf24bbab802f9, type: 2}
-  currentLevel:
-    id: level_1
-    number: 1
-    locked: 1
-    requirements: []
-    description: 
+  OnLevelStarted:
+    m_PersistentCalls:
+      m_Calls: []
+  OnRequirementChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  OnLevelCompleted:
+    m_PersistentCalls:
+      m_Calls: []
+  currentLevel: {fileID: 0}
 --- !u!1 &322663205
 GameObject:
   m_ObjectHideFlags: 0
@@ -2254,7 +2257,6 @@ GameObject:
   m_Component:
   - component: {fileID: 1231665112}
   - component: {fileID: 1231665115}
-  - component: {fileID: 1231665114}
   - component: {fileID: 1231665113}
   m_Layer: 5
   m_Name: LevelComplete
@@ -2317,18 +2319,6 @@ MonoBehaviour:
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
   m_PixelsPerUnitMultiplier: 1
---- !u!114 &1231665114
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1231665111}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 76e9ef4ea7de262459cc29e1d9253919, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!222 &1231665115
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -3456,22 +3446,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2184bac4520c59f40940b41cfe292199, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  requirements:
-  - fragmentId: 
-    required: 0
-    iconImage: {fileID: 0}
-    tickImage: {fileID: 0}
-    countText: {fileID: 0}
-  - fragmentId: 
-    required: 0
-    iconImage: {fileID: 0}
-    tickImage: {fileID: 0}
-    countText: {fileID: 0}
-  - fragmentId: 
-    required: 0
-    iconImage: {fileID: 0}
-    tickImage: {fileID: 0}
-    countText: {fileID: 0}
+  box1Image: {fileID: 527303560}
+  box2Image: {fileID: 997263691}
+  box3Image: {fileID: 1422571956}
+  box1CountText: {fileID: 1075476343}
+  box2CountText: {fileID: 804930918}
+  box3CountText: {fileID: 1798305286}
+  fragmentRegistry: {fileID: 11400000, guid: 325c8016bc09c84428f9f8b2db5675db, type: 2}
+  levelDatabase: {fileID: 0}
 --- !u!1 &1740162220
 GameObject:
   m_ObjectHideFlags: 0
@@ -3839,6 +3821,8 @@ MonoBehaviour:
     m_Bits: 8
   spawnY: 10
   worldScrollSpeed: 3
+  spawnLevelFragmentsOnly: 1
+  levelDatabase: {fileID: 11400000, guid: 9d11e391857961a4d8bbf24bbab802f9, type: 2}
   planetRegistry: {fileID: 11400000, guid: 30ae186d1d27b27489ce2377d14731aa, type: 2}
   planetPrefabs: []
   fragmentRegistrySO: {fileID: 11400000, guid: 325c8016bc09c84428f9f8b2db5675db, type: 2}

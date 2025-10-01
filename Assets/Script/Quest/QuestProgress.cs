@@ -28,6 +28,23 @@ public class QuestProgress : MonoBehaviour
         Instance = this;
         DontDestroyOnLoad(gameObject);
         LoginDays = PlayerPrefs.GetInt(KEY_LOGIN_DAYS, 0);
+
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+        Instance = this;
+
+        // Pastikan root object
+        if (transform.parent != null)
+        {
+            Debug.LogWarning($"[{GetType().Name}] Should be root object for DontDestroyOnLoad");
+        }
+        else
+        {
+            DontDestroyOnLoad(gameObject);
+        }
     }
 
     // Call this when user logs in for the day (login detection logic elsewhere)

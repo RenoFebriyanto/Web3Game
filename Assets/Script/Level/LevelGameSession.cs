@@ -1,33 +1,84 @@
+// LevelGameSession.cs
+using System;
+using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Events;
+
+[Serializable]
+public class RequirementChangedEvent : UnityEvent<FragmentType, int, int> { }
+// args: fragType, variant, remainingCount
+
+[Serializable]
+public class LevelStartedEvent : UnityEvent<LevelConfig> { }
 
 public class LevelGameSession : MonoBehaviour
 {
-    [Header("Optional reference to level database (for lookup)")]
-    public LevelDatabase database;
+    public static LevelGameSession Instance { get; private set; }
 
-    [HideInInspector]
-    public LevelConfig currentLevel;
+    [Header("Events")]
+    public LevelStartedEvent OnLevelStarted;
+    public RequirementChangedEvent OnRequirementChanged;
+    public UnityEvent OnLevelCompleted;
+
+    [HideInInspector] public LevelConfig currentLevel;
+
+    // key = "type_variant"
+    Dictionary<string, int> remainingMap = new Dictionary<string, int>();
 
     void Awake()
     {
-        string id = PlayerPrefs.GetString("SelectedLevelId", "");
-        int num = PlayerPrefs.GetInt("SelectedLevelNumber", -1);
+        if (Instance != null && Instance != this) { Destroy(gameObject); return; }
+        Instance = this;
+        DontDestroyOnLoad(gameObject);
+    }
 
-        if (!string.IsNullOrEmpty(id) && database != null)
-        {
-            currentLevel = database.GetById(id);
-        }
-        else if (num > 0 && database != null)
-        {
-            currentLevel = database.GetByNumber(num);
-        }
+    static string Key(FragmentType t, int variant) => $"{t}_{variant}";
 
-        if (currentLevel == null)
+    public void StartLevel(LevelConfig cfg)
+    {
+        currentLevel = cfg;
+        remainingMap.Clear();
+        if (cfg != null)
         {
-            Debug.LogWarning("[LevelGameSession] No selected level found - fallback to level 1 if available.");
-            if (database != null) currentLevel = database.GetByNumber(1);
+            foreach (var r in cfg.requirements)
+            {
+                string k = Key(r.type, r.colorVariant);
+                if (remainingMap.ContainsKey(k)) remainingMap[k] += r.count;
+                else remainingMap[k] = r.count;
+            }
         }
+        OnLevelStarted?.Invoke(cfg);
+    }
 
-        Debug.Log("[LevelGameSession] Loaded level: " + (currentLevel != null ? currentLevel.id : "NULL"));
+    public int GetRemaining(FragmentType t, int variant)
+    {
+        string k = Key(t, variant);
+        if (remainingMap.TryGetValue(k, out var v)) return v;
+        return 0;
+    }
+
+    // Called when player collects a fragment (returns true if it affected progress)
+    public bool OnFragmentCollected(FragmentType t, int variant)
+    {
+        string k = Key(t, variant);
+        if (!remainingMap.ContainsKey(k)) return false;
+        int rem = remainingMap[k];
+        if (rem <= 0) return false;
+        rem = Mathf.Max(0, rem - 1);
+        remainingMap[k] = rem;
+        OnRequirementChanged?.Invoke(t, variant, rem);
+
+        // if all zero -> completed
+        bool allZero = true;
+        foreach (var kv in remainingMap)
+        {
+            if (kv.Value > 0) { allZero = false; break; }
+        }
+        if (allZero)
+        {
+            Debug.Log("[LevelGameSession] Level completed!");
+            OnLevelCompleted?.Invoke();
+        }
+        return true;
     }
 }

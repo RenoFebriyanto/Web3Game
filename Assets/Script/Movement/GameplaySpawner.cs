@@ -248,27 +248,80 @@ public class GameplaySpawner : MonoBehaviour
 
     void SpawnSingleFragment(int lane, float startY)
     {
-        GameObject frag = GetRandomFragmentPrefab();
-        if (frag == null) return;
+        // Pilih random requirement dari level
+        if (levelRequirements == null || levelRequirements.Length == 0) return;
+
+        var req = levelRequirements[Random.Range(0, levelRequirements.Length)];
+
+        // Ambil prefab dari registry
+        if (fragmentRegistrySO == null) return;
+        var registry = fragmentRegistrySO as FragmentPrefabRegistry;
+        if (registry == null) return;
+
+        GameObject prefab = registry.GetPrefab(req.type, req.colorVariant);
+        if (prefab == null) return;
+
+        // Spawn position
         Vector3 pos = new Vector3(GetLaneWorldX(lane), startY, 0f);
-        if (Physics2D.OverlapCircle(pos, 0.35f, obstacleLayerMask)) pos.y -= coinSpacing;
-        if (Physics2D.OverlapCircle(pos, 0.35f, obstacleLayerMask)) return;
-        GameObject go = Instantiate(frag, pos, Quaternion.identity, spawnParent);
+        if (Physics2D.OverlapCircle(pos, 0.35f, obstacleLayerMask))
+        {
+            pos.y -= coinSpacing;
+            if (Physics2D.OverlapCircle(pos, 0.35f, obstacleLayerMask)) return;
+        }
+
+        // Instantiate
+        GameObject go = Instantiate(prefab, pos, Quaternion.identity, spawnParent);
+
+        // PENTING: Set type dan variant
+        var collectible = go.GetComponent<FragmentCollectible>();
+        if (collectible == null)
+        {
+            collectible = go.AddComponent<FragmentCollectible>();
+        }
+        collectible.Initialize(req.type, req.colorVariant);
+
+        // Set movement
         var mover = go.GetComponent<PlanetMover>();
         if (mover != null) mover.SetSpeed(worldScrollSpeed);
     }
 
     void SpawnFragmentClusterNearLane(int lane, float startY)
     {
+        if (levelRequirements == null || levelRequirements.Length == 0) return;
+
         int clusterCount = Random.Range(2, 4);
         float x = GetLaneWorldX(lane);
+
         for (int i = 0; i < clusterCount; i++)
         {
-            GameObject frag = GetRandomFragmentPrefab();
-            if (frag == null) continue;
-            Vector3 pos = new Vector3(x + Random.Range(-0.4f, 0.4f), startY - i * 0.6f - Random.Range(0f, 0.1f), 0f);
+            // Random requirement
+            var req = levelRequirements[Random.Range(0, levelRequirements.Length)];
+
+            if (fragmentRegistrySO == null) continue;
+            var registry = fragmentRegistrySO as FragmentPrefabRegistry;
+            if (registry == null) continue;
+
+            GameObject prefab = registry.GetPrefab(req.type, req.colorVariant);
+            if (prefab == null) continue;
+
+            Vector3 pos = new Vector3(
+                x + Random.Range(-0.4f, 0.4f),
+                startY - i * 0.6f - Random.Range(0f, 0.1f),
+                0f
+            );
+
             if (Physics2D.OverlapCircle(pos, 0.35f, obstacleLayerMask)) continue;
-            GameObject go = Instantiate(frag, pos, Quaternion.identity, spawnParent);
+
+            GameObject go = Instantiate(prefab, pos, Quaternion.identity, spawnParent);
+
+            // Set type dan variant
+            var collectible = go.GetComponent<FragmentCollectible>();
+            if (collectible == null)
+            {
+                collectible = go.AddComponent<FragmentCollectible>();
+            }
+            collectible.Initialize(req.type, req.colorVariant);
+
             var mover = go.GetComponent<PlanetMover>();
             if (mover != null) mover.SetSpeed(worldScrollSpeed);
         }

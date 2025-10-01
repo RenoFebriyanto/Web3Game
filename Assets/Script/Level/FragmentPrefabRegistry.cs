@@ -1,3 +1,4 @@
+// Assets/Script/Level/FragmentPrefabRegistry.cs
 using System;
 using UnityEngine;
 
@@ -17,18 +18,19 @@ public class FragmentPrefabRegistry : ScriptableObject
 
     public GameObject GetPrefab(FragmentType type, int variant)
     {
-        // try exact match
         foreach (var e in entries)
         {
-            if (e.type == type && e.variant == variant && e.prefab != null) return e.prefab;
+            if (e.type == type && e.variant == variant && e.prefab != null)
+                return e.prefab;
         }
-        // fallback: any variant of same type
+
         foreach (var e in entries)
         {
-            if (e.type == type && e.prefab != null) return e.prefab;
+            if (e.type == type && e.prefab != null)
+                return e.prefab;
         }
-        // no prefab found
-        Debug.LogWarning($"[FragmentPrefabRegistry] Missing prefab for {type} variant {variant}");
+
+        Debug.LogWarning($"Missing prefab for {type} variant {variant}");
         return null;
     }
 }

@@ -1,15 +1,16 @@
+// Assets/Script/Level/FragmentRequirement.cs
 using System;
 using UnityEngine;
 
 [Serializable]
 public enum FragmentType
 {
-    Planet,
-    Rocket,
-    UFO,
-    Star,
-    Moon,
-    Sun
+    Planet = 0,
+    Rocket = 1,
+    UFO = 2,
+    Star = 3,
+    Moon = 4,
+    Sun = 5
 }
 
 [Serializable]

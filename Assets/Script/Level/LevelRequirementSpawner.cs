@@ -258,7 +258,7 @@ public class LevelRequirementSpawner : MonoBehaviour
         if (value == null) return null;
         if (targetType.IsAssignableFrom(value.GetType())) return value;
 
-        // try convert enum by name
+        // try convert enum by name 
         if (targetType.IsEnum)
         {
             try { return Enum.Parse(targetType, value.ToString(), true); } catch { }

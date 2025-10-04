@@ -24,6 +24,7 @@ public class PlayerEconomy : MonoBehaviour
     [SerializeField] int defaultShards = 0;         // <-- default 0
     [SerializeField] int defaultMaxEnergy = 100;    // <-- inspector-editable max
 
+
     void Awake()
     {
         if (Instance != null && Instance != this)

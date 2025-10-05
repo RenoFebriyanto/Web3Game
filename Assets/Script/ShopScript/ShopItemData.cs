@@ -1,7 +1,7 @@
 // ShopItemData.cs
 using UnityEngine;
 
-public enum ShopRewardType { Energy, Coin, Shard, None }
+public enum ShopRewardType { Energy, Coin, Shard, Booster, None }
 
 [CreateAssetMenu(fileName = "ShopItem", menuName = "Shop/Shop Item", order = 100)]
 public class ShopItemData : ScriptableObject

@@ -9,9 +9,12 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 8454575305126084097}
+  - component: {fileID: 5184346908825144020}
   - component: {fileID: 1702118256340961926}
   - component: {fileID: 7067868097344787107}
+  - component: {fileID: 8040292311826353771}
   - component: {fileID: 6002337566033277483}
+  - component: {fileID: 8329373074072348770}
   m_Layer: 0
   m_Name: GameBootstrap
   m_TagString: Untagged
@@ -38,6 +41,23 @@ RectTransform:
   m_AnchoredPosition: {x: -1.2999878, y: -89.53848}
   m_SizeDelta: {x: 100, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
+--- !u!114 &5184346908825144020
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 626138940886702212}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cdf73e6788291254e9c379aa4d3fe075, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  targetCoins: 99999
+  targetShards: 99999
+  targetEnergy: 100
+  targetMaxEnergy: 0
+  applyOnStart: 1
 --- !u!114 &1702118256340961926
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -63,6 +83,18 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   questDefinitions: []
+--- !u!114 &8040292311826353771
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 626138940886702212}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 511f49fcf767b3e47b81fa4156bac390, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!114 &6002337566033277483
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -75,8 +107,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 21d456b49ef8bec409fa8e36ee75739d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  items: []
-  itemPrefab: {fileID: 7233020766847043248, guid: 02e33857d58ac56458e44b37caf1b957, type: 3}
-  contentParent: {fileID: 0}
-  previewController: {fileID: 0}
-  blurOverlay: {fileID: 0}
+  itemUIPrefab: {fileID: 7612720540475846766, guid: dbd0c957a656d4647aab49a62cb769f9, type: 3}
+  itemsParent: {fileID: 0}
+  buyPreviewUI: {fileID: 0}
+  database: {fileID: 11400000, guid: c0dff845c5d907549b49301d4d4d8bb2, type: 2}
+  shopItems: []
+--- !u!114 &8329373074072348770
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 626138940886702212}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2635f00257cfe9e46a72885b5c2f5e0e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 

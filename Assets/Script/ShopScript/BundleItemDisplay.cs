@@ -1,22 +1,44 @@
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
 /// <summary>
-/// Display component untuk satu item dalam bundle.
-/// Prefab structure: Root (border) -> Icon (Image) -> Count (TMP_Text)
+/// Display untuk satu item (single atau bundle).
+/// STRUCTURE PENTING:
+///   Root (border background Image)
+///     └─ Icons (child Image untuk icon item) ← INI yang di-assign ke iconImage
+///     └─ Count (TMP_Text untuk "x2", "x3", dll)
 /// </summary>
 public class BundleItemDisplay : MonoBehaviour
 {
-    public Image iconImage;      // Icon item
-    public TMP_Text countText;   // Text "x2", "x3", etc
+    [Header("Assign CHILD components, bukan root!")]
+    public Image iconImage;      // CHILD image untuk icon (bukan background border)
+    public TMP_Text countText;   // Text untuk count
 
     public void Setup(Sprite icon, int amount)
     {
-        if (iconImage != null)
+        if (iconImage != null && icon != null)
+        {
             iconImage.sprite = icon;
+            iconImage.enabled = true;
+            Debug.Log($"[BundleItemDisplay] Set icon: {icon.name}");
+        }
+        else
+        {
+            Debug.LogWarning($"[BundleItemDisplay] iconImage={(iconImage != null ? "assigned" : "NULL")}, icon={(icon != null ? icon.name : "NULL")}");
+        }
 
         if (countText != null)
-            countText.text = "x" + amount.ToString();
+        {
+            if (amount > 0)
+            {
+                countText.text = "x" + amount.ToString();
+                countText.gameObject.SetActive(true);
+            }
+            else
+            {
+                countText.gameObject.SetActive(false);
+            }
+        }
     }
 }

@@ -1,4 +1,4 @@
-// Assets/Script/ShopScript/ShopManager.cs
+﻿// Assets/Script/ShopScript/ShopManager.cs
 using System;
 using System.Collections.Generic;
 using UnityEngine;
@@ -22,6 +22,9 @@ public class ShopManager : MonoBehaviour
     public List<ShopItemData> shopItems = new List<ShopItemData>();
 
     List<ShopItemUI> spawned = new List<ShopItemUI>();
+
+    public enum ShopFilter { All, Items, Bundle }
+    private ShopFilter currentFilter = ShopFilter.All;
 
     void Awake()
     {
@@ -228,14 +231,6 @@ public class ShopManager : MonoBehaviour
             return;
         }
 
-        EnsureBoosterInventory();
-
-        if (BoosterInventory.Instance == null)
-        {
-            Debug.LogError("[ShopManager] BoosterInventory.Instance is null. Cannot grant bundle items.");
-            return;
-        }
-
         Debug.Log($"[ShopManager] Granting bundle '{data.displayName}' with {data.bundleItems.Count} items:");
 
         foreach (var bundleItem in data.bundleItems)
@@ -246,9 +241,42 @@ public class ShopManager : MonoBehaviour
                 continue;
             }
 
-            BoosterInventory.Instance.AddBooster(bundleItem.itemId, bundleItem.amount);
-            Debug.Log($"  + {bundleItem.amount}x {bundleItem.itemId} ({bundleItem.displayName})");
+            string id = bundleItem.itemId.ToLower().Trim();
+
+            // Handle special currency items
+            if (id == "coin" || id == "coins")
+            {
+                PlayerEconomy.Instance.AddCoins(bundleItem.amount);
+                Debug.Log($"  ✓ Added {bundleItem.amount} Coins to PlayerEconomy");
+            }
+            else if (id == "shard" || id == "shards")
+            {
+                PlayerEconomy.Instance.AddShards(bundleItem.amount);
+                Debug.Log($"  ✓ Added {bundleItem.amount} Shards to PlayerEconomy");
+            }
+            else if (id == "energy")
+            {
+                PlayerEconomy.Instance.AddEnergy(bundleItem.amount);
+                Debug.Log($"  ✓ Added {bundleItem.amount} Energy to PlayerEconomy");
+            }
+            else
+            {
+                // Regular booster - masuk ke BoosterInventory
+                EnsureBoosterInventory();
+
+                if (BoosterInventory.Instance != null)
+                {
+                    BoosterInventory.Instance.AddBooster(bundleItem.itemId, bundleItem.amount);
+                    Debug.Log($"  ✓ Added {bundleItem.amount}x {bundleItem.itemId} to BoosterInventory");
+                }
+                else
+                {
+                    Debug.LogError("[ShopManager] BoosterInventory.Instance is null after ensure!");
+                }
+            }
         }
+
+        Debug.Log($"[ShopManager] Bundle '{data.displayName}' granted successfully!");
     }
 
     void EnsureBoosterInventory()
@@ -265,5 +293,159 @@ public class ShopManager : MonoBehaviour
     void Context_Repopulate()
     {
         PopulateShop();
+    }
+
+    public void FilterShop(ShopFilter filter)
+    {
+        currentFilter = filter;
+        Debug.Log($"[ShopManager] FilterShop called: {filter}");
+
+        // Refresh shop dengan filter baru
+        RepopulateWithFilter();
+    }
+
+    /// <summary>
+    /// Repopulate shop dengan filter aktif
+    /// </summary>
+    void RepopulateWithFilter()
+    {
+        Debug.Log($"[ShopManager] RepopulateWithFilter: {currentFilter}");
+
+        if (itemUIPrefab == null)
+        {
+            Debug.LogError("[ShopManager] itemUIPrefab is not assigned!");
+            return;
+        }
+        if (itemsParent == null)
+        {
+            Debug.LogError("[ShopManager] itemsParent is not assigned!");
+            return;
+        }
+
+        // Clear existing items
+        spawned.Clear();
+        for (int i = itemsParent.childCount - 1; i >= 0; i--)
+        {
+            var child = itemsParent.GetChild(i);
+            Destroy(child.gameObject);
+        }
+
+        // Get data source
+        List<ShopItemData> source = null;
+        if (database != null && database.items != null && database.items.Count > 0)
+        {
+            source = database.items;
+        }
+        else if (shopItems != null && shopItems.Count > 0)
+        {
+            source = shopItems;
+        }
+
+        if (source == null || source.Count == 0)
+        {
+            Debug.LogWarning("[ShopManager] No items in database or manual list.");
+            return;
+        }
+
+        // Filter items berdasarkan currentFilter
+        List<ShopItemData> filteredItems = FilterItems(source);
+
+        Debug.Log($"[ShopManager] Filtered {filteredItems.Count} items from {source.Count} total (filter: {currentFilter})");
+
+        // Instantiate filtered items
+        foreach (var data in filteredItems)
+        {
+            if (data == null) continue;
+
+            var go = Instantiate(itemUIPrefab, itemsParent);
+            go.name = $"ShopItem_{(string.IsNullOrEmpty(data.itemId) ? data.displayName : data.itemId)}";
+
+            var ui = go.GetComponent<ShopItemUI>();
+            if (ui != null)
+            {
+                try
+                {
+                    ui.Setup(data, this);
+                    spawned.Add(ui);
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogError($"[ShopManager] Exception while calling Setup on ShopItemUI ({go.name}): {ex.Message}");
+                }
+            }
+            else
+            {
+                ui = go.GetComponentInChildren<ShopItemUI>(true);
+                if (ui != null)
+                {
+                    try
+                    {
+                        ui.Setup(data, this);
+                        spawned.Add(ui);
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.LogError($"[ShopManager] Exception while calling Setup on child ShopItemUI ({go.name}): {ex.Message}");
+                    }
+                }
+            }
+        }
+
+        Debug.Log($"[ShopManager] Populated {spawned.Count} shop items (filter: {currentFilter})");
+    }
+
+    /// <summary>
+    /// Filter list items berdasarkan filter aktif
+    /// </summary>
+    List<ShopItemData> FilterItems(List<ShopItemData> source)
+    {
+        List<ShopItemData> filtered = new List<ShopItemData>();
+
+        foreach (var data in source)
+        {
+            if (data == null) continue;
+
+            switch (currentFilter)
+            {
+                case ShopFilter.All:
+                    // Tampilkan semua item
+                    filtered.Add(data);
+                    break;
+
+                case ShopFilter.Items:
+                    // Tampilkan semua KECUALI bundle
+                    if (data.rewardType != ShopRewardType.Bundle)
+                    {
+                        filtered.Add(data);
+                    }
+                    break;
+
+                case ShopFilter.Bundle:
+                    // Tampilkan HANYA bundle
+                    if (data.rewardType == ShopRewardType.Bundle)
+                    {
+                        filtered.Add(data);
+                    }
+                    break;
+            }
+        }
+
+        return filtered;
+    }
+
+    // Public methods untuk dipanggil dari button
+    public void ShowAll()
+    {
+        FilterShop(ShopFilter.All);
+    }
+
+    public void ShowItems()
+    {
+        FilterShop(ShopFilter.Items);
+    }
+
+    public void ShowBundle()
+    {
+        FilterShop(ShopFilter.Bundle);
     }
 }

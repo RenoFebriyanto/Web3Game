@@ -77,18 +77,21 @@ public class BuyPreviewController : MonoBehaviour
             scrollRect = iconItemsPreview.GetComponentInParent<ScrollRect>();
         }
 
-        // Simpan reference existing children (yang ada di prefab/scene)
+        // PERBAIKAN: Simpan direct children dari IconItemsPreview (IconsItems parent, bukan grandchildren)
         if (iconItemsPreview != null)
         {
             for (int i = 0; i < iconItemsPreview.childCount; i++)
             {
-                existingChildren.Add(iconItemsPreview.GetChild(i).gameObject);
+                var child = iconItemsPreview.GetChild(i).gameObject;
+                existingChildren.Add(child);
+                Debug.Log($"[BuyPreview] Saved existing child: {child.name}");
             }
 
-            // Auto-assign singleItemTemplate jika belum
+            // Auto-assign singleItemTemplate dari existing children
             if (singleItemTemplate == null && existingChildren.Count > 0)
             {
                 singleItemTemplate = existingChildren[0];
+                Debug.Log($"[BuyPreview] Auto-assigned singleItemTemplate: {singleItemTemplate.name}");
             }
         }
 
@@ -145,28 +148,39 @@ public class BuyPreviewController : MonoBehaviour
             iconItemsPreview.gameObject.SetActive(true);
         }
 
-        // Hide iconPreviewImage & rewardAmountText jika ada (tidak dipakai untuk single di IconItemsPreview)
+        // Hide iconPreviewImage & rewardAmountText jika ada
         if (iconPreviewImage != null) iconPreviewImage.gameObject.SetActive(false);
         if (rewardAmountText != null) rewardAmountText.gameObject.SetActive(false);
 
-        // Show HANYA 1 existing child pertama (singleItemTemplate)
+        // Show HANYA singleItemTemplate (IconsItems parent)
         for (int i = 0; i < existingChildren.Count; i++)
         {
             if (existingChildren[i] != null)
             {
-                existingChildren[i].SetActive(i == 0); // show hanya index 0, hide sisanya
+                existingChildren[i].SetActive(i == 0); // show hanya index 0 (IconsItems)
             }
         }
 
-        // Update single item template dengan data
+        // PENTING: Pastikan children dari singleItemTemplate aktif (Icons, Priceitems)
         if (singleItemTemplate != null)
         {
+            singleItemTemplate.SetActive(true);
+
+            // Aktifkan semua children dari singleItemTemplate
+            for (int i = 0; i < singleItemTemplate.transform.childCount; i++)
+            {
+                var child = singleItemTemplate.transform.GetChild(i).gameObject;
+                child.SetActive(true);
+                Debug.Log($"[BuyPreview] Activated child: {child.name}");
+            }
+
+            // Update dengan data
             var display = singleItemTemplate.GetComponent<BundleItemDisplay>();
             if (display != null)
             {
                 Sprite iconToUse = data.iconPreview != null ? data.iconPreview : data.iconGrid;
                 display.Setup(iconToUse, data.rewardAmount);
-                Debug.Log($"[BuyPreview] Updated single item template with icon and amount {data.rewardAmount}");
+                Debug.Log($"[BuyPreview] Updated single item: icon={iconToUse?.name}, amount={data.rewardAmount}");
             }
             else
             {

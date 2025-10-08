@@ -1,7 +1,17 @@
 // ShopItemData.cs
 using UnityEngine;
+using System.Collections.Generic;
 
-public enum ShopRewardType { Energy, Coin, Shard, Booster, None }
+public enum ShopRewardType { Energy, Coin, Shard, Booster, Bundle, None }
+
+[System.Serializable]
+public class BundleItem
+{
+    public string itemId;           // ID booster (harus match dengan BoosterInventory)
+    public Sprite icon;             // Icon untuk ditampilkan di preview
+    public int amount;              // Jumlah item ini dalam bundle
+    public string displayName;      // Nama item (opsional, untuk display)
+}
 
 [CreateAssetMenu(fileName = "ShopItem", menuName = "Shop/Shop Item", order = 100)]
 public class ShopItemData : ScriptableObject
@@ -22,8 +32,15 @@ public class ShopItemData : ScriptableObject
 
     [Header("Reward (what player gets when bought)")]
     public ShopRewardType rewardType = ShopRewardType.Energy;
-    public int rewardAmount = 0; // e.g. 100 energy
+    public int rewardAmount = 0; // untuk single item (energy/coin/shard/booster)
+
+    [Header("Bundle Settings (only if rewardType = Bundle)")]
+    [Tooltip("List of items included in this bundle. Only used when rewardType = Bundle")]
+    public List<BundleItem> bundleItems = new List<BundleItem>();
 
     [TextArea(2, 4)]
     public string description;
+
+    // Helper: check if this is a bundle
+    public bool IsBundle => rewardType == ShopRewardType.Bundle && bundleItems != null && bundleItems.Count > 0;
 }

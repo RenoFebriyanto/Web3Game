@@ -1,0 +1,43 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 20f7cb6a08990104ba74ca0580d03930, type: 3}
+  m_Name: Boosterbundle
+  m_EditorClassIdentifier: 
+  itemId: bsbundle
+  displayName: Booster Bundle
+  iconGrid: {fileID: 1936568208967328769, guid: daf0b9ecf34e35649ac37d293882130b, type: 3}
+  iconPreview: {fileID: 0}
+  coinPrice: 0
+  shardPrice: 100
+  allowBuyWithCoins: 0
+  allowBuyWithShards: 1
+  rewardType: 4
+  rewardAmount: 0
+  bundleItems:
+  - itemId: coin2x
+    icon: {fileID: 6664195757074223314, guid: fcd981a8393ec014bafc59768ab03aac, type: 3}
+    amount: 2
+    displayName: 2x Coin
+  - itemId: shield
+    icon: {fileID: -4716690596063992767, guid: 6ee4fef6391e0514e954416f4928111b, type: 3}
+    amount: 2
+    displayName: Shield
+  - itemId: rocketboost
+    icon: {fileID: -3722323677837822175, guid: b6222723cc3456a409a3aae412cde445, type: 3}
+    amount: 2
+    displayName: RocketBoost
+  - itemId: timefreeze
+    icon: {fileID: -8264797683879417840, guid: 781feb8762f3c63408189934f04a050e, type: 3}
+    amount: 1
+    displayName: Time Freeze
+  description: Perfect starter pack! Contains:- 3x Rocket Boost - 2x Shield - 1x
+    Time Freeze - 2x Coin Boost

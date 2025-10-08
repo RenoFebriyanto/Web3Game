@@ -9,36 +9,34 @@ public class ShopManager : MonoBehaviour
 {
     [Header("Prefabs & UI")]
     [Tooltip("Prefab for one shop entry (BackgroundItem). Must have ShopItemUI component.")]
-    public GameObject itemUIPrefab;     // BackgroundItem prefab (must contain ShopItemUI)
+    public GameObject itemUIPrefab;
     [Tooltip("Parent transform (ItemsShop) where items will be instantiated.")]
-    public Transform itemsParent;       // ItemsShop (container)
+    public Transform itemsParent;
     [Tooltip("Popup controller for buy preview (optional but recommended).")]
-    public BuyPreviewController buyPreviewUI;   // assign in inspector (preview popup controller)
+    public BuyPreviewController buyPreviewUI;
 
     [Header("Data")]
     [Tooltip("Optional: ShopDatabase ScriptableObject with items array. If null, uses shopItems list.")]
     public ShopDatabase database;
     [Tooltip("Fallback manual list of ShopItemData if no database assigned.")]
-    public List<ShopItemData> shopItems = new List<ShopItemData>(); // fallback/manual list
+    public List<ShopItemData> shopItems = new List<ShopItemData>();
 
     List<ShopItemUI> spawned = new List<ShopItemUI>();
 
     void Awake()
     {
-        // auto-find BuyPreviewController if not assigned in inspector
         if (buyPreviewUI == null)
         {
             try
             {
                 buyPreviewUI = UnityEngine.Object.FindFirstObjectByType<BuyPreviewController>();
             }
-            catch { /* older Unitysafety: ignore if API unavailable */ }
+            catch { }
         }
     }
 
     void Start()
     {
-        // initialize preview controller if found
         if (buyPreviewUI != null)
         {
             try { buyPreviewUI.Initialize(this); }
@@ -48,14 +46,10 @@ public class ShopManager : MonoBehaviour
         PopulateShop();
     }
 
-    /// <summary>
-    /// Populate the itemsParent with UI entries for each ShopItemData found in database (preferred) or shopItems.
-    /// </summary>
     public void PopulateShop()
     {
         Debug.Log($"[ShopManager] PopulateShop called. itemUIPrefab={(itemUIPrefab ? itemUIPrefab.name : "NULL")}, itemsParent={(itemsParent ? itemsParent.name : "NULL")}, database={(database ? "present" : "null")}, shopItemsCount={(shopItems != null ? shopItems.Count : 0)}");
 
-        // safety checks
         if (itemUIPrefab == null)
         {
             Debug.LogError("[ShopManager] itemUIPrefab is not assigned! Drag the BackgroundItem prefab into inspector.");
@@ -67,7 +61,6 @@ public class ShopManager : MonoBehaviour
             return;
         }
 
-        // clear existing children
         spawned.Clear();
         for (int i = itemsParent.childCount - 1; i >= 0; i--)
         {
@@ -75,7 +68,6 @@ public class ShopManager : MonoBehaviour
             Destroy(child.gameObject);
         }
 
-        // choose data source: database preferred
         List<ShopItemData> source = null;
         if (database != null && database.items != null && database.items.Count > 0)
         {
@@ -92,13 +84,11 @@ public class ShopManager : MonoBehaviour
             return;
         }
 
-        // instantiate UI entries
         foreach (var data in source)
         {
             if (data == null) continue;
 
             var go = Instantiate(itemUIPrefab, itemsParent);
-            // give distinct name so it's easy to find in Hierarchy at runtime
             go.name = $"ShopItem_{(string.IsNullOrEmpty(data.itemId) ? data.displayName : data.itemId)}";
 
             var ui = go.GetComponent<ShopItemUI>();
@@ -146,7 +136,6 @@ public class ShopManager : MonoBehaviour
         else Debug.LogWarning("[ShopManager] buyPreviewUI not assigned. Cannot show preview.");
     }
 
-    // TryBuy called by BuyPreview buttons
     public bool TryBuy(ShopItemData data, Currency currency)
     {
         if (data == null) return false;
@@ -157,7 +146,6 @@ public class ShopManager : MonoBehaviour
             return false;
         }
 
-        // Coins
         if (currency == Currency.Coins)
         {
             if (!data.allowBuyWithCoins) return false;
@@ -167,7 +155,7 @@ public class ShopManager : MonoBehaviour
             buyPreviewUI?.Close();
             return true;
         }
-        // Shards
+
         if (currency == Currency.Shards)
         {
             if (!data.allowBuyWithShards) return false;
@@ -196,12 +184,15 @@ public class ShopManager : MonoBehaviour
             case ShopRewardType.Energy:
                 PlayerEconomy.Instance.AddEnergy(data.rewardAmount);
                 break;
+
             case ShopRewardType.Coin:
                 PlayerEconomy.Instance.AddCoins(data.rewardAmount);
                 break;
+
             case ShopRewardType.Shard:
                 PlayerEconomy.Instance.AddShards(data.rewardAmount);
                 break;
+
             case ShopRewardType.Booster:
                 if (string.IsNullOrEmpty(data.itemId))
                 {
@@ -209,31 +200,67 @@ public class ShopManager : MonoBehaviour
                 }
                 else
                 {
-                    if (BoosterInventory.Instance == null)
-                    {
-                        var go = new GameObject("BoosterInventory");
-                        go.AddComponent<BoosterInventory>();
-                    }
-                    // safety check
+                    EnsureBoosterInventory();
                     if (BoosterInventory.Instance != null)
                     {
                         BoosterInventory.Instance.AddBooster(data.itemId, data.rewardAmount);
                     }
-                    else
-                    {
-                        Debug.LogError("[ShopManager] Could not create BoosterInventory instance.");
-                    }
                 }
                 break;
+
+            case ShopRewardType.Bundle:
+                GrantBundleReward(data);
+                break;
+
             default:
                 Debug.LogWarning("[ShopManager] Unknown reward type: " + data.rewardType);
                 break;
         }
 
-        Debug.Log($"[ShopManager] Granted reward {data.rewardType} x{data.rewardAmount} for {data.itemId ?? data.displayName}");
+        Debug.Log($"[ShopManager] Granted reward {data.rewardType} for {data.itemId ?? data.displayName}");
     }
 
-    // helper for editor/testing
+    void GrantBundleReward(ShopItemData data)
+    {
+        if (data == null || data.bundleItems == null || data.bundleItems.Count == 0)
+        {
+            Debug.LogWarning("[ShopManager] Bundle has no items!");
+            return;
+        }
+
+        EnsureBoosterInventory();
+
+        if (BoosterInventory.Instance == null)
+        {
+            Debug.LogError("[ShopManager] BoosterInventory.Instance is null. Cannot grant bundle items.");
+            return;
+        }
+
+        Debug.Log($"[ShopManager] Granting bundle '{data.displayName}' with {data.bundleItems.Count} items:");
+
+        foreach (var bundleItem in data.bundleItems)
+        {
+            if (bundleItem == null || string.IsNullOrEmpty(bundleItem.itemId))
+            {
+                Debug.LogWarning("[ShopManager] Bundle item has no itemId, skipping.");
+                continue;
+            }
+
+            BoosterInventory.Instance.AddBooster(bundleItem.itemId, bundleItem.amount);
+            Debug.Log($"  + {bundleItem.amount}x {bundleItem.itemId} ({bundleItem.displayName})");
+        }
+    }
+
+    void EnsureBoosterInventory()
+    {
+        if (BoosterInventory.Instance == null)
+        {
+            var go = new GameObject("BoosterInventory");
+            go.AddComponent<BoosterInventory>();
+            DontDestroyOnLoad(go);
+        }
+    }
+
     [ContextMenu("Repopulate Shop")]
     void Context_Repopulate()
     {

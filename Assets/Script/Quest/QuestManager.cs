@@ -1,158 +1,245 @@
+// QuestManager.cs
+// Put this in Assets/Script/Quest/QuestManager.cs
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// Manages daily and weekly quests: spawn UI, persist progress/claimed, grant rewards.
-/// Wire references in inspector:
-///  - questItemPrefab = QuestItem prefab (contains QuestItemUI)
-///  - contentDaily = ContentQuestDaily (Transform parent)
-///  - dailyQuests = array of QuestData ScriptableObjects for daily quests
-///  - weeklyPool = array of QuestData candidates for weekly (optional)
+/// Central quest manager: load/save progress & claimed state, AddProgress, ClaimReward, ResetDaily.
+/// Exposes events so UI (QuestItemUI, QuestChestController etc.) can update.
 /// </summary>
 public class QuestManager : MonoBehaviour
 {
     public static QuestManager Instance { get; private set; }
 
-    [Header("Prefabs & UI")]
-    public GameObject questItemPrefab;     // prefab with QuestItemUI
-    public Transform contentDaily;         // ContentQuestDaily transform (where items will be instantiated)
+    // Pref keys
+    const string PREF_PROGRESS_PREFIX = "QProg_";   // + questId -> int
+    const string PREF_CLAIMED_PREFIX = "QClaim_";   // + questId -> 1
 
-    [Header("Data")]
-    public QuestData[] dailyQuests;
-    public QuestData[] weeklyPool;
+    [Header("Quest lists (assign in inspector)")]
+    public List<QuestData> dailyQuests = new List<QuestData>();
+    public List<QuestData> weeklyQuests = new List<QuestData>();
 
-    // runtime storage
-    Dictionary<string, int> progress = new Dictionary<string, int>();
-    HashSet<string> claimed = new HashSet<string>();
-    Dictionary<string, QuestItemUI> spawnedUI = new Dictionary<string, QuestItemUI>();
+    // runtime dictionaries
+    Dictionary<string, int> progress = new Dictionary<string, int>();     // questId -> current amount
+    HashSet<string> claimed = new HashSet<string>();                     // questId claimed (for current cycle)
 
-    const string PREF_PREFIX_PROG = "QuestProg_";
-    const string PREF_PREFIX_CLAIM = "QuestClaimed_";
+    // events:
+    // called whenever a quest progress changed -> (questId, newProgress, requiredAmount)
+    public event Action<string, int, int> OnQuestProgressChanged;
+    // called when a quest is claimed -> (questId)
+    public event Action<string> OnQuestClaimed;
+    // called when the total claimed count (for chest etc) changes -> (claimedCount)
+    public event Action<int> OnClaimedCountChanged;
 
     void Awake()
     {
-        if (Instance != null && Instance != this) { Destroy(gameObject); return; }
+        if (Instance != null && Instance != this)
+        {
+            Debug.Log("[QuestManager] Duplicate instance found - destroying this.");
+            Destroy(gameObject);
+            return;
+        }
         Instance = this;
-        // optionally DontDestroyOnLoad if you want persistent manager:
-        // DontDestroyOnLoad(gameObject);
-
-        LoadAll();
+        DontDestroyOnLoad(gameObject);
     }
 
     void Start()
     {
-        PopulateDaily();
+        LoadAll();
     }
 
-    #region persistence
+    #region Public API
+
+    /// <summary>
+    /// Add progress to quest by id. If quest not found, no-op.
+    /// </summary>
+    public void AddProgress(string questId, int amount)
+    {
+        if (string.IsNullOrEmpty(questId) || amount == 0) return;
+        var q = FindQuestById(questId);
+        if (q == null)
+        {
+            // not configured - ignore quietly but log
+            Debug.LogWarning($"[QuestManager] AddProgress: quest {questId} not found.");
+            return;
+        }
+
+        // don't add progress if already claimed and it's a daily quest (claimed means done this cycle)
+        if (claimed.Contains(questId) && q.isDaily)
+        {
+            // nothing to do
+            return;
+        }
+
+        int cur = GetProgress(questId);
+        long next = (long)cur + amount;
+        if (next < 0) next = 0;
+        int newVal = (int)Math.Min(next, int.MaxValue);
+        progress[questId] = newVal;
+        SaveProgress(questId, newVal);
+
+        OnQuestProgressChanged?.Invoke(questId, newVal, q.requiredAmount);
+
+        // if reached requirement auto-notify (UI can enable claim)
+        if (newVal >= q.requiredAmount)
+        {
+            Debug.Log($"[QuestManager] Quest {questId} reached requirement ({newVal}/{q.requiredAmount}).");
+        }
+    }
+
+    /// <summary>
+    /// Claim reward for quest (if completed and not claimed). Returns true if success.
+    /// </summary>
+    public bool ClaimReward(string questId)
+    {
+        if (string.IsNullOrEmpty(questId)) return false;
+        var q = FindQuestById(questId);
+        if (q == null) { Debug.LogWarning($"[QuestManager] ClaimReward: quest {questId} not found."); return false; }
+
+        if (claimed.Contains(questId))
+        {
+            Debug.Log($"[QuestManager] ClaimReward: quest {questId} already claimed.");
+            return false;
+        }
+
+        int cur = GetProgress(questId);
+        if (cur < q.requiredAmount)
+        {
+            Debug.Log($"[QuestManager] ClaimReward: quest {questId} not complete ({cur}/{q.requiredAmount}).");
+            return false;
+        }
+
+        // grant reward
+        GrantReward(q);
+
+        // mark claimed
+        claimed.Add(questId);
+        SaveClaimed(questId);
+        OnQuestClaimed?.Invoke(questId);
+
+        // notify change in claimed count (for chest)
+        OnClaimedCountChanged?.Invoke(GetClaimedCount());
+
+        Debug.Log($"[QuestManager] Quest {questId} claimed and reward granted.");
+
+        return true;
+    }
+
+    /// <summary>
+    /// Reset daily quests: clear progress for daily quests and clear claimed for daily ones.
+    /// Call this at daily reset time.
+    /// </summary>
+    public void ResetDaily()
+    {
+        // clear progress and claimed for daily
+        foreach (var q in dailyQuests)
+        {
+            if (q == null) continue;
+            progress[q.questId] = 0;
+            PlayerPrefs.DeleteKey(PREF_PROGRESS_PREFIX + q.questId);
+            PlayerPrefs.DeleteKey(PREF_CLAIMED_PREFIX + q.questId);
+        }
+
+        // remove daily claimed from in-memory set
+        var toRemove = new List<string>();
+        foreach (var id in claimed)
+        {
+            var q = FindQuestById(id);
+            if (q != null && q.isDaily) toRemove.Add(id);
+        }
+        foreach (var r in toRemove) claimed.Remove(r);
+
+        PlayerPrefs.Save();
+
+        // notify UI to refresh
+        foreach (var q in dailyQuests)
+        {
+            if (q == null) continue;
+            OnQuestProgressChanged?.Invoke(q.questId, 0, q.requiredAmount);
+        }
+
+        OnClaimedCountChanged?.Invoke(GetClaimedCount());
+        Debug.Log("[QuestManager] ResetDaily executed.");
+    }
+
+    public int GetProgress(string questId)
+    {
+        if (string.IsNullOrEmpty(questId)) return 0;
+        if (progress.TryGetValue(questId, out var v)) return v;
+        // fallback to saved
+        int saved = PlayerPrefs.GetInt(PREF_PROGRESS_PREFIX + questId, 0);
+        progress[questId] = saved;
+        return saved;
+    }
+
+    public bool IsClaimed(string questId) => claimed.Contains(questId);
+
+    public int GetClaimedCount() => claimed.Count;
+
+    #endregion
+
+    #region Persistence & load helpers
+
     void LoadAll()
     {
         progress.Clear();
         claimed.Clear();
 
-        // load progress for all known quest ids (daily + weekly pool)
-        IEnumerable<QuestData> all = GetAllQuestData();
-        foreach (var q in all)
+        // load daily
+        foreach (var q in dailyQuests)
         {
-            if (q == null || string.IsNullOrEmpty(q.questId)) continue;
-            int p = PlayerPrefs.GetInt(PREF_PREFIX_PROG + q.questId, 0);
+            if (q == null) continue;
+            int p = PlayerPrefs.GetInt(PREF_PROGRESS_PREFIX + q.questId, 0);
             progress[q.questId] = p;
-            int c = PlayerPrefs.GetInt(PREF_PREFIX_CLAIM + q.questId, 0);
-            if (c == 1) claimed.Add(q.questId);
+            int c = PlayerPrefs.GetInt(PREF_CLAIMED_PREFIX + q.questId, 0);
+            if (c != 0) claimed.Add(q.questId);
+            // notify UI initial state
+            OnQuestProgressChanged?.Invoke(q.questId, p, q.requiredAmount);
         }
+
+        // load weekly
+        foreach (var q in weeklyQuests)
+        {
+            if (q == null) continue;
+            int p = PlayerPrefs.GetInt(PREF_PROGRESS_PREFIX + q.questId, 0);
+            progress[q.questId] = p;
+            int c = PlayerPrefs.GetInt(PREF_CLAIMED_PREFIX + q.questId, 0);
+            if (c != 0) claimed.Add(q.questId);
+            OnQuestProgressChanged?.Invoke(q.questId, p, q.requiredAmount);
+        }
+
+        OnClaimedCountChanged?.Invoke(GetClaimedCount());
+        Debug.Log("[QuestManager] LoadAll finished.");
     }
 
-    void SaveProgress(string questId)
+    void SaveProgress(string questId, int value)
     {
-        if (string.IsNullOrEmpty(questId)) return;
-        PlayerPrefs.SetInt(PREF_PREFIX_PROG + questId, GetProgress(questId));
+        PlayerPrefs.SetInt(PREF_PROGRESS_PREFIX + questId, value);
         PlayerPrefs.Save();
     }
 
     void SaveClaimed(string questId)
     {
-        if (string.IsNullOrEmpty(questId)) return;
-        PlayerPrefs.SetInt(PREF_PREFIX_CLAIM + questId, IsClaimed(questId) ? 1 : 0);
+        PlayerPrefs.SetInt(PREF_CLAIMED_PREFIX + questId, 1);
         PlayerPrefs.Save();
     }
+
+    QuestData FindQuestById(string id)
+    {
+        if (string.IsNullOrEmpty(id)) return null;
+        foreach (var q in dailyQuests) if (q != null && q.questId == id) return q;
+        foreach (var q in weeklyQuests) if (q != null && q.questId == id) return q;
+        return null;
+    }
+
     #endregion
 
-    IEnumerable<QuestData> GetAllQuestData()
+    #region Reward granting helpers
+
+    void GrantReward(QuestData q)
     {
-        if (dailyQuests != null) foreach (var q in dailyQuests) if (q != null) yield return q;
-        if (weeklyPool != null) foreach (var q in weeklyPool) if (q != null) yield return q;
-    }
-
-    #region spawn UI
-    public void PopulateDaily()
-    {
-        if (questItemPrefab == null) { Debug.LogWarning("[QuestManager] questItemPrefab missing"); return; }
-        if (contentDaily == null) { Debug.LogWarning("[QuestManager] contentDaily missing"); return; }
-
-        // clear children
-        for (int i = contentDaily.childCount - 1; i >= 0; i--) DestroyImmediate(contentDaily.GetChild(i).gameObject);
-        spawnedUI.Clear();
-
-        if (dailyQuests == null) return;
-        foreach (var q in dailyQuests)
-        {
-            if (q == null) continue;
-            var go = Instantiate(questItemPrefab, contentDaily);
-            go.name = "Quest_" + q.questId;
-            var ui = go.GetComponent<QuestItemUI>();
-            if (ui != null)
-            {
-                ui.Setup(q, this);
-                spawnedUI[q.questId] = ui;
-            }
-        }
-    }
-    #endregion
-
-    #region public API (used by QuestItemUI)
-    public int GetProgress(string questId)
-    {
-        if (string.IsNullOrEmpty(questId)) return 0;
-        if (progress.TryGetValue(questId, out var v)) return v;
-        return 0;
-    }
-
-    public bool IsClaimed(string questId)
-    {
-        if (string.IsNullOrEmpty(questId)) return false;
-        return claimed.Contains(questId);
-    }
-
-    /// <summary>
-    /// Add progress to quest. If quest reaches required amount, UI will reflect ready-to-claim.
-    /// </summary>
-    public void AddProgress(string questId, int amount)
-    {
-        if (string.IsNullOrEmpty(questId) || amount == 0) return;
-        // find quest meta to get requiredAmount
-        var q = FindQuestData(questId);
         if (q == null) return;
-
-        int cur = GetProgress(questId);
-        int nxt = Mathf.Clamp(cur + amount, 0, q.requiredAmount);
-        progress[questId] = nxt;
-        SaveProgress(questId);
-        NotifyUI(questId);
-    }
-
-    /// <summary>
-    /// Claim reward for questId if progress enough and not already claimed.
-    /// Grants to PlayerEconomy or BoosterInventory depending on reward type.
-    /// </summary>
-    public void ClaimReward(string questId)
-    {
-        if (string.IsNullOrEmpty(questId)) return;
-        var q = FindQuestData(questId);
-        if (q == null) return;
-        if (IsClaimed(questId)) return;
-        if (GetProgress(questId) < q.requiredAmount) return;
-
-        // grant
         switch (q.rewardType)
         {
             case QuestRewardType.Coin:
@@ -180,59 +267,7 @@ public class QuestManager : MonoBehaviour
             default:
                 break;
         }
-
-        // mark claimed
-        claimed.Add(questId);
-        SaveClaimed(questId);
-
-        NotifyUI(questId);
-    }
-    #endregion
-
-    void NotifyUI(string questId)
-    {
-        if (string.IsNullOrEmpty(questId)) return;
-        if (spawnedUI.TryGetValue(questId, out var ui) && ui != null)
-        {
-            ui.OnManagerUpdated();
-        }
     }
 
-    QuestData FindQuestData(string id)
-    {
-        if (string.IsNullOrEmpty(id)) return null;
-        if (dailyQuests != null) foreach (var q in dailyQuests) if (q != null && q.questId == id) return q;
-        if (weeklyPool != null) foreach (var q in weeklyPool) if (q != null && q.questId == id) return q;
-        return null;
-    }
-
-    #region dev / daily reset helpers
-    [ContextMenu("ResetAllProgressAndClaims")]
-    public void ResetAll()
-    {
-        // remove keys for all known quest ids
-        foreach (var q in GetAllQuestData())
-        {
-            PlayerPrefs.DeleteKey(PREF_PREFIX_PROG + q.questId);
-            PlayerPrefs.DeleteKey(PREF_PREFIX_CLAIM + q.questId);
-        }
-        PlayerPrefs.Save();
-        LoadAll();
-        foreach (var kv in spawnedUI) kv.Value.OnManagerUpdated();
-    }
-
-    [ContextMenu("ResetDailyToZero")]
-    public void ResetDaily()
-    {
-        if (dailyQuests == null) return;
-        foreach (var q in dailyQuests)
-        {
-            progress[q.questId] = 0;
-            claimed.Remove(q.questId);
-            SaveProgress(q.questId);
-            SaveClaimed(q.questId);
-            if (spawnedUI.TryGetValue(q.questId, out var ui)) ui.OnManagerUpdated();
-        }
-    }
     #endregion
 }

@@ -1,79 +1,127 @@
 // QuestChestController.cs
+// Put this in Assets/Script/Quest/QuestChestController.cs
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
-using System;
 
+/// <summary>
+/// Controls the chest progress UI. Subscribes to QuestManager.OnClaimedCountChanged
+/// and updates slider + chest sprite. When chest is claimable, the chest button will call ClaimChest().
+/// </summary>
 public class QuestChestController : MonoBehaviour
 {
-    [Header("UI")]
-    public Slider progressBar;      // the blue bar
-    public Image chestImage;        // chest image that changes sprite
-    public Button chestButton;      // claim chest button
-    public TMP_Text chestLabel;
+    [Header("UI refs")]
+    public Slider progressSlider; // slider filled from 0..1
+    public Image progressFillImage; // optional
+    public Image chestImage;
+    public Button chestButton;
+    public TMP_Text chestLabel; // optional label showing "Claim" etc
 
     [Header("Sprites")]
-    public Sprite chestDim;
-    public Sprite chestYellow;
-    public Sprite chestChecked;
+    public Sprite chestDimSprite;
+    public Sprite chestYellowSprite;
+    public Sprite chestCheckedSprite;
 
-    [Header("Thresholds")]
-    public int chestThreshold = 3; // number of claimed quests required to enable chest
+    [Header("Chest thresholds")]
+    public int totalNeededForFull = 10; // how many claimed quests needed to reach chest
+    public int chestUnlockClaimCount = 3; // example threshold for first chest (if multiple, adapt)
 
-    bool chestClaimed = false;
-    int currentClaimedCount = 0;
+    // internal
+    int currentClaimed = 0;
 
-    public event Action OnChestClaimed;
-
-    void Awake()
+    void Start()
     {
+        // subscribe
+        if (QuestManager.Instance != null)
+        {
+            QuestManager.Instance.OnClaimedCountChanged += OnClaimCountChanged;
+            // initialize UI
+            OnClaimCountChanged(QuestManager.Instance.GetClaimedCount());
+        }
+
         if (chestButton != null)
         {
             chestButton.onClick.RemoveAllListeners();
             chestButton.onClick.AddListener(OnChestClicked);
         }
+
+        RefreshUI();
     }
 
-    public void UpdateProgress(int claimedCount, int totalNeededForFullBar = 10)
+    void OnDestroy()
     {
-        currentClaimedCount = claimedCount;
-        float t = Mathf.Clamp01((float)claimedCount / (float)totalNeededForFullBar);
-        if (progressBar != null) progressBar.value = t;
+        if (QuestManager.Instance != null)
+            QuestManager.Instance.OnClaimedCountChanged -= OnClaimCountChanged;
+    }
 
-        // Chest visuals
-        if (chestClaimed)
+    void OnClaimCountChanged(int claimedCount)
+    {
+        currentClaimed = claimedCount;
+        RefreshUI();
+    }
+
+    void RefreshUI()
+    {
+        // progress normalized
+        float t = 0f;
+        if (totalNeededForFull > 0) t = Mathf.Clamp01((float)currentClaimed / totalNeededForFull);
+
+        if (progressSlider != null)
         {
-            chestImage.sprite = chestChecked;
-            chestButton.interactable = false;
-            chestLabel.text = "Claimed";
+            progressSlider.value = t;
+            if (progressFillImage != null)
+            {
+                // optionally color fill based on t (already set in slider fill)
+            }
         }
-        else if (claimedCount >= chestThreshold)
+
+        bool unlockable = (currentClaimed >= chestUnlockClaimCount);
+
+        if (chestImage != null)
         {
-            chestImage.sprite = chestYellow;
-            chestButton.interactable = true;
-            chestLabel.text = "Claim!";
+            if (currentClaimed >= totalNeededForFull)
+                chestImage.sprite = chestCheckedSprite ?? chestYellowSprite ?? chestDimSprite;
+            else if (unlockable)
+                chestImage.sprite = chestYellowSprite ?? chestDimSprite;
+            else
+                chestImage.sprite = chestDimSprite;
         }
-        else
+
+        if (chestLabel != null)
         {
-            chestImage.sprite = chestDim;
-            chestButton.interactable = false;
-            chestLabel.text = $"Need {chestThreshold - claimedCount}";
+            if (currentClaimed >= totalNeededForFull) chestLabel.text = "Claimed";
+            else if (unlockable) chestLabel.text = "Open";
+            else chestLabel.text = $"{currentClaimed}/{chestUnlockClaimCount}";
+        }
+
+        if (chestButton != null)
+        {
+            chestButton.interactable = (currentClaimed >= chestUnlockClaimCount);
         }
     }
 
     void OnChestClicked()
     {
-        if (chestClaimed) return;
-        if (currentClaimedCount < chestThreshold) return;
-        chestClaimed = true;
-        UpdateProgress(currentClaimedCount);
-        OnChestClaimed?.Invoke();
-        Debug.Log("[QuestChestController] Chest claimed!");
+        // logic: grant random reward & mark as claimed (or mark chest opened for this cycle)
+        // simple example: give coins and then reset the chest progress (or reduce by threshold).
+        Debug.Log("[QuestChestController] Chest clicked.");
+
+        // Deliver simple reward example:
+        PlayerEconomy.Instance?.AddCoins(500); // example fixed reward
+
+        // mark chest claimed: here we reset claimed count to 0 for simplicity via QuestManager.ResetDaily()
+        // Option: you may subtract threshold instead of full reset.
+        if (QuestManager.Instance != null)
+        {
+            // For daily chest: ResetDaily() might be heavy; instead you can just reduce saved claimed flags for some quests.
+            // Here we call ResetDaily to simplify example. Adjust to your flow.
+            QuestManager.Instance.ResetDaily();
+        }
+
+        // update ui manually (ResetDaily should fire OnClaimedCountChanged)
+        RefreshUI();
     }
 
-    public void ResetChest() // if you want to reset for testing
-    {
-        chestClaimed = false;
-        UpdateProgress(currentClaimedCount);
-    }
+    // Optional helper for external callers:
+    public void ForceRefresh() => RefreshUI();
 }

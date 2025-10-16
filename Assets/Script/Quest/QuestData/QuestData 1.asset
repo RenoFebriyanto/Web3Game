@@ -13,11 +13,11 @@ MonoBehaviour:
   m_Name: QuestData 1
   m_EditorClassIdentifier: 
   questId: daily_login1
-  title: '[Daily] Login 3 Hari'
+  title: '[Weekly] Dapatkan 1000 coin'
   description: Login dalam 3 hari untuk mendapatkan reward.
-  icon: {fileID: 6765926063464852416, guid: c36ed03bf5abb2e45a972295e241e11a, type: 3}
-  requiredAmount: 3
+  icon: {fileID: -3385602274224838078, guid: 555246f32e3e49e439b87ad9927ca5b3, type: 3}
+  requiredAmount: 1000
   isDaily: 1
-  rewardType: 2
-  rewardAmount: 200
-  rewardBoosterId: 
+  rewardType: 4
+  rewardAmount: 5
+  rewardBoosterId: magnet

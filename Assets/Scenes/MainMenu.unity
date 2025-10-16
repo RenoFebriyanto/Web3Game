@@ -10542,6 +10542,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: QuestItem
       objectReference: {fileID: 0}
+    - target: {fileID: 7609643420665963605, guid: 2759036920f9aa246920866e26ff3b75, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 8401280282111217967, guid: 2759036920f9aa246920866e26ff3b75, type: 3}
       propertyPath: m_AnchorMax.y
       value: 0
@@ -10692,7 +10696,11 @@ PrefabInstance:
       objectReference: {fileID: -994830075764059341, guid: a245117f0193abe47a738e44abafc6bc, type: 3}
     - target: {fileID: 7067868097344787107, guid: 37aac24c7901f3d4e9b7941f249302ea, type: 3}
       propertyPath: dailyQuests.Array.size
-      value: 2
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7067868097344787107, guid: 37aac24c7901f3d4e9b7941f249302ea, type: 3}
+      propertyPath: weeklyQuests.Array.size
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 7067868097344787107, guid: 37aac24c7901f3d4e9b7941f249302ea, type: 3}
       propertyPath: 'dailyQuests.Array.data[0]'
@@ -10700,6 +10708,10 @@ PrefabInstance:
       objectReference: {fileID: 11400000, guid: 2df7325dbe6368844873eae6ff1b8343, type: 2}
     - target: {fileID: 7067868097344787107, guid: 37aac24c7901f3d4e9b7941f249302ea, type: 3}
       propertyPath: 'dailyQuests.Array.data[1]'
+      value: 
+      objectReference: {fileID: 11400000, guid: a68e085604563bf4d857d31bd9e964a7, type: 2}
+    - target: {fileID: 7067868097344787107, guid: 37aac24c7901f3d4e9b7941f249302ea, type: 3}
+      propertyPath: 'weeklyQuests.Array.data[0]'
       value: 
       objectReference: {fileID: 11400000, guid: a68e085604563bf4d857d31bd9e964a7, type: 2}
     - target: {fileID: 8040292311826353771, guid: 37aac24c7901f3d4e9b7941f249302ea, type: 3}

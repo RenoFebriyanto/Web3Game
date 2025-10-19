@@ -1,80 +1,5 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!1 &518307132536243713
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 8401280282111217967}
-  - component: {fileID: 1561133141538435368}
-  - component: {fileID: 7105188379392570554}
-  m_Layer: 5
-  m_Name: Handle
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!224 &8401280282111217967
-RectTransform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 518307132536243713}
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 8297911380448350547}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 20, y: 0}
-  m_Pivot: {x: 0.5, y: 0.5}
---- !u!222 &1561133141538435368
-CanvasRenderer:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 518307132536243713}
-  m_CullTransparentMesh: 1
---- !u!114 &7105188379392570554
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 518307132536243713}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 1, b: 1, a: 1}
-  m_RaycastTarget: 1
-  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
-  m_Maskable: 1
-  m_OnCullStateChanged:
-    m_PersistentCalls:
-      m_Calls: []
-  m_Sprite: {fileID: 10913, guid: 0000000000000000f000000000000000, type: 0}
-  m_Type: 0
-  m_PreserveAspect: 0
-  m_FillCenter: 1
-  m_FillMethod: 4
-  m_FillAmount: 1
-  m_FillClockwise: 1
-  m_FillOrigin: 0
-  m_UseSpriteMesh: 0
-  m_PixelsPerUnitMultiplier: 1
 --- !u!1 &1955868195831266421
 GameObject:
   m_ObjectHideFlags: 0
@@ -87,7 +12,7 @@ GameObject:
   - component: {fileID: 4419462146833446051}
   - component: {fileID: 6805905025866322854}
   m_Layer: 5
-  m_Name: Itemss
+  m_Name: Icon
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -295,7 +220,7 @@ GameObject:
   - component: {fileID: 1525045815131425425}
   - component: {fileID: 5309693724025116605}
   m_Layer: 5
-  m_Name: Icon
+  m_Name: BorderIcon
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -571,42 +496,6 @@ MonoBehaviour:
   m_hasFontAssetChanged: 0
   m_baseMaterial: {fileID: 0}
   m_maskOffset: {x: 0, y: 0, z: 0, w: 0}
---- !u!1 &4899553847447745901
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 8297911380448350547}
-  m_Layer: 5
-  m_Name: Handle Slide Area
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!224 &8297911380448350547
-RectTransform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4899553847447745901}
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children:
-  - {fileID: 8401280282111217967}
-  m_Father: {fileID: 8246839509628948598}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: -20, y: 0}
-  m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &4910439420196125033
 GameObject:
   m_ObjectHideFlags: 0
@@ -1023,7 +912,6 @@ RectTransform:
   m_Children:
   - {fileID: 1298878341989036631}
   - {fileID: 7177719913429154934}
-  - {fileID: 8297911380448350547}
   m_Father: {fileID: 2795795953983062862}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
@@ -1071,9 +959,9 @@ MonoBehaviour:
     m_SelectedTrigger: Selected
     m_DisabledTrigger: Disabled
   m_Interactable: 1
-  m_TargetGraphic: {fileID: 7105188379392570554}
+  m_TargetGraphic: {fileID: 0}
   m_FillRect: {fileID: 2664920955126151448}
-  m_HandleRect: {fileID: 8401280282111217967}
+  m_HandleRect: {fileID: 0}
   m_Direction: 0
   m_MinValue: 0
   m_MaxValue: 1
@@ -1169,6 +1057,7 @@ GameObject:
   - component: {fileID: 5810998554566826600}
   - component: {fileID: 8227271367695568832}
   - component: {fileID: 8677681782626849829}
+  - component: {fileID: 3554065981929738202}
   m_Layer: 5
   m_Name: QuestItem
   m_TagString: Untagged
@@ -1253,15 +1142,27 @@ MonoBehaviour:
   amountText: {fileID: 827559643218200534}
   actionButton: {fileID: 5790943182970010621}
   actionButtonText: {fileID: 3340356223284039962}
+  actionButtonImage: {fileID: 7372265350059154570}
   progressSlider: {fileID: 321214081144366657}
   sliderFillImage: {fileID: 6902029924463463549}
-  sliderBackgroundImage: {fileID: 2318322208084966747}
+  sliderBackground: {fileID: 2318322208084966747}
   colorEmpty: {r: 0.9, g: 0.9, b: 0.9, a: 1}
   colorFill: {r: 0.02, g: 0.56, b: 1, a: 1}
-  spriteLocked: {fileID: -8058495721422687109, guid: 23eafc3e7440cfc45946fc39c50c2bd6, type: 3}
-  spriteReady: {fileID: -994830075764059341, guid: 28415a1e6ba008641a27c83911590632, type: 3}
-  spriteClaimed: {fileID: -3748701598928558014, guid: 6be46e87d47bd9a41bb4e3d32d764843, type: 3}
-  actionButtonImage: {fileID: 7372265350059154570}
+  buttonLockedSprite: {fileID: -8058495721422687109, guid: 23eafc3e7440cfc45946fc39c50c2bd6, type: 3}
+  buttonReadySprite: {fileID: -994830075764059341, guid: 12f05e51c55a25645b5d9bf555750fc8, type: 3}
+  buttonClaimedSprite: {fileID: -3748701598928558014, guid: c8f692d27aff24149b2c038fabf35be6, type: 3}
+--- !u!225 &3554065981929738202
+CanvasGroup:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7609643420665963605}
+  m_Enabled: 1
+  m_Alpha: 1
+  m_Interactable: 1
+  m_BlocksRaycasts: 1
+  m_IgnoreParentGroups: 0
 --- !u!1 &9020295123834812830
 GameObject:
   m_ObjectHideFlags: 0

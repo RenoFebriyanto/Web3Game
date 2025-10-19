@@ -1,51 +1,70 @@
-// QuestChestController.cs
 using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
 
 public class QuestChestController : MonoBehaviour
 {
-    [Header("UI refs")]
-    public Slider progressSlider;      // global progress bar for daily progress
+    public Slider progressSlider;
+    public Image fillImage;
     public Image chestImage;
-    public Sprite chestLocked;
-    public Sprite chestReady;
-    public Sprite chestClaimed;
+    public Sprite chestDimSprite;
+    public Sprite chestYellowSprite;
+    public Sprite chestCheckedSprite;
+    public Button chestButton;
+    public TMP_Text chestLabel;
 
-    // threshold (0..1 normalized) at which chest becomes claimable
-    [Range(0f, 1f)] public float requiredProgress = 0.5f;
+    public int chestUnlockClaimCount = 3; // berapa klaim yang perlu dicapai untuk unlock
 
-    bool claimed = false;
+    int currentClaimed = 0;
 
-    public void SetProgressNormalized(float t)
+    void OnEnable()
     {
-        if (progressSlider != null) progressSlider.value = Mathf.Clamp01(t);
-
-        if (!claimed)
+        if (QuestManager.Instance != null)
         {
-            if (progressSlider != null && progressSlider.value >= requiredProgress)
-            {
-                if (chestImage != null && chestReady != null) chestImage.sprite = chestReady;
-            }
-            else
-            {
-                if (chestImage != null && chestLocked != null) chestImage.sprite = chestLocked;
-            }
+            // no event in manager, but we can refresh on enable
+            RefreshUI();
         }
     }
 
-    public void ClaimChest()
+    public void RefreshUI()
     {
-        if (claimed) return;
-        if (progressSlider != null && progressSlider.value >= requiredProgress)
+        if (progressSlider != null)
         {
-            claimed = true;
-            if (chestImage != null && chestClaimed != null) chestImage.sprite = chestClaimed;
-            // reward logic here (randomize reward) -> call PlayerEconomy or BoosterInventory
-            Debug.Log("[QuestChestController] Chest claimed (implement reward logic)");
+            // simple: count claimed across daily (or use manager API if available)
+            int claimedCount = 0;
+            // count claimed in daily
+            foreach (var q in QuestManager.Instance != null ? QuestManager.Instance.dailyQuests : new System.Collections.Generic.List<QuestData>())
+            {
+                if (q == null) continue;
+                if (QuestManager.Instance.IsClaimed(q.questId)) claimedCount++;
+            }
+
+            currentClaimed = claimedCount;
+            float total = Mathf.Max(1, chestUnlockClaimCount);
+            progressSlider.value = Mathf.Clamp01((float)currentClaimed / total);
+            if (fillImage != null && QuestManager.Instance != null) fillImage.color = Color.Lerp(Color.gray, Color.yellow, progressSlider.value);
         }
-        else
+
+        if (chestImage != null)
         {
-            Debug.Log("[QuestChestController] Chest not ready");
+            if (currentClaimed >= chestUnlockClaimCount) chestImage.sprite = chestYellowSprite;
+            else chestImage.sprite = chestDimSprite;
         }
+
+        if (chestLabel != null)
+        {
+            chestLabel.text = $"{currentClaimed}/{chestUnlockClaimCount}";
+        }
+
+        if (chestButton != null) chestButton.interactable = (currentClaimed >= chestUnlockClaimCount);
+    }
+
+    public void OnChestClicked()
+    {
+        // give random reward (example)
+        PlayerEconomy.Instance?.AddCoins(500);
+        // after claim reset daily (or subtract)
+        QuestManager.Instance?.ResetDaily();
+        RefreshUI();
     }
 }

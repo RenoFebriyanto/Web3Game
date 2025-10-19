@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7b3d1fe228b620648beb983f4731f193, type: 3}
+  m_Name: QuestDataDaily
+  m_EditorClassIdentifier: 
+  questId: dailyquest1
+  title: '[Daily] Bermain 30 menit'
+  description: Bermain 30 menit untuk mendapatkan reward.
+  requiredAmount: 30
+  isDaily: 1
+  icon: {fileID: -3385602274224838078, guid: 555246f32e3e49e439b87ad9927ca5b3, type: 3}
+  rewardType: 4
+  rewardAmount: 5
+  rewardBoosterId: magnet

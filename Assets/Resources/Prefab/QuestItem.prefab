@@ -196,14 +196,14 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 8677681782626849829}
-        m_TargetAssemblyTypeName: QuestItemUI, Assembly-CSharp
-        m_MethodName: OnClaimClicked
+      - m_Target: {fileID: 0}
+        m_TargetAssemblyTypeName: 
+        m_MethodName: 
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
-          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
-          m_IntArgument: 10
+          m_ObjectArgumentAssemblyTypeName: 
+          m_IntArgument: 0
           m_FloatArgument: 0
           m_StringArgument: 
           m_BoolArgument: 0
@@ -1138,16 +1138,18 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   titleText: {fileID: 8094639758903190295}
-  borderIcon: {fileID: 6805905025866322854}
+  iconImage: {fileID: 6805905025866322854}
   amountText: {fileID: 827559643218200534}
   progressSlider: {fileID: 321214081144366657}
-  fillImage: {fileID: 6902029924463463549}
-  claimButton: {fileID: 5790943182970010621}
-  claimButtonImage: {fileID: 7372265350059154570}
-  claimButtonText: {fileID: 3340356223284039962}
-  spriteGo: {fileID: -8058495721422687109, guid: 80f27de5104a59846a2c47b5ba373b90, type: 3}
-  spriteClaim: {fileID: -994830075764059341, guid: 12f05e51c55a25645b5d9bf555750fc8, type: 3}
+  sliderFillImage: {fileID: 6902029924463463549}
+  sliderBackgroundImage: {fileID: 2318322208084966747}
+  actionButton: {fileID: 5790943182970010621}
+  actionButtonText: {fileID: 3340356223284039962}
+  actionButtonImage: {fileID: 7372265350059154570}
+  spriteLocked: {fileID: -8058495721422687109, guid: 80f27de5104a59846a2c47b5ba373b90, type: 3}
+  spriteReady: {fileID: -994830075764059341, guid: 12f05e51c55a25645b5d9bf555750fc8, type: 3}
   spriteClaimed: {fileID: -3748701598928558014, guid: c8f692d27aff24149b2c038fabf35be6, type: 3}
+  questData: {fileID: 0}
 --- !u!225 &3554065981929738202
 CanvasGroup:
   m_ObjectHideFlags: 0

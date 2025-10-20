@@ -1,18 +1,36 @@
 using UnityEngine;
 
-public static class CoinGrantTracker
+public class CoinGrantTracker : MonoBehaviour
 {
-    // Call this instead of directly calling PlayerEconomy.AddCoins when possible
-    public static void GiveCoins(long amount)
-    {
-        if (amount == 0) return;
-        PlayerEconomy.Instance?.AddCoins(amount);
+    [Tooltip("Quest id to progress when player gains coins (quest expects coin amount).")]
+    public string questId;
 
-        // Add progress for coin quest (cast to int; ensure quest threshold fits int)
-        if (QuestManager.Instance != null)
+    long lastCoins = -1;
+
+    void OnEnable()
+    {
+        if (PlayerEconomy.Instance != null)
         {
-            QuestManager.Instance.AddProgress("daily_getcoin_2000", (int)amount);
-            Debug.Log($"[CoinGrantTracker] Added {amount} coins and progressed daily_getcoin_2000 by {(int)amount}");
+            lastCoins = PlayerEconomy.Instance.Coins;
+            PlayerEconomy.Instance.OnEconomyChanged += OnEconomyChanged;
         }
+    }
+
+    void OnDisable()
+    {
+        if (PlayerEconomy.Instance != null) PlayerEconomy.Instance.OnEconomyChanged -= OnEconomyChanged;
+    }
+
+    void OnEconomyChanged()
+    {
+        if (PlayerEconomy.Instance == null) return;
+        long cur = PlayerEconomy.Instance.Coins;
+        if (lastCoins < 0) lastCoins = cur;
+        long delta = cur - lastCoins;
+        if (delta > 0 && !string.IsNullOrEmpty(questId))
+        {
+            QuestManager.Instance?.AddProgress(questId, (int)delta);
+        }
+        lastCoins = cur;
     }
 }

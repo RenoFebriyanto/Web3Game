@@ -1,45 +1,26 @@
+using System.Collections.Generic;
 using UnityEngine;
 
-/// <summary>
-/// Track play time in minutes and add progress to one or more questIds.
-/// Attach to a persistent GameObject (GameBootstrap / GameManager).
-/// </summary>
 public class PlayTimeTracker : MonoBehaviour
 {
-    [Tooltip("Quest IDs that should be progressed per minute. Example: daily_play_5min")]
-    public string[] questIdsToAddPerMinute;
+    [Tooltip("Quest Ids to progress per minute (e.g. daily_play_5min etc)")]
+    public List<string> questIdsToProgressPerMinute = new List<string>();
 
-    float secondsAccum = 0f;
-    public bool trackWhenActive = true; // set false to pause tracking
+    [Tooltip("If false, stops tracking when app not focused")]
+    public bool trackWhenInactive = false;
+
+    float elapsed = 0f;
 
     void Update()
     {
-        if (!trackWhenActive) return;
-        if (questIdsToAddPerMinute == null || questIdsToAddPerMinute.Length == 0) return;
-
-        secondsAccum += Time.deltaTime;
-        if (secondsAccum >= 60f)
+        if (!trackWhenInactive && !Application.isFocused) return;
+        elapsed += Time.unscaledDeltaTime;
+        if (elapsed >= 60f)
         {
-            int minutes = Mathf.FloorToInt(secondsAccum / 60f);
-            secondsAccum -= minutes * 60f;
-
-            if (QuestManager.Instance != null)
-            {
-                foreach (var q in questIdsToAddPerMinute)
-                {
-                    if (string.IsNullOrEmpty(q)) continue;
-                    QuestManager.Instance.AddProgress(q, minutes);
-                }
-            }
-            else
-            {
-                Debug.LogWarning("[PlayTimeTracker] QuestManager.Instance is null. Progress not applied.");
-            }
-
-            Debug.Log($"[PlayTimeTracker] Added {minutes} minute(s) to {questIdsToAddPerMinute.Length} quest(s)");
+            int minutes = Mathf.FloorToInt(elapsed / 60f);
+            elapsed -= minutes * 60f;
+            foreach (var id in questIdsToProgressPerMinute)
+                QuestManager.Instance?.AddProgress(id, minutes); // add minutes
         }
     }
-
-    // optional helper to reset timer (for tests)
-    public void ResetTimer() { secondsAccum = 0f; }
 }

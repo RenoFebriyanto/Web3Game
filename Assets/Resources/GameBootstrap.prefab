@@ -10,7 +10,9 @@ GameObject:
   m_Component:
   - component: {fileID: 8454575305126084097}
   - component: {fileID: 5184346908825144020}
-  - component: {fileID: 1702118256340961926}
+  - component: {fileID: 7363238923590363679}
+  - component: {fileID: 7847705090687124880}
+  - component: {fileID: 7280774024399368650}
   - component: {fileID: 7067868097344787107}
   - component: {fileID: 8040292311826353771}
   - component: {fileID: 6002337566033277483}
@@ -58,7 +60,7 @@ MonoBehaviour:
   targetEnergy: 100
   targetMaxEnergy: 0
   applyOnStart: 1
---- !u!114 &1702118256340961926
+--- !u!114 &7363238923590363679
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -67,9 +69,40 @@ MonoBehaviour:
   m_GameObject: {fileID: 626138940886702212}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d51ee9dcd7c85bf4ab8337ff4de0806a, type: 3}
+  m_Script: {fileID: 11500000, guid: fedcb4345c9c7b04380c17a2aeb25f8f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  questIdsToProgressPerMinute:
+  - dailyquest1
+  - dailyquest3
+  - dailyquest5
+  trackWhenInactive: 0
+--- !u!114 &7847705090687124880
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 626138940886702212}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 348cec1d1519c3d46b691edeecacdebd, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  questId: dailyquest2
+--- !u!114 &7280774024399368650
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 626138940886702212}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bb1a95083c74c7c42a00699c06460e67, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  questId: daily_complete_5levels
 --- !u!114 &7067868097344787107
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -82,7 +115,19 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a5b28872306db964ab7749404ff34c5d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  questDefinitions: []
+  questItemPrefab: {fileID: 7609643420665963605, guid: 2759036920f9aa246920866e26ff3b75, type: 3}
+  contentDaily: {fileID: 0}
+  contentWeekly: {fileID: 0}
+  dailyQuests:
+  - {fileID: 11400000, guid: a68e085604563bf4d857d31bd9e964a7, type: 2}
+  - {fileID: 11400000, guid: 2df7325dbe6368844873eae6ff1b8343, type: 2}
+  - {fileID: 11400000, guid: 5be860a85a5126e4181591e7de48edcb, type: 2}
+  - {fileID: 11400000, guid: 776cf7dfea3a6ff498892b6ba507b23e, type: 2}
+  - {fileID: 11400000, guid: 75bd4125f157e9948912dacdde5241d6, type: 2}
+  weeklyPool:
+  - {fileID: 11400000, guid: 701a1658aa761a04394bfeb3bfceff37, type: 2}
+  - {fileID: 11400000, guid: d158b5a5dd6cf2a478fa47cb7cac8059, type: 2}
+  weeklyVisibleCount: 3
 --- !u!114 &8040292311826353771
 MonoBehaviour:
   m_ObjectHideFlags: 0

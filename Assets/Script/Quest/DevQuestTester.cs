@@ -2,25 +2,22 @@ using UnityEngine;
 
 public class DevQuestTester : MonoBehaviour
 {
-    public string questId;
+    public string testQuestId;
     public int addAmount = 1;
 
-    public void Add()
+    public void AddProgressNow()
     {
-        if (QuestManager.Instance != null) QuestManager.Instance.AddProgress(questId, addAmount);
-        else Debug.LogWarning("[DevQuestTester] QuestManager.Instance is null.");
+        if (!string.IsNullOrEmpty(testQuestId))
+            QuestManager.Instance?.AddProgress(testQuestId, addAmount);
     }
 
-    public void Claim()
+    public void ResetDailyNow()
     {
-        if (QuestManager.Instance != null) QuestManager.Instance.ClaimReward(questId);
-        else Debug.LogWarning("[DevQuestTester] QuestManager.Instance is null.");
+        QuestManager.Instance?.ResetDaily();
     }
 
-    [ContextMenu("ResetDaily")]
-    public void ResetDaily()
+    public void ResetWeeklyNow()
     {
-        if (QuestManager.Instance != null) QuestManager.Instance.ResetDaily();
-        else Debug.LogWarning("[DevQuestTester] QuestManager.Instance is null.");
+        QuestManager.Instance?.ResetWeekly();
     }
 }

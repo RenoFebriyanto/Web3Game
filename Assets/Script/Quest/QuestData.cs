@@ -7,7 +7,7 @@ public class QuestData : ScriptableObject
 {
     [Header("Identity")]
     public string questId;           // unik, contoh: daily_play_5min
-    public string title;             // judul tanpa [Daily] prefix
+    public string title;
     [TextArea] public string description;
 
     [Header("Progress")]
@@ -15,7 +15,7 @@ public class QuestData : ScriptableObject
 
     [Header("Meta")]
     public bool isDaily = true;      // true = daily, false = weekly pool candidate
-    public Sprite icon;             // gambar icon untuk preview / item display
+    public Sprite icon;              // sprite icon untuk preview / quest UI
 
     [Header("Reward")]
     public QuestRewardType rewardType = QuestRewardType.Coin;

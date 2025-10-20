@@ -2148,7 +2148,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 0}
-  m_RaycastTarget: 1
+  m_RaycastTarget: 0
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
@@ -3714,7 +3714,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
-  m_RaycastTarget: 1
+  m_RaycastTarget: 0
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
@@ -4745,6 +4745,7 @@ GameObject:
   m_Component:
   - component: {fileID: 754621778}
   - component: {fileID: 754621779}
+  - component: {fileID: 754621780}
   m_Layer: 5
   m_Name: Progesscrate
   m_TagString: Untagged
@@ -4825,6 +4826,54 @@ MonoBehaviour:
   m_OnValueChanged:
     m_PersistentCalls:
       m_Calls: []
+--- !u!114 &754621780
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 754621777}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 97d799fb6cb20974ab007910dfcea41c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  progressSlider: {fileID: 754621779}
+  fillImage: {fileID: 1914655427}
+  crates:
+  - crateName: Crate1
+    crateImage: {fileID: 2129615153}
+    crateGraySprite: {fileID: 5510957682466590713, guid: 2c43dea87480542418c2495372604fe9, type: 3}
+    crateYellowSprite: {fileID: 9058918285721810730, guid: 1820e298206f52341a7c7724f4549220, type: 3}
+    crateClaimedSprite: {fileID: 4307880083079091793, guid: 902fe7795d2e8a849953155a67c2ea02, type: 3}
+    crateButton: {fileID: 2129615155}
+    requiredClaimedCount: 1
+    claimed: 0
+  - crateName: Crate2
+    crateImage: {fileID: 710595657}
+    crateGraySprite: {fileID: 5510957682466590713, guid: 2c43dea87480542418c2495372604fe9, type: 3}
+    crateYellowSprite: {fileID: 9058918285721810730, guid: 1820e298206f52341a7c7724f4549220, type: 3}
+    crateClaimedSprite: {fileID: 4307880083079091793, guid: 902fe7795d2e8a849953155a67c2ea02, type: 3}
+    crateButton: {fileID: 710595656}
+    requiredClaimedCount: 1
+    claimed: 0
+  - crateName: Crate3
+    crateImage: {fileID: 1504936396}
+    crateGraySprite: {fileID: 5510957682466590713, guid: 2c43dea87480542418c2495372604fe9, type: 3}
+    crateYellowSprite: {fileID: 9058918285721810730, guid: 1820e298206f52341a7c7724f4549220, type: 3}
+    crateClaimedSprite: {fileID: 4307880083079091793, guid: 902fe7795d2e8a849953155a67c2ea02, type: 3}
+    crateButton: {fileID: 1504936395}
+    requiredClaimedCount: 1
+    claimed: 0
+  - crateName: Crate4
+    crateImage: {fileID: 234708480}
+    crateGraySprite: {fileID: 5510957682466590713, guid: 2c43dea87480542418c2495372604fe9, type: 3}
+    crateYellowSprite: {fileID: 9058918285721810730, guid: 1820e298206f52341a7c7724f4549220, type: 3}
+    crateClaimedSprite: {fileID: 4307880083079091793, guid: 902fe7795d2e8a849953155a67c2ea02, type: 3}
+    crateButton: {fileID: 234708479}
+    requiredClaimedCount: 1
+    claimed: 0
+  maxClaimedForFullBar: 5
 --- !u!1 &757269042
 GameObject:
   m_ObjectHideFlags: 0
@@ -5465,10 +5514,6 @@ PrefabInstance:
       propertyPath: m_Name
       value: QuestItem
       objectReference: {fileID: 0}
-    - target: {fileID: 8401280282111217967, guid: 2759036920f9aa246920866e26ff3b75, type: 3}
-      propertyPath: m_AnchorMax.y
-      value: 0
-      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -5710,7 +5755,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 0}
-  m_RaycastTarget: 1
+  m_RaycastTarget: 0
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
@@ -5949,20 +5994,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   questId: daily_login
   addAmount: 1
---- !u!114 &1032205751
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 881675406}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 9c384946b4ddf404cbcb4a1e34089d7c, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  questId: daily_login1
-  times: 3
 --- !u!114 &1032205756
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -9491,7 +9522,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 0}
-  m_RaycastTarget: 1
+  m_RaycastTarget: 0
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
@@ -9884,7 +9915,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 0}
-  m_RaycastTarget: 1
+  m_RaycastTarget: 0
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
@@ -9963,7 +9994,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
-  m_RaycastTarget: 1
+  m_RaycastTarget: 0
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
@@ -10106,7 +10137,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 0}
-  m_RaycastTarget: 1
+  m_RaycastTarget: 0
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
@@ -11307,10 +11338,6 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 2110658980}
     m_Modifications:
-    - target: {fileID: 321214081144366657, guid: 2759036920f9aa246920866e26ff3b75, type: 3}
-      propertyPath: m_TargetGraphic
-      value: 
-      objectReference: {fileID: 0}
     - target: {fileID: 2137663574352486386, guid: 2759036920f9aa246920866e26ff3b75, type: 3}
       propertyPath: m_Pivot.x
       value: 0.5
@@ -11389,6 +11416,10 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2137663574352486386, guid: 2759036920f9aa246920866e26ff3b75, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2664920955126151448, guid: 2759036920f9aa246920866e26ff3b75, type: 3}
+      propertyPath: m_AnchorMax.y
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 7609643420665963605, guid: 2759036920f9aa246920866e26ff3b75, type: 3}
@@ -11545,7 +11576,7 @@ PrefabInstance:
       objectReference: {fileID: -994830075764059341, guid: a245117f0193abe47a738e44abafc6bc, type: 3}
     - target: {fileID: 7067868097344787107, guid: 37aac24c7901f3d4e9b7941f249302ea, type: 3}
       propertyPath: weeklyPool.Array.size
-      value: 1
+      value: 2
       objectReference: {fileID: 0}
     - target: {fileID: 7067868097344787107, guid: 37aac24c7901f3d4e9b7941f249302ea, type: 3}
       propertyPath: dailyQuests.Array.size
@@ -11558,11 +11589,11 @@ PrefabInstance:
     - target: {fileID: 7067868097344787107, guid: 37aac24c7901f3d4e9b7941f249302ea, type: 3}
       propertyPath: 'weeklyPool.Array.data[0]'
       value: 
-      objectReference: {fileID: 11400000, guid: a68e085604563bf4d857d31bd9e964a7, type: 2}
+      objectReference: {fileID: 11400000, guid: 701a1658aa761a04394bfeb3bfceff37, type: 2}
     - target: {fileID: 7067868097344787107, guid: 37aac24c7901f3d4e9b7941f249302ea, type: 3}
       propertyPath: 'weeklyPool.Array.data[1]'
       value: 
-      objectReference: {fileID: 11400000, guid: a68e085604563bf4d857d31bd9e964a7, type: 2}
+      objectReference: {fileID: 11400000, guid: d158b5a5dd6cf2a478fa47cb7cac8059, type: 2}
     - target: {fileID: 7067868097344787107, guid: 37aac24c7901f3d4e9b7941f249302ea, type: 3}
       propertyPath: 'dailyQuests.Array.data[0]'
       value: 
@@ -11680,13 +11711,10 @@ PrefabInstance:
       insertIndex: 1
       addedObject: {fileID: 1032205746}
     - targetCorrespondingSourceObject: {fileID: 626138940886702212, guid: 37aac24c7901f3d4e9b7941f249302ea, type: 3}
-      insertIndex: 2
-      addedObject: {fileID: 1032205751}
-    - targetCorrespondingSourceObject: {fileID: 626138940886702212, guid: 37aac24c7901f3d4e9b7941f249302ea, type: 3}
-      insertIndex: 4
+      insertIndex: 3
       addedObject: {fileID: 1032205756}
     - targetCorrespondingSourceObject: {fileID: 626138940886702212, guid: 37aac24c7901f3d4e9b7941f249302ea, type: 3}
-      insertIndex: 5
+      insertIndex: 4
       addedObject: {fileID: 1032205761}
   m_SourcePrefab: {fileID: 100100000, guid: 37aac24c7901f3d4e9b7941f249302ea, type: 3}
 --- !u!224 &6283614546639346050 stripped

@@ -1,143 +1,167 @@
+// QuestItemUI.cs
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
-using System;
 
-[RequireComponent(typeof(CanvasGroup))]
 public class QuestItemUI : MonoBehaviour
 {
     [Header("UI refs (assign in prefab)")]
-    public TMP_Text titleText;         // Desk (TextMeshPro)
-    public Image iconImage;           // Icon (Image)
-    public TMP_Text amountText;       // Amount (TextMeshPro) -> shows reward amount (not progress)
-    public Button actionButton;       // Claim / Go
-    public TMP_Text actionButtonText; // label on button
-    public Image actionButtonImage;   // optional image for button visuals
+    public TMP_Text titleText;
+    public Image borderIcon;
+    public TMP_Text amountText;
+    public Slider progressSlider;
+    public Image fillImage;
+    public Button claimButton;
+    public Image claimButtonImage;
+    public TMP_Text claimButtonText;
 
-    [Header("Progress bar")]
-    public Slider progressSlider;     // slider (read-only visual)
-    public Image sliderFillImage;     // fill image (for color)
-    public Image sliderBackground;    // background image (empty color)
+    [Header("Button Sprites")]
+    public Sprite spriteGo;
+    public Sprite spriteClaim;
+    public Sprite spriteClaimed;
 
-    [Header("Colors / Sprites")]
-    public Color colorEmpty = new Color(0.9f, 0.9f, 0.9f); // greyish
-    public Color colorFill = new Color(0.0f, 0.5f, 1.0f);  // blue
-    public Sprite buttonLockedSprite;
-    public Sprite buttonReadySprite;
-    public Sprite buttonClaimedSprite;
-
-    // runtime refs
-    QuestData questDef;
-    QuestProgressModel model;
+    QuestData data;
     QuestManager manager;
 
-    void Awake()
+    public void Setup(QuestData questData, QuestProgressModel model, QuestManager mgr)
     {
-        if (actionButton != null)
-        {
-            actionButton.onClick.RemoveAllListeners();
-            actionButton.onClick.AddListener(OnActionButtonClicked);
-        }
+        data = questData;
+        manager = mgr;
+
+        if (progressSlider != null) progressSlider.interactable = false;
+
+        Refresh(questData, model, mgr);
     }
 
-    /// <summary>
-    /// Setup called by QuestManager after instantiating prefab.
-    /// </summary>
-    public void Setup(QuestData def, QuestProgressModel progModel, QuestManager qm)
+    public void Refresh(QuestData questData, QuestProgressModel model, QuestManager mgr)
     {
-        questDef = def;
-        model = progModel;
-        manager = qm;
-        RefreshVisuals();
-    }
+        data = questData;
+        manager = mgr;
 
-    public void RefreshVisuals()
-    {
-        if (questDef == null || model == null) return;
-
-        // Title & icon
-        if (titleText != null) titleText.text = questDef.title ?? "";
-        if (iconImage != null)
+        if (data == null)
         {
-            iconImage.sprite = questDef.icon;
-            iconImage.enabled = questDef.icon != null;
+            Debug.LogWarning("[QuestItemUI] Refresh called with null data");
+            return;
         }
 
-        // Reward amount text — per request: show reward amount (not progress "0/3")
+        // Title
+        if (titleText != null) titleText.text = data.title ?? "";
+
+        // Icon (optional)
+        if (borderIcon != null && data.icon != null) borderIcon.sprite = data.icon;
+
+        // Reward amount
         if (amountText != null)
         {
-            string amt = "";
-            switch (questDef.rewardType)
+            switch (data.rewardType)
             {
-                case QuestRewardType.Coin: amt = $"{questDef.rewardAmount}"; break;
-                case QuestRewardType.Shard: amt = $"{questDef.rewardAmount}"; break;
-                case QuestRewardType.Energy: amt = $"{questDef.rewardAmount}"; break;
-                case QuestRewardType.Booster: amt = $"{questDef.rewardAmount}x"; break;
-                default: amt = ""; break;
+                case QuestRewardType.Coin:
+                    amountText.text = data.rewardAmount.ToString("N0");
+                    break;
+                case QuestRewardType.Shard:
+                    amountText.text = data.rewardAmount.ToString("N0");
+                    break;
+                case QuestRewardType.Energy:
+                    amountText.text = data.rewardAmount.ToString();
+                    break;
+                case QuestRewardType.Booster:
+                    amountText.text = data.rewardAmount.ToString();
+                    break;
+                default:
+                    amountText.text = "";
+                    break;
             }
-            amountText.text = amt;
         }
 
-        // Progress slider (fill / empty colors)
+        // Progress slider
         if (progressSlider != null)
         {
-            float t = 0f;
-            if (questDef.requiredAmount > 0) t = Mathf.Clamp01((float)model.progress / questDef.requiredAmount);
-            progressSlider.value = t;
-            if (sliderFillImage != null) sliderFillImage.color = colorFill;
-            if (sliderBackground != null) sliderBackground.color = colorEmpty;
+            progressSlider.maxValue = Mathf.Max(1, data.requiredAmount);
+            progressSlider.value = model != null ? Mathf.Clamp(model.progress, 0, data.requiredAmount) : 0;
+
+            Debug.Log($"[QuestItemUI] {data.questId} progress: {progressSlider.value}/{progressSlider.maxValue}");
         }
 
-        // Button states
-        bool isClaimed = model.claimed;
-        bool isComplete = (questDef.requiredAmount <= 0) || (model.progress >= questDef.requiredAmount);
-
-        if (actionButton != null)
+        // Fill color
+        if (fillImage != null)
         {
-            actionButton.interactable = !isClaimed && isComplete;
-            if (actionButtonImage != null)
-            {
-                if (isClaimed) actionButtonImage.sprite = buttonClaimedSprite;
-                else if (isComplete) actionButtonImage.sprite = buttonReadySprite;
-                else actionButtonImage.sprite = buttonLockedSprite;
-            }
-
-            if (actionButtonText != null)
-            {
-                if (isClaimed) actionButtonText.text = "Claimed";
-                else if (isComplete) actionButtonText.text = "Claim";
-                else actionButtonText.text = "Go"; // go = not ready yet
-            }
+            fillImage.color = new Color(0.2f, 0.6f, 1f, 1f); // Blue
         }
+
+        // Button state
+        UpdateButtonState(model);
     }
 
-    void OnActionButtonClicked()
+    void UpdateButtonState(QuestProgressModel model)
     {
-        if (questDef == null || manager == null) return;
+        if (claimButton == null) return;
 
-        // If ready and not claimed -> claim
-        if (!model.claimed && model.progress >= questDef.requiredAmount)
+        // PENTING: Remove semua listeners sebelum add baru
+        claimButton.onClick.RemoveAllListeners();
+
+        bool complete = (model != null && model.progress >= data.requiredAmount);
+        bool claimed = (model != null && model.claimed);
+
+        if (claimed)
         {
-            manager.ClaimReward(questDef.questId);
+            // Already claimed
+            claimButton.interactable = false;
+            if (claimButtonText != null) claimButtonText.text = "Claimed";
+            if (claimButtonImage != null && spriteClaimed != null) claimButtonImage.sprite = spriteClaimed;
+
+            Debug.Log($"[QuestItemUI] {data.questId} state: CLAIMED");
+        }
+        else if (complete)
+        {
+            // Ready to claim
+            claimButton.interactable = true;
+            if (claimButtonText != null) claimButtonText.text = "Claim";
+            if (claimButtonImage != null && spriteClaim != null) claimButtonImage.sprite = spriteClaim;
+
+            // Add fresh listener
+            claimButton.onClick.AddListener(OnClaimClicked);
+
+            Debug.Log($"[QuestItemUI] {data.questId} state: READY TO CLAIM (button interactive)");
         }
         else
         {
-            // Not ready: you can implement Go-to-level logic here (optional)
-            Debug.Log($"[QuestItemUI] Quest not ready. questId={questDef.questId} progress={model.progress}/{questDef.requiredAmount}");
+            // Not ready: show "Go"
+            claimButton.interactable = true;
+            if (claimButtonText != null) claimButtonText.text = "Go";
+            if (claimButtonImage != null && spriteGo != null) claimButtonImage.sprite = spriteGo;
+
+            claimButton.onClick.AddListener(OnGoClicked);
+
+            Debug.Log($"[QuestItemUI] {data.questId} state: GO ({model?.progress ?? 0}/{data.requiredAmount})");
         }
     }
 
-    /// <summary>
-    /// Called by manager when progress/claimed changed.
-    /// </summary>
+    void OnClaimClicked()
+    {
+        Debug.Log($"[QuestItemUI] OnClaimClicked for {data?.questId}");
+
+        if (manager != null && data != null)
+        {
+            manager.ClaimReward(data.questId);
+        }
+        else
+        {
+            Debug.LogError($"[QuestItemUI] Cannot claim: manager={manager != null}, data={data != null}");
+        }
+    }
+
+    void OnGoClicked()
+    {
+        Debug.Log($"[QuestItemUI] Go pressed for quest {data?.questId}");
+        // Optional: navigate to gameplay or show hint
+    }
+
     public void OnManagerUpdated()
     {
-        // refresh model reference from manager (safe)
-        if (manager != null && questDef != null)
+        if (manager != null && data != null)
         {
-            var newModel = manager.GetProgressModel(questDef.questId);
-            if (newModel != null) model = newModel;
+            var model = manager.GetProgressModel(data.questId);
+            Refresh(data, model, manager);
         }
-        RefreshVisuals();
     }
 }

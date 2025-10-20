@@ -10,14 +10,14 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 7b3d1fe228b620648beb983f4731f193, type: 3}
-  m_Name: QuestDataWK
+  m_Name: QuestDataWK 1
   m_EditorClassIdentifier: 
-  questId: weekly1
-  title: '[Weekly] Login 3 hari'
+  questId: weekly2
+  title: '[Weekly] Dapatkan 5000 Coin'
   description: 
-  requiredAmount: 3
+  requiredAmount: 5000
   isDaily: 0
-  icon: {fileID: -4101916017452507219, guid: 17c51150cca33ca46bb76c4c0df5bffd, type: 3}
-  rewardType: 2
-  rewardAmount: 10
-  rewardBoosterId: 
+  icon: {fileID: -3722323677837822175, guid: b6222723cc3456a409a3aae412cde445, type: 3}
+  rewardType: 4
+  rewardAmount: 3
+  rewardBoosterId: speedboost

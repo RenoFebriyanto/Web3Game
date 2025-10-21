@@ -20,6 +20,10 @@ public class QuestItemUI : MonoBehaviour
     public Sprite spriteReady;
     public Sprite spriteClaimed;
 
+    [Header("Slider")]
+    
+    
+
     [HideInInspector] public QuestData questData;
     QuestProgressModel model;
     QuestManager manager;

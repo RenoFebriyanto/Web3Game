@@ -99,6 +99,7 @@ public class QuestItemUI : MonoBehaviour
         if (model.progress >= questData.requiredAmount)
         {
             // claim
+            Debug.Log("CLAIMED");
             manager.ClaimQuest(questData.questId);
         }
         else

@@ -20,6 +20,14 @@ public class QuestChestController : MonoBehaviour
     void Start()
     {
         claimedCrates = new bool[thresholds.Length];
+
+        // PENTING: Disable slider interaction agar tidak bisa digeser
+        if (progressSlider != null)
+        {
+            progressSlider.interactable = false;
+            Debug.Log("[QuestChestController] Progress slider set to non-interactable");
+        }
+
         UpdateVisuals();
     }
 
@@ -28,6 +36,7 @@ public class QuestChestController : MonoBehaviour
         // increment claimed count and update
         claimedCount++;
         UpdateVisuals();
+        Debug.Log($"[QuestChestController] Quest claimed. Total: {claimedCount}");
     }
 
     void UpdateVisuals()
@@ -39,6 +48,9 @@ public class QuestChestController : MonoBehaviour
             progressSlider.minValue = 0;
             progressSlider.maxValue = max;
             progressSlider.value = Mathf.Clamp(claimedCount, 0, max);
+
+            // Make sure slider stays non-interactable
+            progressSlider.interactable = false;
         }
 
         for (int i = 0; i < crateImages.Length && i < thresholds.Length; i++)
@@ -61,14 +73,53 @@ public class QuestChestController : MonoBehaviour
     // call from UI when player clicks a crate
     public void TryClaimCrate(int index)
     {
-        if (index < 0 || index >= thresholds.Length) return;
-        if (claimedCrates[index]) return;
+        if (index < 0 || index >= thresholds.Length)
+        {
+            Debug.LogWarning($"[QuestChestController] Invalid crate index: {index}");
+            return;
+        }
+
+        if (claimedCrates[index])
+        {
+            Debug.Log($"[QuestChestController] Crate {index} already claimed");
+            return;
+        }
+
         if (claimedCount >= thresholds[index])
         {
-            // grant random reward
+            // Generate and grant random reward
+            Debug.Log($"[QuestChestController] Claiming crate {index}...");
             QuestRewardGenerator.GenerateRandomReward();
+
             claimedCrates[index] = true;
             UpdateVisuals();
+
+            Debug.Log($"[QuestChestController] Crate {index} claimed successfully!");
         }
+        else
+        {
+            Debug.Log($"[QuestChestController] Crate {index} not ready. Need {thresholds[index]} claimed quests, have {claimedCount}");
+        }
+    }
+
+    // Debug helpers
+    [ContextMenu("Debug: Add Quest Progress")]
+    void DebugAddProgress()
+    {
+        claimedCount++;
+        UpdateVisuals();
+        Debug.Log($"[DEBUG] Claimed count: {claimedCount}");
+    }
+
+    [ContextMenu("Debug: Reset All Crates")]
+    void DebugResetCrates()
+    {
+        claimedCount = 0;
+        for (int i = 0; i < claimedCrates.Length; i++)
+        {
+            claimedCrates[i] = false;
+        }
+        UpdateVisuals();
+        Debug.Log("[DEBUG] All crates reset");
     }
 }

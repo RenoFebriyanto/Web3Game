@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
@@ -20,9 +21,8 @@ public class QuestItemUI : MonoBehaviour
     public Sprite spriteReady;
     public Sprite spriteClaimed;
 
-    [Header("Slider")]
-    
-    
+    [Header("PopUp Claim Quest")]
+    public PopupClaimQuest popupClaimQuest; // assign in inspector or leave null to auto-find
 
     [HideInInspector] public QuestData questData;
     QuestProgressModel model;
@@ -43,8 +43,8 @@ public class QuestItemUI : MonoBehaviour
         if (progressSlider != null)
         {
             progressSlider.minValue = 0;
-            progressSlider.maxValue = q.requiredAmount;
-            progressSlider.interactable = false;
+            progressSlider.maxValue = Mathf.Max(1, q.requiredAmount);
+            progressSlider.interactable = false; // make it non-interactable so player can't drag
         }
 
         // button
@@ -52,6 +52,12 @@ public class QuestItemUI : MonoBehaviour
         {
             actionButton.onClick.RemoveAllListeners();
             actionButton.onClick.AddListener(OnActionButton);
+        }
+
+        // try to auto-find popup if not set
+        if (popupClaimQuest == null)
+        {
+            popupClaimQuest = PopupClaimQuest.Instance;
         }
 
         Refresh(m);
@@ -74,7 +80,6 @@ public class QuestItemUI : MonoBehaviour
             if (actionButtonText != null) actionButtonText.text = "Claimed";
             if (actionButtonImage != null && spriteClaimed != null) actionButtonImage.sprite = spriteClaimed;
             actionButton.interactable = false;
-            // fill color to indicated complete
             if (sliderFillImage != null) sliderFillImage.color = Color.yellow;
         }
         else if (model.progress >= questData.requiredAmount)
@@ -102,14 +107,63 @@ public class QuestItemUI : MonoBehaviour
 
         if (model.progress >= questData.requiredAmount)
         {
-            // claim
-            Debug.Log("CLAIMED");
-            manager.ClaimQuest(questData.questId);
+            // ready -> open confirmation popup instead of immediate claim
+            OpenConfirmPopup();
         }
         else
         {
-            // Go — you can implement navigation to relevant screen; for now we'll just log
+            // Go — implement navigation to relevant screen if needed
             Debug.Log($"[QuestItemUI] Go pressed for {questData.questId}");
         }
+    }
+
+    void OpenConfirmPopup()
+    {
+        // ensure popup exists
+        var popup = popupClaimQuest ?? PopupClaimQuest.Instance;
+        if (popup == null)
+        {
+            Debug.LogWarning("[QuestItemUI] PopupClaimQuest not found, claiming directly.");
+            manager.ClaimQuest(questData.questId);
+            return;
+        }
+
+        // build reward text to show
+        string rewardText;
+        switch (questData.rewardType)
+        {
+            case QuestRewardType.Coin:
+                rewardText = questData.rewardAmount.ToString("N0") + " Coins";
+                break;
+            case QuestRewardType.Shard:
+                rewardText = questData.rewardAmount.ToString("N0") + " Shards";
+                break;
+            case QuestRewardType.Energy:
+                rewardText = questData.rewardAmount.ToString("N0") + " Energy";
+                break;
+            case QuestRewardType.Booster:
+                rewardText = $"{questData.rewardAmount}x {questData.rewardBoosterId}";
+                break;
+            default:
+                rewardText = questData.rewardAmount.ToString();
+                break;
+        }
+
+        // open popup; confirm callback will actually perform claim via manager
+        popup.Open(
+            questData.icon,
+            rewardText,
+            questData.title,
+            () =>
+            {
+                // confirm callback
+                manager.ClaimQuest(questData.questId);
+
+                // after claim, UI will be refreshed by QuestManager.UpdateUIForQuest call inside ClaimQuest.
+                // But to be safe, call Refresh with latest model:
+                var m = manager.GetProgress(questData.questId);
+                if (m != null) Refresh(m);
+            }
+        );
     }
 }

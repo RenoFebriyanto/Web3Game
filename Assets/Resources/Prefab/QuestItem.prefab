@@ -1148,6 +1148,7 @@ MonoBehaviour:
   spriteLocked: {fileID: -8058495721422687109, guid: 80f27de5104a59846a2c47b5ba373b90, type: 3}
   spriteReady: {fileID: -994830075764059341, guid: 12f05e51c55a25645b5d9bf555750fc8, type: 3}
   spriteClaimed: {fileID: -3748701598928558014, guid: c8f692d27aff24149b2c038fabf35be6, type: 3}
+  popupClaimQuest: {fileID: 344183772944710565, guid: e22504b93c1d126468092f6e8c3880e3, type: 3}
   questData: {fileID: 0}
 --- !u!1 &9020295123834812830
 GameObject:

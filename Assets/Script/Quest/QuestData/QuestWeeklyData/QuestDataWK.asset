@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: QuestDataWK
   m_EditorClassIdentifier: 
   questId: weekly1
-  title: '[Weekly] Login 3 hari'
+  title: Login 3 hari
   description: 
   requiredAmount: 3
   isDaily: 0

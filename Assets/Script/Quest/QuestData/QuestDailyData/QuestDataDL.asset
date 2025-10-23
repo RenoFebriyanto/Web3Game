@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: QuestDataDL
   m_EditorClassIdentifier: 
   questId: dailyquest2
-  title: '[Daily] Dapatkan 2000 coin'
+  title: Dapatkan 2000 coin
   description: Dapatkan 2000 coin untuk mendapatkan reward.
   requiredAmount: 2000
   isDaily: 1

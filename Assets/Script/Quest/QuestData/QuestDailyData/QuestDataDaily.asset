@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: QuestDataDaily
   m_EditorClassIdentifier: 
   questId: dailyquest1
-  title: '[Daily] Bermain 30 menit'
+  title: Bermain 30 menit
   description: Bermain 30 menit untuk mendapatkan reward.
   requiredAmount: 30
   isDaily: 1

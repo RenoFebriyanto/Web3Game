@@ -1,4 +1,3 @@
-using System;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
@@ -6,164 +5,240 @@ using TMPro;
 public class QuestItemUI : MonoBehaviour
 {
     [Header("UI refs (assign in prefab)")]
-    public TMP_Text titleText;        // Desk
-    public Image iconImage;           // Icon
-    public TMP_Text amountText;       // Amount (reward amount display)
-    public Slider progressSlider;     // Progress slider (non-interactable)
-    public Image sliderFillImage;     // Fill image to tint
-    public Image sliderBackgroundImage; // background image (empty color)
-    public Button actionButton;       // Claim/Go button
-    public TMP_Text actionButtonText;
-    public Image actionButtonImage;   // optional image for button change
+    public TMP_Text titleText;              // "Bermain 5 menit"
+    public Image iconImage;                 // Icon reward di dalam BorderIcon
+    public TMP_Text amountText;             // Jumlah reward (5, 10, etc)
+    public Button claimButton;              // Button Claim
+    public Slider progressSlider;           // Progress bar
 
-    [Header("Button sprites (optional)")]
-    public Sprite spriteLocked;
-    public Sprite spriteReady;
-    public Sprite spriteClaimed;
+    [Header("Claim Button Sprites (3 states)")]
+    public Sprite claimButtonGray;          // belum selesai
+    public Sprite claimButtonBlue;          // ready to claim
+    public Sprite claimButtonYellow;        // already claimed
 
-    [Header("PopUp Claim Quest")]
-    public PopupClaimQuest popupClaimQuest; // assign in inspector or leave null to auto-find
+    [Header("Optional overlays")]
+    public GameObject readyIndicator;
+    public GameObject claimedOverlay;
 
     [HideInInspector] public QuestData questData;
     QuestProgressModel model;
     QuestManager manager;
 
-    public void Setup(QuestData q, QuestProgressModel m, QuestManager mgr)
+    public void Setup(QuestData data, QuestProgressModel progressModel, QuestManager mgr)
     {
-        questData = q;
-        model = m;
+        questData = data;
+        model = progressModel;
         manager = mgr;
 
-        // text(s)
-        if (titleText != null) titleText.text = q.title;
-        if (iconImage != null) iconImage.sprite = q.icon;
-        if (amountText != null) amountText.text = q.rewardAmount.ToString();
+        if (data == null) return;
 
-        // slider
+        // Title dengan auto prefix [Daily] atau [Weekly]
+        if (titleText != null)
+        {
+            string prefix = data.isDaily ? "[Daily]" : "[Weekly]";
+            titleText.text = $"{prefix} {data.title}";
+        }
+
+        // Icon reward
+        if (iconImage != null)
+        {
+            iconImage.sprite = data.icon;
+        }
+
+        // Amount reward
+        if (amountText != null)
+        {
+            amountText.text = data.rewardAmount > 0 ? data.rewardAmount.ToString() : "";
+        }
+
+        // Setup progress slider
         if (progressSlider != null)
         {
+            progressSlider.maxValue = data.requiredAmount;
             progressSlider.minValue = 0;
-            progressSlider.maxValue = Mathf.Max(1, q.requiredAmount);
-            progressSlider.interactable = false; // make it non-interactable so player can't drag
         }
 
-        // button
-        if (actionButton != null)
+        Refresh(progressModel);
+
+        // Hook button
+        if (claimButton != null)
         {
-            actionButton.onClick.RemoveAllListeners();
-            actionButton.onClick.AddListener(OnActionButton);
+            claimButton.onClick.RemoveAllListeners();
+            claimButton.onClick.AddListener(OnClaimClicked);
         }
-
-        // try to auto-find popup if not set
-        if (popupClaimQuest == null)
-        {
-            popupClaimQuest = PopupClaimQuest.Instance;
-        }
-
-        Refresh(m);
     }
 
-    public void Refresh(QuestProgressModel m)
+    public void Refresh(QuestProgressModel progressModel)
     {
-        model = m;
-        if (questData == null) return;
-        // update slider
+        model = progressModel;
+        if (questData == null || model == null) return;
+
+        int cur = model.progress;
+        int req = questData.requiredAmount;
+
+        // Update progress slider
         if (progressSlider != null)
         {
-            progressSlider.maxValue = Mathf.Max(1, questData.requiredAmount);
-            progressSlider.value = Mathf.Clamp(model.progress, 0, questData.requiredAmount);
+            progressSlider.value = cur;
         }
 
-        // decide button state
-        if (model.claimed)
+        bool isComplete = cur >= req && !model.claimed;
+        bool isClaimed = model.claimed;
+
+        // Button state & sprite
+        if (claimButton != null)
         {
-            if (actionButtonText != null) actionButtonText.text = "Claimed";
-            if (actionButtonImage != null && spriteClaimed != null) actionButtonImage.sprite = spriteClaimed;
-            actionButton.interactable = false;
-            if (sliderFillImage != null) sliderFillImage.color = Color.yellow;
+            Image buttonImage = claimButton.GetComponent<Image>();
+
+            if (isClaimed)
+            {
+                // Already claimed - yellow sprite
+                if (buttonImage != null && claimButtonYellow != null)
+                {
+                    buttonImage.sprite = claimButtonYellow;
+                }
+                claimButton.interactable = false;
+            }
+            else if (isComplete)
+            {
+                // Ready to claim - blue sprite
+                if (buttonImage != null && claimButtonBlue != null)
+                {
+                    buttonImage.sprite = claimButtonBlue;
+                }
+                claimButton.interactable = true;
+            }
+            else
+            {
+                // Not complete yet - gray sprite
+                if (buttonImage != null && claimButtonGray != null)
+                {
+                    buttonImage.sprite = claimButtonGray;
+                }
+                claimButton.interactable = false;
+            }
         }
-        else if (model.progress >= questData.requiredAmount)
-        {
-            // ready to claim
-            if (actionButtonText != null) actionButtonText.text = "Claim";
-            if (actionButtonImage != null && spriteReady != null) actionButtonImage.sprite = spriteReady;
-            actionButton.interactable = true;
-            if (sliderFillImage != null) sliderFillImage.color = Color.cyan;
-        }
-        else
-        {
-            // not ready
-            if (actionButtonText != null) actionButtonText.text = "Go";
-            if (actionButtonImage != null && spriteLocked != null) actionButtonImage.sprite = spriteLocked;
-            actionButton.interactable = false;
-            if (sliderFillImage != null) sliderFillImage.color = Color.white;
-        }
+
+        // Optional indicators
+        if (readyIndicator != null) readyIndicator.SetActive(isComplete && !isClaimed);
+        if (claimedOverlay != null) claimedOverlay.SetActive(isClaimed);
     }
 
-    void OnActionButton()
+    void OnClaimClicked()
     {
-        if (manager == null || questData == null || model == null) return;
+        if (questData == null || model == null) return;
         if (model.claimed) return;
+        if (model.progress < questData.requiredAmount) return;
 
-        if (model.progress >= questData.requiredAmount)
+        // Get reward display name
+        string rewardDisplayName = GetRewardDisplayName();
+        Sprite rewardIcon = GetRewardIcon();
+
+        // Open popup dengan nama item yang benar
+        if (PopupClaimQuest.Instance != null)
         {
-            // ready -> open confirmation popup instead of immediate claim
-            OpenConfirmPopup();
+            PopupClaimQuest.Instance.Open(
+                rewardIcon,
+                GetRewardAmountText(),
+                rewardDisplayName, // Hanya nama item, tanpa [Daily]/[Weekly]
+                () => {
+                    // Callback saat confirm di popup
+                    manager?.ClaimQuest(questData.questId);
+                }
+            );
         }
         else
         {
-            // Go — implement navigation to relevant screen if needed
-            Debug.Log($"[QuestItemUI] Go pressed for {questData.questId}");
+            // Fallback jika popup tidak ada
+            manager?.ClaimQuest(questData.questId);
         }
     }
 
-    void OpenConfirmPopup()
+    /// <summary>
+    /// Dapatkan display name untuk reward (tanpa prefix Daily/Weekly)
+    /// </summary>
+    string GetRewardDisplayName()
     {
-        // ensure popup exists
-        var popup = popupClaimQuest ?? PopupClaimQuest.Instance;
-        if (popup == null)
-        {
-            Debug.LogWarning("[QuestItemUI] PopupClaimQuest not found, claiming directly.");
-            manager.ClaimQuest(questData.questId);
-            return;
-        }
-
-        // build reward text to show
-        string rewardText;
         switch (questData.rewardType)
         {
             case QuestRewardType.Coin:
-                rewardText = questData.rewardAmount.ToString("N0") + " Coins";
-                break;
+                return "Coins";
+
             case QuestRewardType.Shard:
-                rewardText = questData.rewardAmount.ToString("N0") + " Shards";
-                break;
+                return "Blue Shard";
+
             case QuestRewardType.Energy:
-                rewardText = questData.rewardAmount.ToString("N0") + " Energy";
-                break;
+                return "Energy";
+
             case QuestRewardType.Booster:
-                rewardText = $"{questData.rewardAmount}x {questData.rewardBoosterId}";
-                break;
+                // Map booster ID ke display name
+                return GetBoosterDisplayName(questData.rewardBoosterId);
+
             default:
-                rewardText = questData.rewardAmount.ToString();
-                break;
+                return "Reward";
+        }
+    }
+
+    /// <summary>
+    /// Map booster itemId ke display name yang user-friendly
+    /// </summary>
+    string GetBoosterDisplayName(string boosterId)
+    {
+        if (string.IsNullOrEmpty(boosterId)) return "Booster";
+
+        string id = boosterId.ToLower().Trim();
+
+        switch (id)
+        {
+            case "coin2x":
+                return "Coin 2x Booster";
+
+            case "magnet":
+                return "Magnet Booster";
+
+            case "shield":
+                return "Shield Booster";
+
+            case "speedboost":
+            case "rocketboost":
+                return "Speed Boost";
+
+            case "timefreeze":
+                return "Time Freeze";
+
+            default:
+                // Fallback: capitalize first letter
+                if (id.Length > 0)
+                {
+                    return char.ToUpper(id[0]) + id.Substring(1) + " Booster";
+                }
+                return "Booster";
+        }
+    }
+
+    /// <summary>
+    /// Get reward amount text (e.g. "x5", "1000", etc)
+    /// </summary>
+    string GetRewardAmountText()
+    {
+        if (questData.rewardAmount <= 0) return "";
+
+        // Untuk booster, tampilkan "x5" style
+        if (questData.rewardType == QuestRewardType.Booster)
+        {
+            return $"x{questData.rewardAmount}";
         }
 
-        // open popup; confirm callback will actually perform claim via manager
-        popup.Open(
-            questData.icon,
-            rewardText,
-            questData.title,
-            () =>
-            {
-                // confirm callback
-                manager.ClaimQuest(questData.questId);
+        // Untuk currency, tampilkan angka dengan format
+        return questData.rewardAmount.ToString("N0");
+    }
 
-                // after claim, UI will be refreshed by QuestManager.UpdateUIForQuest call inside ClaimQuest.
-                // But to be safe, call Refresh with latest model:
-                var m = manager.GetProgress(questData.questId);
-                if (m != null) Refresh(m);
-            }
-        );
+    /// <summary>
+    /// Get reward icon (fallback ke quest icon jika tidak ada)
+    /// </summary>
+    Sprite GetRewardIcon()
+    {
+        // Gunakan icon dari quest data
+        return questData.icon;
     }
 }

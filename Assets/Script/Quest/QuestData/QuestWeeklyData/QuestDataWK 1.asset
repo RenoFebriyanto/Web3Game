@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: QuestDataWK 1
   m_EditorClassIdentifier: 
   questId: weekly2
-  title: '[Weekly] Dapatkan 5000 Coin'
+  title: Dapatkan 5000 Coin
   description: 
   requiredAmount: 5000
   isDaily: 0

@@ -1139,16 +1139,13 @@ MonoBehaviour:
   titleText: {fileID: 8094639758903190295}
   iconImage: {fileID: 6805905025866322854}
   amountText: {fileID: 827559643218200534}
+  claimButton: {fileID: 5790943182970010621}
   progressSlider: {fileID: 321214081144366657}
-  sliderFillImage: {fileID: 6902029924463463549}
-  sliderBackgroundImage: {fileID: 2318322208084966747}
-  actionButton: {fileID: 5790943182970010621}
-  actionButtonText: {fileID: 3340356223284039962}
-  actionButtonImage: {fileID: 7372265350059154570}
-  spriteLocked: {fileID: -8058495721422687109, guid: 80f27de5104a59846a2c47b5ba373b90, type: 3}
-  spriteReady: {fileID: -994830075764059341, guid: 12f05e51c55a25645b5d9bf555750fc8, type: 3}
-  spriteClaimed: {fileID: -3748701598928558014, guid: c8f692d27aff24149b2c038fabf35be6, type: 3}
-  popupClaimQuest: {fileID: 344183772944710565, guid: e22504b93c1d126468092f6e8c3880e3, type: 3}
+  claimButtonGray: {fileID: -8058495721422687109, guid: 80f27de5104a59846a2c47b5ba373b90, type: 3}
+  claimButtonBlue: {fileID: -994830075764059341, guid: 12f05e51c55a25645b5d9bf555750fc8, type: 3}
+  claimButtonYellow: {fileID: -3748701598928558014, guid: c8f692d27aff24149b2c038fabf35be6, type: 3}
+  readyIndicator: {fileID: 0}
+  claimedOverlay: {fileID: 0}
   questData: {fileID: 0}
 --- !u!1 &9020295123834812830
 GameObject:

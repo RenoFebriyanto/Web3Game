@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: QuestDataDL4
   m_EditorClassIdentifier: 
   questId: dailyquest4
-  title: '[Daily] Selesaikan 5 Level'
+  title: Selesaikan 5 Level
   description: Selesaikan 5 level untuk mendapatkan reward.
   requiredAmount: 5
   isDaily: 1

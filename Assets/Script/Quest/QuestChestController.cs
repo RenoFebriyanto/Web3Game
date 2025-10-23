@@ -5,20 +5,34 @@ using UnityEngine.UI;
 public class QuestChestController : MonoBehaviour
 {
     [Header("UI")]
-    public Image[] crateImages;            // 3 crates images in order left->right
+    public Image[] crateImages;            // 4 crate images (assign di Inspector)
     public Sprite crateLocked;
     public Sprite crateReady;
     public Sprite crateClaimed;
 
     [Header("Progress")]
     public Slider progressSlider;          // bottom big slider
-    public int[] thresholds = new int[] { 1, 3, 5 }; // number of claimed quests needed for crates
+
+    [Header("Thresholds (quest completed count untuk unlock crate)")]
+    [Tooltip("Threshold untuk setiap crate. Default: 1, 3, 5, 8 untuk 4 crates")]
+    public int[] thresholds = new int[] { 1, 3, 5, 8 }; // 4 thresholds untuk 4 crates
 
     int claimedCount = 0;
     bool[] claimedCrates;
 
     void Start()
     {
+        // Ensure array size matches thresholds
+        if (crateImages.Length != thresholds.Length)
+        {
+            Debug.LogWarning($"[QuestChestController] crateImages.Length ({crateImages.Length}) != thresholds.Length ({thresholds.Length})! Adjusting...");
+
+            // Resize arrays to match smaller one
+            int minLength = Mathf.Min(crateImages.Length, thresholds.Length);
+            System.Array.Resize(ref crateImages, minLength);
+            System.Array.Resize(ref thresholds, minLength);
+        }
+
         claimedCrates = new bool[thresholds.Length];
 
         // PENTING: Disable slider interaction agar tidak bisa digeser
@@ -31,9 +45,11 @@ public class QuestChestController : MonoBehaviour
         UpdateVisuals();
     }
 
+    /// <summary>
+    /// Dipanggil oleh QuestManager saat player claim quest
+    /// </summary>
     public void OnQuestClaimed(QuestData q)
     {
-        // increment claimed count and update
         claimedCount++;
         UpdateVisuals();
         Debug.Log($"[QuestChestController] Quest claimed. Total: {claimedCount}");
@@ -41,7 +57,7 @@ public class QuestChestController : MonoBehaviour
 
     void UpdateVisuals()
     {
-        // update slider (range 0..max threshold)
+        // Update slider (range 0..max threshold)
         int max = thresholds.Length > 0 ? thresholds[thresholds.Length - 1] : 1;
         if (progressSlider != null)
         {
@@ -53,24 +69,32 @@ public class QuestChestController : MonoBehaviour
             progressSlider.interactable = false;
         }
 
+        // Update crate sprites based on state
         for (int i = 0; i < crateImages.Length && i < thresholds.Length; i++)
         {
+            if (crateImages[i] == null) continue;
+
             if (claimedCrates[i])
             {
+                // Already claimed
                 crateImages[i].sprite = crateClaimed;
             }
             else if (claimedCount >= thresholds[i])
             {
+                // Ready to claim
                 crateImages[i].sprite = crateReady;
             }
             else
             {
+                // Still locked
                 crateImages[i].sprite = crateLocked;
             }
         }
     }
 
-    // call from UI when player clicks a crate
+    /// <summary>
+    /// Dipanggil saat player klik crate (dari CrateButton script atau Button.onClick)
+    /// </summary>
     public void TryClaimCrate(int index)
     {
         if (index < 0 || index >= thresholds.Length)
@@ -87,8 +111,9 @@ public class QuestChestController : MonoBehaviour
 
         if (claimedCount >= thresholds[index])
         {
-            // Generate and grant random reward
             Debug.Log($"[QuestChestController] Claiming crate {index}...");
+
+            // Generate and grant random reward
             QuestRewardGenerator.GenerateRandomReward();
 
             claimedCrates[index] = true;
@@ -121,5 +146,11 @@ public class QuestChestController : MonoBehaviour
         }
         UpdateVisuals();
         Debug.Log("[DEBUG] All crates reset");
+    }
+
+    [ContextMenu("Debug: Print Reward Probabilities")]
+    void DebugPrintProbabilities()
+    {
+        QuestRewardGenerator.DebugPrintProbabilities();
     }
 }

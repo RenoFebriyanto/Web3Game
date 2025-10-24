@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7b3d1fe228b620648beb983f4731f193, type: 3}
   m_Name: QuestDataWK 1
   m_EditorClassIdentifier: 
-  questId: weekly2
+  questId: wk_coin5k
   title: Dapatkan 5000 Coin
   description: 
   requiredAmount: 5000

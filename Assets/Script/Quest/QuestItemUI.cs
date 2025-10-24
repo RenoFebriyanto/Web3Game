@@ -56,6 +56,7 @@ public class QuestItemUI : MonoBehaviour
         {
             progressSlider.maxValue = data.requiredAmount;
             progressSlider.minValue = 0;
+            progressSlider.interactable = false; // PENTING: Disable interaction!
         }
 
         Refresh(progressModel);
@@ -80,6 +81,7 @@ public class QuestItemUI : MonoBehaviour
         if (progressSlider != null)
         {
             progressSlider.value = cur;
+            progressSlider.interactable = false; // Ensure tetap disabled
         }
 
         bool isComplete = cur >= req && !model.claimed;

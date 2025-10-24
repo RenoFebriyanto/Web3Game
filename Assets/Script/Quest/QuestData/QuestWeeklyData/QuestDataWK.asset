@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7b3d1fe228b620648beb983f4731f193, type: 3}
   m_Name: QuestDataWK
   m_EditorClassIdentifier: 
-  questId: weekly1
+  questId: wk_login3h
   title: Login 3 hari
   description: 
   requiredAmount: 3

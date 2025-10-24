@@ -12,6 +12,17 @@ public static class QuestRewardGenerator
         public bool isBooster;      // true jika item ini booster
     }
 
+    /// <summary>
+    /// Data reward yang sudah di-roll (untuk dikirim ke popup)
+    /// </summary>
+    public class RewardData
+    {
+        public string rewardName;
+        public int amount;
+        public bool isBooster;
+        public float probability;
+    }
+
     // ============================================
     // REWARD POOL - SESUAIKAN PROBABILITAS DI SINI
     // ============================================
@@ -91,8 +102,22 @@ public static class QuestRewardGenerator
     /// <summary>
     /// Generate random reward berdasarkan weighted probability
     /// Dipanggil saat player claim crate
+    /// DEPRECATED: Gunakan RollRandomReward() untuk popup support
     /// </summary>
     public static void GenerateRandomReward()
+    {
+        var reward = RollRandomReward();
+        if (reward != null)
+        {
+            GrantRewardDirect(reward);
+        }
+    }
+
+    /// <summary>
+    /// Roll reward random dan return data (tanpa langsung grant)
+    /// Gunakan ini untuk popup support
+    /// </summary>
+    public static RewardData RollRandomReward()
     {
         // Calculate total weight
         float totalWeight = 0f;
@@ -119,32 +144,48 @@ public static class QuestRewardGenerator
 
                 Debug.Log($"[QuestRewardGenerator] 🎁 Rolled: {r.rewardName} x{amount} (chance: {probability:F1}%, roll: {randomValue:F2}/{totalWeight:F0})");
 
-                // Grant reward to player
-                GrantReward(r.rewardName, amount, r.isBooster);
-
-                return;
+                // Return reward data
+                return new RewardData
+                {
+                    rewardName = r.rewardName,
+                    amount = amount,
+                    isBooster = r.isBooster,
+                    probability = probability
+                };
             }
         }
 
         // Fallback (shouldn't happen)
         Debug.LogWarning("[QuestRewardGenerator] No reward selected! Giving fallback coins");
-        GrantReward("Coins", 1000, false);
+        return new RewardData
+        {
+            rewardName = "Coins",
+            amount = 1000,
+            isBooster = false,
+            probability = 0f
+        };
     }
 
     /// <summary>
-    /// Actually grant the reward to player
+    /// Grant reward langsung ke player (dipanggil setelah popup confirm)
     /// </summary>
-    static void GrantReward(string rewardName, int amount, bool isBooster)
+    public static void GrantRewardDirect(RewardData reward)
     {
-        if (isBooster)
+        if (reward == null)
+        {
+            Debug.LogError("[QuestRewardGenerator] Cannot grant null reward!");
+            return;
+        }
+
+        if (reward.isBooster)
         {
             // Grant booster item
             EnsureBoosterInventory();
 
             if (BoosterInventory.Instance != null)
             {
-                BoosterInventory.Instance.AddBooster(rewardName, amount);
-                Debug.Log($"[QuestRewardGenerator] ✓ Added {amount}x {rewardName} to Booster Inventory");
+                BoosterInventory.Instance.AddBooster(reward.rewardName, reward.amount);
+                Debug.Log($"[QuestRewardGenerator] ✓ Added {reward.amount}x {reward.rewardName} to Booster Inventory");
             }
             else
             {
@@ -154,14 +195,14 @@ public static class QuestRewardGenerator
         else
         {
             // Grant economy item (Coins/Shards/Energy)
-            string lowerName = rewardName.ToLower();
+            string lowerName = reward.rewardName.ToLower();
 
             if (lowerName.Contains("coin"))
             {
                 if (PlayerEconomy.Instance != null)
                 {
-                    PlayerEconomy.Instance.AddCoins(amount);
-                    Debug.Log($"[QuestRewardGenerator] ✓ Added {amount} Coins to PlayerEconomy");
+                    PlayerEconomy.Instance.AddCoins(reward.amount);
+                    Debug.Log($"[QuestRewardGenerator] ✓ Added {reward.amount} Coins to PlayerEconomy");
                 }
                 else
                 {
@@ -172,8 +213,8 @@ public static class QuestRewardGenerator
             {
                 if (PlayerEconomy.Instance != null)
                 {
-                    PlayerEconomy.Instance.AddShards(amount);
-                    Debug.Log($"[QuestRewardGenerator] ✓ Added {amount} Shards to PlayerEconomy (RARE!)");
+                    PlayerEconomy.Instance.AddShards(reward.amount);
+                    Debug.Log($"[QuestRewardGenerator] ✓ Added {reward.amount} Shards to PlayerEconomy (RARE!)");
                 }
                 else
                 {
@@ -184,8 +225,8 @@ public static class QuestRewardGenerator
             {
                 if (PlayerEconomy.Instance != null)
                 {
-                    PlayerEconomy.Instance.AddEnergy(amount);
-                    Debug.Log($"[QuestRewardGenerator] ✓ Added {amount} Energy to PlayerEconomy");
+                    PlayerEconomy.Instance.AddEnergy(reward.amount);
+                    Debug.Log($"[QuestRewardGenerator] ✓ Added {reward.amount} Energy to PlayerEconomy");
                 }
                 else
                 {
@@ -194,7 +235,7 @@ public static class QuestRewardGenerator
             }
             else
             {
-                Debug.LogWarning($"[QuestRewardGenerator] Unknown economy item: {rewardName}");
+                Debug.LogWarning($"[QuestRewardGenerator] Unknown economy item: {reward.rewardName}");
             }
         }
     }

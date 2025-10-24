@@ -17,6 +17,19 @@ public class QuestChestController : MonoBehaviour
     [Tooltip("Threshold untuk setiap crate. Default: 1, 3, 5, 8 untuk 4 crates")]
     public int[] thresholds = new int[] { 1, 3, 5, 8 }; // 4 thresholds untuk 4 crates
 
+    [Header("Reward Icons (Assign sprites di Inspector)")]
+    [Tooltip("Icon untuk Economy rewards")]
+    public Sprite iconCoin;
+    public Sprite iconShard;
+    public Sprite iconEnergy;
+
+    [Tooltip("Icon untuk Booster rewards")]
+    public Sprite iconMagnet;
+    public Sprite iconShield;
+    public Sprite iconCoin2x;
+    public Sprite iconSpeedBoost;
+    public Sprite iconTimeFreeze;
+
     // Save keys
     const string PREF_CLAIMED_COUNT = "Kulino_CrateClaimedCount_v1";
     const string PREF_CRATE_CLAIMED_PREFIX = "Kulino_CrateStatus_"; // + index
@@ -202,6 +215,12 @@ public class QuestChestController : MonoBehaviour
         // Get display name
         string displayName = GetRewardDisplayName(reward);
 
+        // Debug log untuk check icon
+        if (rewardIcon == null)
+        {
+            Debug.LogWarning($"[QuestChestController] Icon is NULL for {reward.rewardName}! Please assign icon sprites in Inspector.");
+        }
+
         // Open popup
         PopupClaimQuest.Instance.Open(
             rewardIcon,
@@ -223,38 +242,40 @@ public class QuestChestController : MonoBehaviour
     }
 
     /// <summary>
-    /// Get icon sprite untuk reward
+    /// Get icon sprite untuk reward (dari Inspector assignment)
     /// </summary>
     Sprite GetRewardIcon(QuestRewardGenerator.RewardData reward)
     {
         if (reward == null) return null;
 
-        // Load icon dari Resources berdasarkan reward name
-        // Adjust path sesuai struktur folder Anda
-        string iconPath = "";
-
         if (reward.isBooster)
         {
             // Icon booster
-            iconPath = $"Icons/Booster/{reward.rewardName}";
+            string id = reward.rewardName.ToLower();
+            switch (id)
+            {
+                case "coin2x": return iconCoin2x;
+                case "magnet": return iconMagnet;
+                case "shield": return iconShield;
+                case "speedboost":
+                case "rocketboost": return iconSpeedBoost;
+                case "timefreeze": return iconTimeFreeze;
+                default:
+                    Debug.LogWarning($"[QuestChestController] Unknown booster icon: {reward.rewardName}");
+                    return null;
+            }
         }
         else
         {
             // Icon economy (coins, shards, energy)
             string lowerName = reward.rewardName.ToLower();
-            if (lowerName.Contains("coin")) iconPath = "Icons/Economy/Coin";
-            else if (lowerName.Contains("shard")) iconPath = "Icons/Economy/Shard";
-            else if (lowerName.Contains("energy")) iconPath = "Icons/Economy/Energy";
+            if (lowerName.Contains("coin")) return iconCoin;
+            if (lowerName.Contains("shard")) return iconShard;
+            if (lowerName.Contains("energy")) return iconEnergy;
+
+            Debug.LogWarning($"[QuestChestController] Unknown economy icon: {reward.rewardName}");
+            return null;
         }
-
-        Sprite icon = Resources.Load<Sprite>(iconPath);
-
-        if (icon == null)
-        {
-            Debug.LogWarning($"[QuestChestController] Icon not found at path: {iconPath}");
-        }
-
-        return icon;
     }
 
     /// <summary>

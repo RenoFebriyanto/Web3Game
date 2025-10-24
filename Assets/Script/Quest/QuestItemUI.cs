@@ -20,9 +20,13 @@ public class QuestItemUI : MonoBehaviour
     public GameObject readyIndicator;
     public GameObject claimedOverlay;
 
+    [Header("Auto Refresh Settings")]
+    public float autoRefreshInterval = 0.5f; // Refresh setiap 0.5 detik
+
     [HideInInspector] public QuestData questData;
     QuestProgressModel model;
     QuestManager manager;
+    float lastRefreshTime = 0f;
 
     public void Setup(QuestData data, QuestProgressModel progressModel, QuestManager mgr)
     {
@@ -66,6 +70,36 @@ public class QuestItemUI : MonoBehaviour
         {
             claimButton.onClick.RemoveAllListeners();
             claimButton.onClick.AddListener(OnClaimClicked);
+        }
+    }
+
+    void Update()
+    {
+        // Auto-refresh untuk sync dengan QuestManager
+        if (Time.time - lastRefreshTime >= autoRefreshInterval)
+        {
+            lastRefreshTime = Time.time;
+            RefreshFromManager();
+        }
+    }
+
+    /// <summary>
+    /// Refresh dari QuestManager (untuk sync real-time)
+    /// </summary>
+    void RefreshFromManager()
+    {
+        if (manager == null || questData == null) return;
+
+        var latestModel = manager.GetProgress(questData.questId);
+        if (latestModel != null)
+        {
+            // Update hanya jika ada perubahan
+            if (model == null ||
+                model.progress != latestModel.progress ||
+                model.claimed != latestModel.claimed)
+            {
+                Refresh(latestModel);
+            }
         }
     }
 
@@ -146,6 +180,9 @@ public class QuestItemUI : MonoBehaviour
                 () => {
                     // Callback saat confirm di popup
                     manager?.ClaimQuest(questData.questId);
+
+                    // Notify DailyQuestDisplayLevel jika ada
+                    NotifyLevelDisplay();
                 }
             );
         }
@@ -153,6 +190,19 @@ public class QuestItemUI : MonoBehaviour
         {
             // Fallback jika popup tidak ada
             manager?.ClaimQuest(questData.questId);
+            NotifyLevelDisplay();
+        }
+    }
+
+    /// <summary>
+    /// Notify DailyQuestDisplayLevel untuk refresh (jika ada)
+    /// </summary>
+    void NotifyLevelDisplay()
+    {
+        var levelDisplay = FindObjectOfType<DailyQuestDisplayLevel>();
+        if (levelDisplay != null)
+        {
+            levelDisplay.OnQuestClaimed();
         }
     }
 
@@ -242,5 +292,14 @@ public class QuestItemUI : MonoBehaviour
     {
         // Gunakan icon dari quest data
         return questData.icon;
+    }
+
+    void OnDestroy()
+    {
+        // Cleanup
+        if (claimButton != null)
+        {
+            claimButton.onClick.RemoveAllListeners();
+        }
     }
 }

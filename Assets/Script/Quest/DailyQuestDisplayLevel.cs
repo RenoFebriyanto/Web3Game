@@ -3,48 +3,35 @@ using UnityEngine;
 using TMPro;
 
 /// <summary>
-/// Display daily quests di Level Panel (read-only view dengan quick claim).
-/// Subscribe ke QuestManager yang sama dengan Quest Panel.
+/// Shows a small, read-only copy of daily quests inside Level panel.
+/// It uses the same QuestItem prefab and reads progress from QuestManager.Instance.
 /// </summary>
 public class DailyQuestDisplayLevel : MonoBehaviour
 {
     [Header("UI Setup")]
     public GameObject questItemPrefab;      // Prefab QuestItem (sama dengan Quest Panel)
-    public Transform contentDaily;          // Parent untuk spawn quest items
-    public TMP_Text headerText;             // Optional: "Daily Quest" title
+    public Transform contentDaily;          // Parent for spawned quest items (level panel)
+    public TMP_Text headerText;             // Optional header text
 
     [Header("Settings")]
-    public int maxVisibleQuests = 3;        // Limit berapa quest yang ditampilkan
+    public int maxVisibleQuests = 3;        // how many to show here
 
     // Runtime
     Dictionary<string, QuestItemUI> spawnedUI = new Dictionary<string, QuestItemUI>();
 
     void Start()
     {
-        if (headerText != null)
-        {
-            headerText.text = "Daily Quest";
-        }
-
-        // Tunggu QuestManager ready
+        if (headerText != null) headerText.text = "Daily Quest";
+        // Delay a little so QuestManager has created UI/spawned items
         Invoke(nameof(RefreshDisplay), 0.1f);
     }
 
     void OnEnable()
     {
-        // Subscribe ke QuestManager events jika ada
-        // (QuestManager belum punya event system, tapi kita bisa refresh manual)
-        RefreshDisplay();
+        // in case quest progress changed while disabled
+        Invoke(nameof(RefreshDisplay), 0.05f);
     }
 
-    void OnDisable()
-    {
-        // Unsubscribe jika perlu
-    }
-
-    /// <summary>
-    /// Refresh display - ambil data dari QuestManager
-    /// </summary>
     public void RefreshDisplay()
     {
         if (QuestManager.Instance == null)
@@ -52,54 +39,28 @@ public class DailyQuestDisplayLevel : MonoBehaviour
             Debug.LogWarning("[DailyQuestDisplayLevel] QuestManager.Instance is null!");
             return;
         }
-
         if (questItemPrefab == null || contentDaily == null)
         {
-            Debug.LogWarning("[DailyQuestDisplayLevel] Prefab or content not assigned!");
+            Debug.LogWarning("[DailyQuestDisplayLevel] Prefab/content not assigned!");
             return;
         }
 
-        // Clear existing UI
         ClearUI();
 
-        // Get daily quests dari QuestManager
-        var dailyQuests = GetDailyQuests();
+        var dailyQuests = QuestManager.Instance.dailyQuests;
+        if (dailyQuests == null || dailyQuests.Count == 0) return;
 
-        if (dailyQuests == null || dailyQuests.Count == 0)
-        {
-            Debug.Log("[DailyQuestDisplayLevel] No daily quests found");
-            return;
-        }
-
-        // Limit jumlah quest yang ditampilkan
         int count = Mathf.Min(dailyQuests.Count, maxVisibleQuests);
-
         for (int i = 0; i < count; i++)
         {
             var questData = dailyQuests[i];
             if (questData == null) continue;
-
             CreateQuestUI(questData);
         }
 
         Debug.Log($"[DailyQuestDisplayLevel] Displayed {count} daily quests");
     }
 
-    /// <summary>
-    /// Get daily quests dari QuestManager (access dailyQuests list)
-    /// </summary>
-    List<QuestData> GetDailyQuests()
-    {
-        var qm = QuestManager.Instance;
-        if (qm == null) return null;
-
-        // Access dailyQuests public field dari QuestManager
-        return qm.dailyQuests;
-    }
-
-    /// <summary>
-    /// Create quest UI item
-    /// </summary>
     void CreateQuestUI(QuestData questData)
     {
         var go = Instantiate(questItemPrefab, contentDaily);
@@ -113,102 +74,35 @@ public class DailyQuestDisplayLevel : MonoBehaviour
             return;
         }
 
-        // Get progress model dari QuestManager
         var model = QuestManager.Instance.GetProgress(questData.questId);
-        if (model == null)
-        {
-            model = new QuestProgressModel(questData.questId, 0, false);
-        }
+        if (model == null) model = new QuestProgressModel(questData.questId, 0, false);
 
-        // Setup UI (akan subscribe ke QuestManager)
         ui.Setup(questData, model, QuestManager.Instance);
 
         spawnedUI[questData.questId] = ui;
     }
 
-    /// <summary>
-    /// Clear semua spawned UI
-    /// </summary>
     void ClearUI()
     {
         spawnedUI.Clear();
-
         if (contentDaily == null) return;
-
-        for (int i = contentDaily.childCount - 1; i >= 0; i--)
-        {
-            Destroy(contentDaily.GetChild(i).gameObject);
-        }
+        for (int i = contentDaily.childCount - 1; i >= 0; i--) Destroy(contentDaily.GetChild(i).gameObject);
     }
 
-    /// <summary>
-    /// Call this ketika player claim quest (untuk refresh display)
-    /// </summary>
     public void OnQuestClaimed()
     {
-        // Delay refresh sedikit agar QuestManager sempat update
-        Invoke(nameof(RefreshDisplay), 0.1f);
+        // small delay so QuestManager finishes Save/Update
+        Invoke(nameof(RefreshDisplay), 0.08f);
     }
 
-    // ==========================================
-    // PUBLIC API untuk manual refresh
-    // ==========================================
+    public void ForceRefresh() => RefreshDisplay();
 
-    /// <summary>
-    /// Public method untuk refresh dari luar (misal dari button)
-    /// </summary>
-    public void ForceRefresh()
-    {
-        RefreshDisplay();
-    }
-
-    /// <summary>
-    /// Update single quest UI (ketika progress berubah)
-    /// </summary>
     public void UpdateQuest(string questId)
     {
         if (spawnedUI.TryGetValue(questId, out var ui))
         {
             var model = QuestManager.Instance?.GetProgress(questId);
-            if (model != null)
-            {
-                ui.Refresh(model);
-            }
-        }
-    }
-
-    // ==========================================
-    // CONTEXT MENU DEBUG
-    // ==========================================
-
-    [ContextMenu("Force Refresh Display")]
-    void Context_ForceRefresh()
-    {
-        RefreshDisplay();
-    }
-
-    [ContextMenu("Print Daily Quests")]
-    void Context_PrintQuests()
-    {
-        var dailyQuests = GetDailyQuests();
-        if (dailyQuests == null || dailyQuests.Count == 0)
-        {
-            Debug.Log("No daily quests found");
-            return;
-        }
-
-        Debug.Log($"=== DAILY QUESTS ({dailyQuests.Count}) ===");
-        for (int i = 0; i < dailyQuests.Count; i++)
-        {
-            var q = dailyQuests[i];
-            if (q == null) continue;
-
-            var model = QuestManager.Instance?.GetProgress(q.questId);
-            string status = model != null ? 
-                (model.claimed ? "CLAIMED" : $"{model.progress}/{q.requiredAmount}") : 
-                "NO_PROGRESS";
-
-            Debug.Log($"{i + 1}. {q.displayName} [{q.questId}] - {status}");
+            if (model != null) ui.Refresh(model);
         }
     }
 }

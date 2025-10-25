@@ -208,7 +208,7 @@ public class DailyQuestDisplayLevel : MonoBehaviour
                 (model.claimed ? "CLAIMED" : $"{model.progress}/{q.requiredAmount}") : 
                 "NO_PROGRESS";
 
-            Debug.Log($"{i + 1}. {q.displayName} [{q.questId}] - {status}");
+            Debug.Log($"{i + 1}. {q.title} [{q.questId}] - {status}");
         }
     }
 }

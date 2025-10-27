@@ -5699,6 +5699,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1572998618}
+  - component: {fileID: 1572998619}
   m_Layer: 0
   m_Name: GameplayStarManager
   m_TagString: Untagged
@@ -5721,6 +5722,25 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1572998619
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1572998617}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4ac6407c50b004547a59f7d7f5835ac2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  totalStarsInLevel: 3
+  OnStarCollected:
+    m_PersistentCalls:
+      m_Calls: []
+  OnLevelComplete:
+    m_PersistentCalls:
+      m_Calls: []
 --- !u!1 &1577521726
 GameObject:
   m_ObjectHideFlags: 0
@@ -6928,50 +6948,36 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   lanesManager: {fileID: 1029806403}
   spawnParent: {fileID: 1830271083}
-  obstacleLayerMask:
-    serializedVersion: 2
-    m_Bits: 8
-  spawnY: 10
-  worldScrollSpeed: 3
-  spawnLevelFragmentsOnly: 1
   levelDatabase: {fileID: 11400000, guid: 9d11e391857961a4d8bbf24bbab802f9, type: 2}
-  planetRegistry: {fileID: 11400000, guid: 30ae186d1d27b27489ce2377d14731aa, type: 2}
-  planetPrefabs: []
-  fragmentRegistrySO: {fileID: 11400000, guid: 325c8016bc09c84428f9f8b2db5675db, type: 2}
-  fragmentPrefabs:
-  - {fileID: 2824898109348521049, guid: a58426cf275b143458635fadd4c75e38, type: 3}
-  - {fileID: 1757132179844279449, guid: 8826e69ae10e98241b877d141f9388ce, type: 3}
-  - {fileID: 2624888597213703197, guid: 7ada2e1e508899d4e98de87ce455ead8, type: 3}
-  - {fileID: 7401445041364346729, guid: 2ab5b8f852f996a43817abd84edf3f04, type: 3}
-  - {fileID: 3602677636207035610, guid: d21b304a30145af4b956c1ee95edf15e, type: 3}
-  - {fileID: 4123648039522421305, guid: 1e895d498f27a674dba9fd9164bf7b11, type: 3}
-  - {fileID: 7919100336763756408, guid: c8d42a94cfdec74479189004e3bba2e2, type: 3}
-  - {fileID: 4083799650469048010, guid: 1ce4e9e2763cc604d8baa5af336131a5, type: 3}
-  - {fileID: 6276584929621792135, guid: 9c39908f6b6955e4d914d90383596929, type: 3}
-  - {fileID: 8715135236447788499, guid: 6ce8d023921b8da4ca03f6fa7e9a61b3, type: 3}
-  - {fileID: 6369513322366162101, guid: 66c9f319e4020764cb624ce11cc53478, type: 3}
-  - {fileID: 3542873172368900157, guid: 989e5ea1acad82f4a850905b10b40b50, type: 3}
-  - {fileID: 3784127230166698859, guid: 30fd777a1089c064bb9dfd3ead8fa66b, type: 3}
-  - {fileID: 2772368746000791, guid: 9a6ba188bb48f4247972756819257ecf, type: 3}
-  - {fileID: 7902448119032145652, guid: 50ddfc60a5d1e16469df912519cb45c6, type: 3}
-  - {fileID: 1642756741293215340, guid: a7d661a188c37d948899318e53b6a091, type: 3}
-  - {fileID: 3517637916945647115, guid: e635d151bd8c32349bfe8539fd7a9814, type: 3}
-  - {fileID: 9021800507694970229, guid: 48aba688660ea004d8c0db52b510fb35, type: 3}
-  boosterPrefabs: []
+  planetPrefabs:
+  - {fileID: 4859472085069953281, guid: 10e4436b3fbad98428c49d4f85793e83, type: 3}
+  - {fileID: 2317271719180236776, guid: 4a1ec864f631c0e4299804c6045325d5, type: 3}
+  - {fileID: 8623831437168411947, guid: e906ba9e2e47f6a42a08f9f44541746c, type: 3}
+  - {fileID: 3506641348122442430, guid: ce82491f370c9064280ca3dad29fd2e9, type: 3}
+  - {fileID: 4825297902986891353, guid: ce5ae273cec03d74b8772a3fd141a0a7, type: 3}
+  - {fileID: 2056561710091816579, guid: b9f6e8b717273aa4480dde025b6bb14f, type: 3}
+  - {fileID: 5113602838793485311, guid: c570131ca4cf3484eacf07cb9266a5b5, type: 3}
+  - {fileID: 4960012264651991130, guid: e86a1585bd4ac85469bd4daa8002b48f, type: 3}
+  - {fileID: 8546903855206273715, guid: e759f487421ef004bbfff58c97702927, type: 3}
+  - {fileID: 279141384901392389, guid: cf974aa6032c6e84980003a86d6b4bcf, type: 3}
+  - {fileID: 1574119638395825906, guid: 136b4cdf50fea674b84a1e4734461572, type: 3}
+  - {fileID: 1301558441701477298, guid: d159d928021a8004ca9f11b89e967767, type: 3}
+  - {fileID: 8214930018854636928, guid: 7618488fc1f01cb4eb3d3b9416b8a6aa, type: 3}
   coinPrefab: {fileID: 8204258798340378091, guid: b7fb0df391297bb47a410c9ef6a278ad, type: 3}
+  starPrefab: {fileID: 1303944969474664622, guid: 0dfa52ff868e79540a42b1dcd501025a, type: 3}
+  fragmentRegistry: {fileID: 11400000, guid: 325c8016bc09c84428f9f8b2db5675db, type: 2}
+  spawnY: 10
+  scrollSpeed: 3
   coinSpacing: 2
-  coinTrainChance: 0.55
-  coinTrainMin: 4
-  coinTrainMax: 7
   planetInterval: 2
-  coinTickInterval: 0.6
-  boosterInterval: 8
-  minSpacingWorld: 3
-  overlapRadius: 0.45
-  minDistanceFromPlanetForCoin: 1
-  fragmentChance: 0.18
-  fragmentOnPlanetChance: 0.35
-  boosterChance: 0.15
+  planetBlockDuration: 2
+  coinSpawnInterval: 0.3
+  minCoinsInRow: 5
+  maxCoinsInRow: 10
+  fragmentInterval: 3
+  totalStarsToSpawn: 3
+  minStarSpawnDelay: 8
+  maxStarSpawnDelay: 15
 --- !u!1 &1942131223
 GameObject:
   m_ObjectHideFlags: 0
@@ -8076,63 +8082,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1001 &5580768744611416840
-PrefabInstance:
-  m_ObjectHideFlags: 0
-  serializedVersion: 2
-  m_Modification:
-    serializedVersion: 3
-    m_TransformParent: {fileID: 0}
-    m_Modifications:
-    - target: {fileID: 1303944969474664622, guid: 0dfa52ff868e79540a42b1dcd501025a, type: 3}
-      propertyPath: m_Name
-      value: Stars
-      objectReference: {fileID: 0}
-    - target: {fileID: 6009060010026781586, guid: 0dfa52ff868e79540a42b1dcd501025a, type: 3}
-      propertyPath: m_LocalPosition.x
-      value: 0.1
-      objectReference: {fileID: 0}
-    - target: {fileID: 6009060010026781586, guid: 0dfa52ff868e79540a42b1dcd501025a, type: 3}
-      propertyPath: m_LocalPosition.y
-      value: 2.9
-      objectReference: {fileID: 0}
-    - target: {fileID: 6009060010026781586, guid: 0dfa52ff868e79540a42b1dcd501025a, type: 3}
-      propertyPath: m_LocalPosition.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 6009060010026781586, guid: 0dfa52ff868e79540a42b1dcd501025a, type: 3}
-      propertyPath: m_LocalRotation.w
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 6009060010026781586, guid: 0dfa52ff868e79540a42b1dcd501025a, type: 3}
-      propertyPath: m_LocalRotation.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 6009060010026781586, guid: 0dfa52ff868e79540a42b1dcd501025a, type: 3}
-      propertyPath: m_LocalRotation.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 6009060010026781586, guid: 0dfa52ff868e79540a42b1dcd501025a, type: 3}
-      propertyPath: m_LocalRotation.z
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 6009060010026781586, guid: 0dfa52ff868e79540a42b1dcd501025a, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.x
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 6009060010026781586, guid: 0dfa52ff868e79540a42b1dcd501025a, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.y
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 6009060010026781586, guid: 0dfa52ff868e79540a42b1dcd501025a, type: 3}
-      propertyPath: m_LocalEulerAnglesHint.z
-      value: 0
-      objectReference: {fileID: 0}
-    m_RemovedComponents: []
-    m_RemovedGameObjects: []
-    m_AddedGameObjects: []
-    m_AddedComponents: []
-  m_SourcePrefab: {fileID: 100100000, guid: 0dfa52ff868e79540a42b1dcd501025a, type: 3}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
@@ -8148,4 +8097,3 @@ SceneRoots:
   - {fileID: 1572998618}
   - {fileID: 315344340}
   - {fileID: 1604913918}
-  - {fileID: 5580768744611416840}

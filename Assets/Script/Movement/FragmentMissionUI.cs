@@ -174,6 +174,16 @@ public class FragmentMissionUI : MonoBehaviour
         string levelId = PlayerPrefs.GetString("SelectedLevelId", "");
         int levelNum = PlayerPrefs.GetInt("SelectedLevelNumber", 1);
 
-        LevelProgressManager.Instance?.UnlockNextLevel(levelNum);
+        // PENTING: Save stars saat mission complete
+        var starManager = FindFirstObjectByType<GameplayStarManager>();
+        if (starManager != null)
+        {
+            starManager.CompleteLevelWithStars();
+        }
+        else
+        {
+            // Fallback jika tidak ada star manager
+            LevelProgressManager.Instance?.UnlockNextLevel(levelNum);
+        }
     }
 }

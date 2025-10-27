@@ -8,6 +8,8 @@ using UnityEngine;
 /// - Coin spawn continuous di lane yang TIDAK blocked
 /// - Star spawn 3x random di gameplay
 /// - Fragment spawn sesuai level requirements
+/// 
+/// LETAKKAN DI: Assets/Script/Movement/ImprovedGameplaySpawner.cs
 /// </summary>
 public class ImprovedGameplaySpawner : MonoBehaviour
 {
@@ -15,58 +17,64 @@ public class ImprovedGameplaySpawner : MonoBehaviour
     public LanesManager lanesManager;
     public Transform spawnParent;
     public LevelDatabase levelDatabase;
-    
+
     [Header("Prefabs")]
     public GameObject[] planetPrefabs;
     public GameObject coinPrefab;
-    public GameObject starPrefab; // BARU: Prefab bintang
+    public GameObject starPrefab; // BARU: Prefab bintang (optional, bisa null)
     public FragmentPrefabRegistry fragmentRegistry;
-    
+
     [Header("World Settings")]
     public float spawnY = 10f;
     public float scrollSpeed = 3f;
-    public float coinSpacing = 0.8f; // Jarak antar coin vertikal
-    
+    public float coinSpacing = 0.8f;
+
     [Header("Planet Spawn")]
-    public float planetInterval = 2.5f; // Interval spawn planet
-    public float planetBlockDuration = 2f; // Durasi lane di-block setelah planet spawn
-    
+    public float planetInterval = 2.5f;
+    public float planetBlockDuration = 2f;
+
     [Header("Coin Spawn")]
-    public float coinSpawnInterval = 0.3f; // Interval check spawn coin
-    public int minCoinsInRow = 5; // Minimal coin berturut-turut
-    public int maxCoinsInRow = 10; // Maksimal coin berturut-turut
-    
+    public float coinSpawnInterval = 0.3f;
+    public int minCoinsInRow = 5;
+    public int maxCoinsInRow = 10;
+
     [Header("Fragment Spawn")]
     public float fragmentInterval = 3f;
-    public float fragmentClusterInterval = 5f;
-    
-    [Header("Star Spawn")]
-    public int totalStarsToSpawn = 3; // Jumlah bintang yang akan di-spawn
-    public float minStarSpawnDelay = 8f; // Delay minimal antar bintang
-    public float maxStarSpawnDelay = 15f; // Delay maksimal antar bintang
+
+    [Header("Star Spawn (Optional - bisa dikosongi)")]
+    public int totalStarsToSpawn = 3;
+    public float minStarSpawnDelay = 8f;
+    public float maxStarSpawnDelay = 15f;
 
     // Runtime
     int laneCount = 3;
     float laneOffset = 2.5f;
-    float[] laneBlockedUntil; // Track kapan lane bisa dipakai lagi
+    float[] laneBlockedUntil;
     FragmentRequirement[] levelRequirements;
     int starsSpawned = 0;
 
     void Awake()
     {
+        // Auto-find LanesManager
         if (lanesManager == null)
+        {
+#if UNITY_2023_1_OR_NEWER
             lanesManager = FindFirstObjectByType<LanesManager>();
-        
+#else
+            lanesManager = FindObjectOfType<LanesManager>();
+#endif
+        }
+
         if (lanesManager != null)
         {
             laneCount = lanesManager.laneCount;
             laneOffset = lanesManager.laneOffset;
         }
-        
+
         laneBlockedUntil = new float[laneCount];
         for (int i = 0; i < laneCount; i++)
             laneBlockedUntil[i] = 0f;
-        
+
         if (spawnParent == null)
             spawnParent = transform;
     }
@@ -74,17 +82,26 @@ public class ImprovedGameplaySpawner : MonoBehaviour
     void Start()
     {
         LoadLevelRequirements();
-        
+
         StartCoroutine(PlanetSpawnLoop());
         StartCoroutine(CoinSpawnLoop());
         StartCoroutine(FragmentSpawnLoop());
-        StartCoroutine(StarSpawnLoop()); // BARU: Loop spawn bintang
+
+        // HANYA spawn star jika prefab assigned
+        if (starPrefab != null)
+        {
+            StartCoroutine(StarSpawnLoop());
+        }
+        else
+        {
+            Debug.LogWarning("[ImprovedSpawner] Star prefab not assigned. Stars will not spawn.");
+        }
     }
 
     void LoadLevelRequirements()
     {
         string levelId = PlayerPrefs.GetString("SelectedLevelId", "level_1");
-        
+
         if (levelDatabase != null)
         {
             LevelConfig config = levelDatabase.GetById(levelId);
@@ -97,24 +114,21 @@ public class ImprovedGameplaySpawner : MonoBehaviour
     }
 
     // ========================================
-    // PLANET SPAWNER - Random lane, block lane after spawn
+    // PLANET SPAWNER
     // ========================================
     IEnumerator PlanetSpawnLoop()
     {
-        yield return new WaitForSeconds(2f); // Initial delay
-        
+        yield return new WaitForSeconds(2f);
+
         while (true)
         {
             yield return new WaitForSeconds(planetInterval);
-            
-            // Pilih lane yang available
+
             List<int> availableLanes = GetAvailableLanes();
             if (availableLanes.Count > 0)
             {
                 int lane = availableLanes[Random.Range(0, availableLanes.Count)];
                 SpawnPlanet(lane);
-                
-                // Block lane untuk sementara
                 laneBlockedUntil[lane] = Time.time + planetBlockDuration;
             }
         }
@@ -123,39 +137,32 @@ public class ImprovedGameplaySpawner : MonoBehaviour
     void SpawnPlanet(int lane)
     {
         if (planetPrefabs == null || planetPrefabs.Length == 0) return;
-        
+
         GameObject prefab = planetPrefabs[Random.Range(0, planetPrefabs.Length)];
         Vector3 pos = new Vector3(GetLaneWorldX(lane), spawnY, 0f);
-        
         GameObject planet = Instantiate(prefab, pos, Quaternion.identity, spawnParent);
-        
+
         var mover = planet.GetComponent<PlanetMover>();
         if (mover != null) mover.SetSpeed(scrollSpeed);
-        
-        Debug.Log($"[ImprovedSpawner] Spawned planet at lane {lane}");
     }
 
     // ========================================
-    // COIN SPAWNER - Continuous, avoid blocked lanes
+    // COIN SPAWNER
     // ========================================
     IEnumerator CoinSpawnLoop()
     {
-        yield return new WaitForSeconds(3f); // Initial delay
-        
+        yield return new WaitForSeconds(3f);
+
         while (true)
         {
             yield return new WaitForSeconds(coinSpawnInterval);
-            
-            // Pilih lane yang TIDAK blocked
+
             List<int> availableLanes = GetAvailableLanes();
             if (availableLanes.Count == 0) continue;
-            
-            // Random jumlah coin berturut-turut
+
             int coinCount = Random.Range(minCoinsInRow, maxCoinsInRow + 1);
-            
-            // Pilih 1-2 lanes untuk spawn coins
             int laneToUse = availableLanes[Random.Range(0, availableLanes.Count)];
-            
+
             StartCoroutine(SpawnCoinRow(laneToUse, coinCount));
         }
     }
@@ -163,32 +170,32 @@ public class ImprovedGameplaySpawner : MonoBehaviour
     IEnumerator SpawnCoinRow(int lane, int count)
     {
         if (coinPrefab == null) yield break;
-        
-        float spawnDelay = coinSpacing / scrollSpeed; // Delay agar coin rapi
-        
+
+        float spawnDelay = coinSpacing / scrollSpeed;
+
         for (int i = 0; i < count; i++)
         {
             Vector3 pos = new Vector3(GetLaneWorldX(lane), spawnY, 0f);
-            
             GameObject coin = Instantiate(coinPrefab, pos, Quaternion.identity, spawnParent);
+
             var mover = coin.GetComponent<PlanetMover>();
             if (mover != null) mover.SetSpeed(scrollSpeed);
-            
+
             yield return new WaitForSeconds(spawnDelay);
         }
     }
 
     // ========================================
-    // FRAGMENT SPAWNER - Based on level requirements
+    // FRAGMENT SPAWNER
     // ========================================
     IEnumerator FragmentSpawnLoop()
     {
         yield return new WaitForSeconds(4f);
-        
+
         while (true)
         {
             yield return new WaitForSeconds(fragmentInterval);
-            
+
             List<int> availableLanes = GetAvailableLanes();
             if (availableLanes.Count > 0)
             {
@@ -202,47 +209,64 @@ public class ImprovedGameplaySpawner : MonoBehaviour
     {
         if (levelRequirements == null || levelRequirements.Length == 0) return;
         if (fragmentRegistry == null) return;
-        
+
         var req = levelRequirements[Random.Range(0, levelRequirements.Length)];
         GameObject prefab = fragmentRegistry.GetPrefab(req.type, req.colorVariant);
-        
+
         if (prefab == null) return;
-        
+
         Vector3 pos = new Vector3(GetLaneWorldX(lane), spawnY, 0f);
         GameObject frag = Instantiate(prefab, pos, Quaternion.identity, spawnParent);
-        
+
         var collectible = frag.GetComponent<FragmentCollectible>();
         if (collectible == null)
             collectible = frag.AddComponent<FragmentCollectible>();
         collectible.Initialize(req.type, req.colorVariant);
-        
+
         var mover = frag.GetComponent<PlanetMover>();
         if (mover != null) mover.SetSpeed(scrollSpeed);
     }
 
     // ========================================
-    // STAR SPAWNER - Spawn 3 bintang secara random
+    // STAR SPAWNER (SAFE - tidak error jika GameplayStarManager belum ada)
     // ========================================
     IEnumerator StarSpawnLoop()
     {
-        yield return new WaitForSeconds(5f); // Initial delay lebih lama
-        
-        // Notify GameplayStarManager berapa bintang yang akan di-spawn
-        var starManager = FindFirstObjectByType<GameplayStarManager>();
-        if (starManager != null)
+        yield return new WaitForSeconds(5f);
+
+        // SAFE: Try notify GameplayStarManager (tidak error jika tidak ada)
+        try
         {
-            starManager.totalStarsInLevel = totalStarsToSpawn;
+#if UNITY_2023_1_OR_NEWER
+            var starManager = FindFirstObjectByType<GameplayStarManager>();
+#else
+            var starManager = FindObjectOfType<GameplayStarManager>();
+#endif
+
+            if (starManager != null)
+            {
+                starManager.totalStarsInLevel = totalStarsToSpawn;
+                Debug.Log("[ImprovedSpawner] GameplayStarManager found, set total stars");
+            }
+            else
+            {
+                Debug.LogWarning("[ImprovedSpawner] GameplayStarManager not found. Stars will spawn but not tracked.");
+            }
         }
-        
-        // Spawn bintang satu per satu dengan interval random
+        catch (System.Exception e)
+        {
+            Debug.LogWarning($"[ImprovedSpawner] Could not access GameplayStarManager: {e.Message}");
+        }
+
+        // Spawn stars
         for (int i = 0; i < totalStarsToSpawn; i++)
         {
             float delay = Random.Range(minStarSpawnDelay, maxStarSpawnDelay);
             yield return new WaitForSeconds(delay);
-            
+
             SpawnStar();
         }
-        
+
         Debug.Log($"[ImprovedSpawner] Finished spawning {totalStarsToSpawn} stars");
     }
 
@@ -253,25 +277,24 @@ public class ImprovedGameplaySpawner : MonoBehaviour
             Debug.LogWarning("[ImprovedSpawner] Star prefab not assigned!");
             return;
         }
-        
-        // Pilih lane available
+
         List<int> availableLanes = GetAvailableLanes();
         if (availableLanes.Count == 0)
         {
             Debug.LogWarning("[ImprovedSpawner] No available lanes for star!");
             return;
         }
-        
+
         int lane = availableLanes[Random.Range(0, availableLanes.Count)];
         Vector3 pos = new Vector3(GetLaneWorldX(lane), spawnY, 0f);
-        
+
         GameObject star = Instantiate(starPrefab, pos, Quaternion.identity, spawnParent);
-        
+
         var mover = star.GetComponent<PlanetMover>();
         if (mover != null) mover.SetSpeed(scrollSpeed);
-        
+
         starsSpawned++;
-        Debug.Log($"[ImprovedSpawner] Spawned star {starsSpawned}/{totalStarsToSpawn} at lane {lane}");
+        Debug.Log($"[ImprovedSpawner] Star {starsSpawned}/{totalStarsToSpawn} spawned at lane {lane}");
     }
 
     // ========================================

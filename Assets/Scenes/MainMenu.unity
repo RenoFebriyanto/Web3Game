@@ -4841,49 +4841,13 @@ PrefabInstance:
     - {fileID: 646223490306053682, guid: f50c2678650e56b4dacc0139bc0c2fda, type: 3}
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents:
-    - targetCorrespondingSourceObject: {fileID: 5597025808112532493, guid: f50c2678650e56b4dacc0139bc0c2fda, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 698767237}
+    m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: f50c2678650e56b4dacc0139bc0c2fda, type: 3}
 --- !u!224 &698767234 stripped
 RectTransform:
   m_CorrespondingSourceObject: {fileID: 7245811170275486647, guid: f50c2678650e56b4dacc0139bc0c2fda, type: 3}
   m_PrefabInstance: {fileID: 698767233}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &698767235 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 1718787919422051805, guid: f50c2678650e56b4dacc0139bc0c2fda, type: 3}
-  m_PrefabInstance: {fileID: 698767233}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f4688fdb7df04437aeb418b961361dc5, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
---- !u!1 &698767236 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 5597025808112532493, guid: f50c2678650e56b4dacc0139bc0c2fda, type: 3}
-  m_PrefabInstance: {fileID: 698767233}
-  m_PrefabAsset: {fileID: 0}
---- !u!114 &698767237
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 698767236}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 95d06808bb372b847af4a348e1a0f3b9, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  levelConfig: {fileID: 11400000, guid: fdaff892d14989046b19b2d8950182ac, type: 2}
-  numberText: {fileID: 698767235}
-  lockedOverlay: {fileID: 5597025808112532493, guid: f50c2678650e56b4dacc0139bc0c2fda, type: 3}
-  bgImage: {fileID: 3553356052132054350, guid: f50c2678650e56b4dacc0139bc0c2fda, type: 3}
-  gameplaySceneName: Gameplay
 --- !u!1 &705683644
 GameObject:
   m_ObjectHideFlags: 0

@@ -336,13 +336,14 @@ GameObject:
   - component: {fileID: 4133590828291352583}
   - component: {fileID: 3553356052132054350}
   - component: {fileID: 7883804719257417061}
+  - component: {fileID: 697862324875315868}
   m_Layer: 5
   m_Name: Level
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!224 &7245811170275486647
 RectTransform:
   m_ObjectHideFlags: 0
@@ -446,6 +447,23 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls: []
+--- !u!114 &697862324875315868
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5597025808112532493}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 95d06808bb372b847af4a348e1a0f3b9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  levelConfig: {fileID: 11400000, guid: 85fc343cf7978df48b434580c92c0f6c, type: 2}
+  numberText: {fileID: 1718787919422051805}
+  lockedOverlay: {fileID: 5597025808112532493}
+  bgImage: {fileID: 3553356052132054350}
+  gameplaySceneName: Gameplay
 --- !u!1 &8811757789038405231
 GameObject:
   m_ObjectHideFlags: 0

@@ -1,449 +1,298 @@
 using System.Collections;
 using System.Collections.Generic;
-using System.Reflection;
 using UnityEngine;
-using Object = UnityEngine.Object;
 
 /// <summary>
-/// Gameplay spawner: planets, coin-trains (spawned sequentially), fragments, boosters.
-/// - Spawn coin trains as sequential single coin spawns so they form a visible train.
-/// - Avoid spawning coins inside planets (Overlap checks).
-/// - Use fragment registry or fallback arrays (assign in Inspector).
+/// Improved spawner dengan logic rapi seperti Subway Surf:
+/// - Planet spawn random di 3 lanes
+/// - Coin spawn continuous di lane yang TIDAK blocked
+/// - Star spawn 3x random di gameplay
+/// - Fragment spawn sesuai level requirements
 /// </summary>
-public class GameplaySpawner : MonoBehaviour
+public class ImprovedGameplaySpawner : MonoBehaviour
 {
-    [Header("References (assign in Inspector)")]
+    [Header("References")]
     public LanesManager lanesManager;
     public Transform spawnParent;
-    public LayerMask obstacleLayerMask;
-
-    [Header("World / movement")]
-    public float spawnY = 10f;
-    public float worldScrollSpeed = 3f;
-
-    [Header("Level-Specific Spawning")]
-    public bool spawnLevelFragmentsOnly = true;
-    private FragmentRequirement[] levelRequirements; // TAMBAHKAN INI
-
     public LevelDatabase levelDatabase;
-
-    [Header("Prefabs / registry (assign at least fallback arrays)")]
-    public PlanetPrefabRegistry planetRegistry; // optional registry
+    
+    [Header("Prefabs")]
     public GameObject[] planetPrefabs;
-    public ScriptableObject fragmentRegistrySO; // optional (reflection read)
-    public GameObject[] fragmentPrefabs;
-    public GameObject[] boosterPrefabs;
-
-    [Header("Coins (train behavior)")]
     public GameObject coinPrefab;
-    [Tooltip("World spacing between consecutive coins in a train (units)")]
-    public float coinSpacing = 0.8f;   // world spacing between coins
-    [Tooltip("Chance to spawn a multi-coin train instead of single coin (0..1)")]
-    public float coinTrainChance = 0.55f;
-    public int coinTrainMin = 4;
-    public int coinTrainMax = 7;
+    public GameObject starPrefab; // BARU: Prefab bintang
+    public FragmentPrefabRegistry fragmentRegistry;
+    
+    [Header("World Settings")]
+    public float spawnY = 10f;
+    public float scrollSpeed = 3f;
+    public float coinSpacing = 0.8f; // Jarak antar coin vertikal
+    
+    [Header("Planet Spawn")]
+    public float planetInterval = 2.5f; // Interval spawn planet
+    public float planetBlockDuration = 2f; // Durasi lane di-block setelah planet spawn
+    
+    [Header("Coin Spawn")]
+    public float coinSpawnInterval = 0.3f; // Interval check spawn coin
+    public int minCoinsInRow = 5; // Minimal coin berturut-turut
+    public int maxCoinsInRow = 10; // Maksimal coin berturut-turut
+    
+    [Header("Fragment Spawn")]
+    public float fragmentInterval = 3f;
+    public float fragmentClusterInterval = 5f;
+    
+    [Header("Star Spawn")]
+    public int totalStarsToSpawn = 3; // Jumlah bintang yang akan di-spawn
+    public float minStarSpawnDelay = 8f; // Delay minimal antar bintang
+    public float maxStarSpawnDelay = 15f; // Delay maksimal antar bintang
 
-    [Header("Intervals")]
-    public float planetInterval = 2.4f;
-    public float coinTickInterval = 0.6f; // how often spawner decides to spawn (single or train)
-    public float boosterInterval = 8f;
-
-    [Header("Spacing & safety")]
-    public float minSpacingWorld = 3.0f;
-    public float overlapRadius = 0.45f;
-    public float minDistanceFromPlanetForCoin = 1.0f;
-
-    [Header("Probability")]
-    [Range(0f, 1f)] public float fragmentChance = 0.14f;
-    [Range(0f, 1f)] public float fragmentOnPlanetChance = 0.35f;
-    [Range(0f, 1f)] public float boosterChance = 0.12f;
-
-    // internals
+    // Runtime
     int laneCount = 3;
     float laneOffset = 2.5f;
-    float[] lastSpawnTimePerLane;
-    float[] laneBlockedUntil;
-    float fragmentGlobalCooldown = 0f;
-    float fragmentCooldownSeconds = 0.4f;
+    float[] laneBlockedUntil; // Track kapan lane bisa dipakai lagi
+    FragmentRequirement[] levelRequirements;
+    int starsSpawned = 0;
 
     void Awake()
     {
-#if UNITY_2023_1_OR_NEWER
-        if (lanesManager == null) lanesManager = Object.FindFirstObjectByType<LanesManager>();
-#else
-        if (lanesManager == null) lanesManager = Object.FindObjectOfType<LanesManager>();
-#endif
-        if (lanesManager != null) { laneCount = Mathf.Max(1, lanesManager.laneCount); laneOffset = lanesManager.laneOffset; }
-
-        lastSpawnTimePerLane = new float[laneCount];
+        if (lanesManager == null)
+            lanesManager = FindFirstObjectByType<LanesManager>();
+        
+        if (lanesManager != null)
+        {
+            laneCount = lanesManager.laneCount;
+            laneOffset = lanesManager.laneOffset;
+        }
+        
         laneBlockedUntil = new float[laneCount];
-        for (int i = 0; i < laneCount; i++) { lastSpawnTimePerLane[i] = -9999f; laneBlockedUntil[i] = -9999f; }
-
-        if (spawnParent == null) spawnParent = transform;
+        for (int i = 0; i < laneCount; i++)
+            laneBlockedUntil[i] = 0f;
+        
+        if (spawnParent == null)
+            spawnParent = transform;
     }
 
     void Start()
     {
         LoadLevelRequirements();
-
+        
         StartCoroutine(PlanetSpawnLoop());
-        StartCoroutine(CoinTickLoop());
-        StartCoroutine(BoosterSpawnLoop());
-    }
-
-    IEnumerator PlanetSpawnLoop()
-    {
-        while (true)
-        {
-            yield return new WaitForSeconds(planetInterval);
-            TrySpawnPlanet();
-        }
+        StartCoroutine(CoinSpawnLoop());
+        StartCoroutine(FragmentSpawnLoop());
+        StartCoroutine(StarSpawnLoop()); // BARU: Loop spawn bintang
     }
 
     void LoadLevelRequirements()
     {
         string levelId = PlayerPrefs.GetString("SelectedLevelId", "level_1");
-
-        LevelConfig config = null;
-
-        // Load dari database
+        
         if (levelDatabase != null)
         {
-            config = levelDatabase.GetById(levelId);
-        }
-
-        if (config != null && config.requirements != null)
-        {
-            levelRequirements = config.requirements.ToArray();
-            Debug.Log($"[GameplaySpawner] Loaded {levelRequirements.Length} requirements from {levelId}");
-        }
-        else
-        {
-            Debug.LogWarning($"[GameplaySpawner] LevelConfig not found: {levelId}");
+            LevelConfig config = levelDatabase.GetById(levelId);
+            if (config != null && config.requirements != null)
+            {
+                levelRequirements = config.requirements.ToArray();
+                Debug.Log($"[ImprovedSpawner] Loaded {levelRequirements.Length} requirements from {levelId}");
+            }
         }
     }
 
-    IEnumerator CoinTickLoop()
+    // ========================================
+    // PLANET SPAWNER - Random lane, block lane after spawn
+    // ========================================
+    IEnumerator PlanetSpawnLoop()
     {
+        yield return new WaitForSeconds(2f); // Initial delay
+        
         while (true)
         {
-            yield return new WaitForSeconds(coinTickInterval);
-            TrySpawnCoinOrTrainOrFragment();
+            yield return new WaitForSeconds(planetInterval);
+            
+            // Pilih lane yang available
+            List<int> availableLanes = GetAvailableLanes();
+            if (availableLanes.Count > 0)
+            {
+                int lane = availableLanes[Random.Range(0, availableLanes.Count)];
+                SpawnPlanet(lane);
+                
+                // Block lane untuk sementara
+                laneBlockedUntil[lane] = Time.time + planetBlockDuration;
+            }
         }
     }
 
-    IEnumerator BoosterSpawnLoop()
+    void SpawnPlanet(int lane)
     {
+        if (planetPrefabs == null || planetPrefabs.Length == 0) return;
+        
+        GameObject prefab = planetPrefabs[Random.Range(0, planetPrefabs.Length)];
+        Vector3 pos = new Vector3(GetLaneWorldX(lane), spawnY, 0f);
+        
+        GameObject planet = Instantiate(prefab, pos, Quaternion.identity, spawnParent);
+        
+        var mover = planet.GetComponent<PlanetMover>();
+        if (mover != null) mover.SetSpeed(scrollSpeed);
+        
+        Debug.Log($"[ImprovedSpawner] Spawned planet at lane {lane}");
+    }
+
+    // ========================================
+    // COIN SPAWNER - Continuous, avoid blocked lanes
+    // ========================================
+    IEnumerator CoinSpawnLoop()
+    {
+        yield return new WaitForSeconds(3f); // Initial delay
+        
         while (true)
         {
-            yield return new WaitForSeconds(boosterInterval);
-            TrySpawnBooster();
+            yield return new WaitForSeconds(coinSpawnInterval);
+            
+            // Pilih lane yang TIDAK blocked
+            List<int> availableLanes = GetAvailableLanes();
+            if (availableLanes.Count == 0) continue;
+            
+            // Random jumlah coin berturut-turut
+            int coinCount = Random.Range(minCoinsInRow, maxCoinsInRow + 1);
+            
+            // Pilih 1-2 lanes untuk spawn coins
+            int laneToUse = availableLanes[Random.Range(0, availableLanes.Count)];
+            
+            StartCoroutine(SpawnCoinRow(laneToUse, coinCount));
         }
     }
 
-    void TrySpawnPlanet()
+    IEnumerator SpawnCoinRow(int lane, int count)
     {
-        List<int> candidates = GetAvailableLanesBySpacing();
-        if (candidates.Count == 0) return;
-        int lane = candidates[Random.Range(0, candidates.Count)];
-        Vector3 pos = new Vector3(GetLaneWorldX(lane), spawnY, 0f);
-
-        if (Physics2D.OverlapCircle(pos, overlapRadius, obstacleLayerMask)) return;
-
-        GameObject prefab = GetRandomPlanetPrefab();
-        if (prefab == null) return;
-
-        GameObject go = Instantiate(prefab, pos, Quaternion.identity, spawnParent);
-        var mover = go.GetComponent<PlanetMover>();
-        if (mover != null) mover.SetSpeed(worldScrollSpeed);
-
-        lastSpawnTimePerLane[lane] = Time.time;
-
-        // temporarily block center lanes around planet a bit (avoid coin spawn immediate)
-        float blockT = 0.6f;
-        for (int i = -1; i <= 1; i++)
-        {
-            int idx = lane + i;
-            if (idx >= 0 && idx < laneCount) laneBlockedUntil[idx] = Time.time + blockT;
-        }
-
-        if (HasAnyFragmentPrefabs() && Random.value <= fragmentOnPlanetChance)
-        {
-            SpawnFragmentClusterNearLane(lane, pos.y - 1.2f);
-        }
-    }
-
-    void TrySpawnCoinOrTrainOrFragment()
-    {
-        if (Time.time < fragmentGlobalCooldown) return;
-
-        // choose lane
-        List<int> cand = GetAvailableLanesBySpacingAndNotBlocked();
-        if (cand.Count == 0) return;
-
-        // pick center-preference
-        int lane = ChooseLaneForCoin(cand);
-
-        // decide train vs single vs fragment
-        if (HasAnyFragmentPrefabs() && Random.value < fragmentChance)
-        {
-            // single fragment
-            SpawnSingleFragment(lane, spawnY - 0.5f);
-            fragmentGlobalCooldown = Time.time + fragmentCooldownSeconds;
-            lastSpawnTimePerLane[lane] = Time.time;
-            return;
-        }
-
-        if (Random.value < coinTrainChance)
-        {
-            int count = Random.Range(coinTrainMin, coinTrainMax + 1);
-            StartCoroutine(SpawnCoinTrainCoroutine(lane, count));
-            lastSpawnTimePerLane[lane] = Time.time;
-            return;
-        }
-
-        // fallback single coin
-        SpawnSingleCoin(lane, spawnY);
-        lastSpawnTimePerLane[lane] = Time.time;
-    }
-
-    void TrySpawnBooster()
-    {
-        if (boosterPrefabs == null || boosterPrefabs.Length == 0) return;
-        if (Random.value > boosterChance) return;
-
-        List<int> candidates = GetAvailableLanesBySpacing();
-        if (candidates.Count == 0) return;
-        int lane = candidates[Random.Range(0, candidates.Count)];
-        Vector3 pos = new Vector3(GetLaneWorldX(lane), spawnY, 0f);
-        if (Physics2D.OverlapCircle(pos, overlapRadius, obstacleLayerMask)) return;
-
-        GameObject prefab = GetRandomFromArray(boosterPrefabs);
-        if (prefab == null) return;
-
-        GameObject go = Instantiate(prefab, pos, Quaternion.identity, spawnParent);
-        var mover = go.GetComponent<PlanetMover>();
-        if (mover != null) mover.SetSpeed(worldScrollSpeed);
-
-        lastSpawnTimePerLane[lane] = Time.time;
-    }
-
-    IEnumerator SpawnCoinTrainCoroutine(int lane, int count)
-    {
-        // per-coin delay chosen so spacing in world units = coinSpacing while moving
-        float perCoinDelay = (worldScrollSpeed > 0.001f) ? (coinSpacing / worldScrollSpeed) : 0.12f;
-        float x = GetLaneWorldX(lane);
-
+        if (coinPrefab == null) yield break;
+        
+        float spawnDelay = coinSpacing / scrollSpeed; // Delay agar coin rapi
+        
         for (int i = 0; i < count; i++)
         {
-            Vector3 pos = new Vector3(x, spawnY - i * coinSpacing, 0f);
-
-            // avoid placing if overlapping planet; try small downward shift or skip
-            if (Physics2D.OverlapCircle(pos, 0.35f, obstacleLayerMask))
-            {
-                pos.y -= coinSpacing;
-                if (Physics2D.OverlapCircle(pos, 0.35f, obstacleLayerMask))
-                {
-                    // skip this coin to avoid overlap
-                    yield return new WaitForSeconds(perCoinDelay);
-                    continue;
-                }
-            }
-
+            Vector3 pos = new Vector3(GetLaneWorldX(lane), spawnY, 0f);
+            
             GameObject coin = Instantiate(coinPrefab, pos, Quaternion.identity, spawnParent);
             var mover = coin.GetComponent<PlanetMover>();
-            if (mover != null) mover.SetSpeed(worldScrollSpeed);
-
-            yield return new WaitForSeconds(perCoinDelay);
+            if (mover != null) mover.SetSpeed(scrollSpeed);
+            
+            yield return new WaitForSeconds(spawnDelay);
         }
     }
 
-    void SpawnSingleCoin(int lane, float startY)
+    // ========================================
+    // FRAGMENT SPAWNER - Based on level requirements
+    // ========================================
+    IEnumerator FragmentSpawnLoop()
     {
-        if (coinPrefab == null) return;
-        Vector3 pos = new Vector3(GetLaneWorldX(lane), startY, 0f);
-
-        Collider2D planetNear = Physics2D.OverlapCircle(pos, minDistanceFromPlanetForCoin, obstacleLayerMask);
-        if (planetNear != null) pos.y -= (minDistanceFromPlanetForCoin + coinSpacing);
-
-        if (Physics2D.OverlapCircle(pos, 0.35f, obstacleLayerMask))
+        yield return new WaitForSeconds(4f);
+        
+        while (true)
         {
-            pos.y -= coinSpacing;
-            if (Physics2D.OverlapCircle(pos, 0.35f, obstacleLayerMask)) return;
-        }
-
-        GameObject coin = Instantiate(coinPrefab, pos, Quaternion.identity, spawnParent);
-        var mover = coin.GetComponent<PlanetMover>();
-        if (mover != null) mover.SetSpeed(worldScrollSpeed);
-    }
-
-    void SpawnSingleFragment(int lane, float startY)
-    {
-        // Pilih random requirement dari level
-        if (levelRequirements == null || levelRequirements.Length == 0) return;
-
-        var req = levelRequirements[Random.Range(0, levelRequirements.Length)];
-
-        // Ambil prefab dari registry
-        if (fragmentRegistrySO == null) return;
-        var registry = fragmentRegistrySO as FragmentPrefabRegistry;
-        if (registry == null) return;
-
-        GameObject prefab = registry.GetPrefab(req.type, req.colorVariant);
-        if (prefab == null) return;
-
-        // Spawn position
-        Vector3 pos = new Vector3(GetLaneWorldX(lane), startY, 0f);
-        if (Physics2D.OverlapCircle(pos, 0.35f, obstacleLayerMask))
-        {
-            pos.y -= coinSpacing;
-            if (Physics2D.OverlapCircle(pos, 0.35f, obstacleLayerMask)) return;
-        }
-
-        // Instantiate
-        GameObject go = Instantiate(prefab, pos, Quaternion.identity, spawnParent);
-
-        // PENTING: Set type dan variant
-        var collectible = go.GetComponent<FragmentCollectible>();
-        if (collectible == null)
-        {
-            collectible = go.AddComponent<FragmentCollectible>();
-        }
-        collectible.Initialize(req.type, req.colorVariant);
-
-        // Set movement
-        var mover = go.GetComponent<PlanetMover>();
-        if (mover != null) mover.SetSpeed(worldScrollSpeed);
-    }
-
-    void SpawnFragmentClusterNearLane(int lane, float startY)
-    {
-        if (levelRequirements == null || levelRequirements.Length == 0) return;
-
-        int clusterCount = Random.Range(2, 4);
-        float x = GetLaneWorldX(lane);
-
-        for (int i = 0; i < clusterCount; i++)
-        {
-            // Random requirement
-            var req = levelRequirements[Random.Range(0, levelRequirements.Length)];
-
-            if (fragmentRegistrySO == null) continue;
-            var registry = fragmentRegistrySO as FragmentPrefabRegistry;
-            if (registry == null) continue;
-
-            GameObject prefab = registry.GetPrefab(req.type, req.colorVariant);
-            if (prefab == null) continue;
-
-            Vector3 pos = new Vector3(
-                x + Random.Range(-0.4f, 0.4f),
-                startY - i * 0.6f - Random.Range(0f, 0.1f),
-                0f
-            );
-
-            if (Physics2D.OverlapCircle(pos, 0.35f, obstacleLayerMask)) continue;
-
-            GameObject go = Instantiate(prefab, pos, Quaternion.identity, spawnParent);
-
-            // Set type dan variant
-            var collectible = go.GetComponent<FragmentCollectible>();
-            if (collectible == null)
+            yield return new WaitForSeconds(fragmentInterval);
+            
+            List<int> availableLanes = GetAvailableLanes();
+            if (availableLanes.Count > 0)
             {
-                collectible = go.AddComponent<FragmentCollectible>();
+                int lane = availableLanes[Random.Range(0, availableLanes.Count)];
+                SpawnFragment(lane);
             }
-            collectible.Initialize(req.type, req.colorVariant);
-
-            var mover = go.GetComponent<PlanetMover>();
-            if (mover != null) mover.SetSpeed(worldScrollSpeed);
         }
     }
 
-    // helpers for lanes / availability
-    int ChooseLaneForCoin(List<int> cand)
+    void SpawnFragment(int lane)
     {
-        int center = laneCount / 2;
-        if (cand.Contains(center)) return center;
-        return cand[Random.Range(0, cand.Count)];
+        if (levelRequirements == null || levelRequirements.Length == 0) return;
+        if (fragmentRegistry == null) return;
+        
+        var req = levelRequirements[Random.Range(0, levelRequirements.Length)];
+        GameObject prefab = fragmentRegistry.GetPrefab(req.type, req.colorVariant);
+        
+        if (prefab == null) return;
+        
+        Vector3 pos = new Vector3(GetLaneWorldX(lane), spawnY, 0f);
+        GameObject frag = Instantiate(prefab, pos, Quaternion.identity, spawnParent);
+        
+        var collectible = frag.GetComponent<FragmentCollectible>();
+        if (collectible == null)
+            collectible = frag.AddComponent<FragmentCollectible>();
+        collectible.Initialize(req.type, req.colorVariant);
+        
+        var mover = frag.GetComponent<PlanetMover>();
+        if (mover != null) mover.SetSpeed(scrollSpeed);
     }
 
-    List<int> GetAvailableLanesBySpacingAndNotBlocked()
+    // ========================================
+    // STAR SPAWNER - Spawn 3 bintang secara random
+    // ========================================
+    IEnumerator StarSpawnLoop()
     {
-        List<int> outList = new List<int>();
-        for (int i = 0; i < laneCount; i++)
-            if (Time.time - lastSpawnTimePerLane[i] >= (minSpacingWorld / Mathf.Max(0.0001f, worldScrollSpeed)) && Time.time >= laneBlockedUntil[i])
-                outList.Add(i);
-        return outList;
+        yield return new WaitForSeconds(5f); // Initial delay lebih lama
+        
+        // Notify GameplayStarManager berapa bintang yang akan di-spawn
+        var starManager = FindFirstObjectByType<GameplayStarManager>();
+        if (starManager != null)
+        {
+            starManager.totalStarsInLevel = totalStarsToSpawn;
+        }
+        
+        // Spawn bintang satu per satu dengan interval random
+        for (int i = 0; i < totalStarsToSpawn; i++)
+        {
+            float delay = Random.Range(minStarSpawnDelay, maxStarSpawnDelay);
+            yield return new WaitForSeconds(delay);
+            
+            SpawnStar();
+        }
+        
+        Debug.Log($"[ImprovedSpawner] Finished spawning {totalStarsToSpawn} stars");
     }
 
-    List<int> GetAvailableLanesBySpacing()
+    void SpawnStar()
     {
-        List<int> outList = new List<int>();
+        if (starPrefab == null)
+        {
+            Debug.LogWarning("[ImprovedSpawner] Star prefab not assigned!");
+            return;
+        }
+        
+        // Pilih lane available
+        List<int> availableLanes = GetAvailableLanes();
+        if (availableLanes.Count == 0)
+        {
+            Debug.LogWarning("[ImprovedSpawner] No available lanes for star!");
+            return;
+        }
+        
+        int lane = availableLanes[Random.Range(0, availableLanes.Count)];
+        Vector3 pos = new Vector3(GetLaneWorldX(lane), spawnY, 0f);
+        
+        GameObject star = Instantiate(starPrefab, pos, Quaternion.identity, spawnParent);
+        
+        var mover = star.GetComponent<PlanetMover>();
+        if (mover != null) mover.SetSpeed(scrollSpeed);
+        
+        starsSpawned++;
+        Debug.Log($"[ImprovedSpawner] Spawned star {starsSpawned}/{totalStarsToSpawn} at lane {lane}");
+    }
+
+    // ========================================
+    // HELPER METHODS
+    // ========================================
+    List<int> GetAvailableLanes()
+    {
+        List<int> available = new List<int>();
         for (int i = 0; i < laneCount; i++)
-            if (Time.time - lastSpawnTimePerLane[i] >= (minSpacingWorld / Mathf.Max(0.0001f, worldScrollSpeed)))
-                outList.Add(i);
-        return outList;
+        {
+            if (Time.time >= laneBlockedUntil[i])
+                available.Add(i);
+        }
+        return available;
     }
 
     float GetLaneWorldX(int laneIndex)
     {
-        float centerLane = (laneCount - 1) / 2f;
-        float centerX = (lanesManager != null) ? lanesManager.transform.position.x : 0f;
-        float offset = (lanesManager != null) ? lanesManager.laneOffset : laneOffset;
-        return centerX + (laneIndex - centerLane) * offset;
-    }
-
-    // random helpers / registries
-    T GetRandomFromArray<T>(T[] arr) where T : Object
-    {
-        if (arr == null || arr.Length == 0) return null;
-        if (arr.Length == 1) return arr[0];
-        return arr[Random.Range(0, arr.Length)];
-    }
-
-    GameObject GetRandomPlanetPrefab()
-    {
-        if (planetRegistry != null)
-        {
-            var p = planetRegistry.GetRandomPrefab();
-            if (p != null) return p;
-        }
-        return GetRandomFromArray(planetPrefabs);
-    }
-
-    GameObject GetRandomFragmentPrefab()
-    {
-        // Spawn sesuai level requirements
-        if (spawnLevelFragmentsOnly && levelRequirements != null && levelRequirements.Length > 0)
-        {
-            var req = levelRequirements[Random.Range(0, levelRequirements.Length)];
-
-            if (fragmentRegistrySO != null)
-            {
-                var registry = fragmentRegistrySO as FragmentPrefabRegistry;
-                if (registry != null)
-                {
-                    return registry.GetPrefab(req.type, req.colorVariant);
-                }
-            }
-        }
-
-        // Fallback: reflection method (kode lama Anda)
-        if (fragmentRegistrySO != null)
-        {
-            System.Reflection.MethodInfo mi = fragmentRegistrySO.GetType().GetMethod("GetRandomPrefab");
-            if (mi != null)
-            {
-                var val = mi.Invoke(fragmentRegistrySO, null) as GameObject;
-                if (val != null) return val;
-            }
-        }
-
-        return GetRandomFromArray(fragmentPrefabs);
-    }
-
-    bool HasAnyFragmentPrefabs()
-    {
-        if (fragmentRegistrySO != null) return true;
-        return (fragmentPrefabs != null && fragmentPrefabs.Length > 0);
+        float center = (laneCount - 1) / 2f;
+        float centerX = lanesManager != null ? lanesManager.transform.position.x : 0f;
+        float offset = lanesManager != null ? lanesManager.laneOffset : laneOffset;
+        return centerX + (laneIndex - center) * offset;
     }
 }

@@ -461,7 +461,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   levelConfig: {fileID: 11400000, guid: 85fc343cf7978df48b434580c92c0f6c, type: 2}
   numberText: {fileID: 1718787919422051805}
-  lockedOverlay: {fileID: 5597025808112532493}
+  lockedOverlay: {fileID: 0}
   bgImage: {fileID: 3553356052132054350}
   gameplaySceneName: Gameplay
   star1: {fileID: 3177266138146541539}

@@ -5935,7 +5935,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1604913918}
-  - component: {fileID: 1604913917}
   m_Layer: 0
   m_Name: Gameplaytracker
   m_TagString: Untagged
@@ -5943,18 +5942,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &1604913917
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1604913916}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fd81b6162e555e544a4da38bda9826f0, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!4 &1604913918
 Transform:
   m_ObjectHideFlags: 0
@@ -6966,18 +6953,22 @@ MonoBehaviour:
   coinPrefab: {fileID: 8204258798340378091, guid: b7fb0df391297bb47a410c9ef6a278ad, type: 3}
   starPrefab: {fileID: 1303944969474664622, guid: 0dfa52ff868e79540a42b1dcd501025a, type: 3}
   fragmentRegistry: {fileID: 11400000, guid: 325c8016bc09c84428f9f8b2db5675db, type: 2}
+  coinPatterns:
+  - {fileID: 11400000, guid: 1831c1d834a196147af62b15ce790cf6, type: 2}
+  - {fileID: 11400000, guid: 8c76eb4b5ad35884494a0518692ecc6f, type: 2}
+  - {fileID: 11400000, guid: 83ee56c46be6cf346b2b77747a7a2cec, type: 2}
+  - {fileID: 11400000, guid: 1e94ac0a843bee44eb284182971c7fce, type: 2}
+  - {fileID: 11400000, guid: a01c7687e54602a4dad32b499f323bdf, type: 2}
+  - {fileID: 11400000, guid: c17b34447aebd1c4cb20617bc9c81b0f, type: 2}
+  forcedPattern: {fileID: 0}
   spawnY: 10
   scrollSpeed: 3
-  coinSpacing: 2
+  coinVerticalSpacing: 0.8
   planetInterval: 2
   planetBlockDuration: 2
-  coinSpawnInterval: 0.3
-  minCoinsInRow: 5
-  maxCoinsInRow: 10
-  fragmentInterval: 3
-  totalStarsToSpawn: 3
-  minStarSpawnDelay: 8
-  maxStarSpawnDelay: 15
+  minPatternDelay: 2
+  maxPatternDelay: 4
+  debugPatternSpawn: 1
 --- !u!1 &1942131223
 GameObject:
   m_ObjectHideFlags: 0

@@ -1,15 +1,10 @@
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// Improved spawner dengan logic rapi seperti Subway Surf:
-/// - Planet spawn random di 3 lanes
-/// - Coin spawn continuous di lane yang TIDAK blocked
-/// - Star spawn 3x random di gameplay
-/// - Fragment spawn sesuai level requirements
-/// 
-/// LETAKKAN DI: Assets/Script/Movement/ImprovedGameplaySpawner.cs
+/// Advanced spawner dengan pattern system seperti Subway Surfers
+/// REPLACE file: Assets/Script/Movement/GameplaySpawner.cs
 /// </summary>
 public class ImprovedGameplaySpawner : MonoBehaviour
 {
@@ -21,30 +16,29 @@ public class ImprovedGameplaySpawner : MonoBehaviour
     [Header("Prefabs")]
     public GameObject[] planetPrefabs;
     public GameObject coinPrefab;
-    public GameObject starPrefab; // BARU: Prefab bintang (optional, bisa null)
+    public GameObject starPrefab;
     public FragmentPrefabRegistry fragmentRegistry;
+
+    [Header("Coin Pattern System")]
+    [Tooltip("List of coin spawn patterns (akan dipilih random dengan weight)")]
+    public List<CoinSpawnPattern> coinPatterns = new List<CoinSpawnPattern>();
+
+    [Tooltip("Override: Paksa gunakan pattern tertentu untuk testing")]
+    public CoinSpawnPattern forcedPattern;
 
     [Header("World Settings")]
     public float spawnY = 10f;
     public float scrollSpeed = 3f;
-    public float coinSpacing = 0.8f;
+    public float coinVerticalSpacing = 0.8f;
 
     [Header("Planet Spawn")]
     public float planetInterval = 2.5f;
     public float planetBlockDuration = 2f;
 
-    [Header("Coin Spawn")]
-    public float coinSpawnInterval = 0.3f;
-    public int minCoinsInRow = 5;
-    public int maxCoinsInRow = 10;
-
-    [Header("Fragment Spawn")]
-    public float fragmentInterval = 3f;
-
-    [Header("Star Spawn (Optional - bisa dikosongi)")]
-    public int totalStarsToSpawn = 3;
-    public float minStarSpawnDelay = 8f;
-    public float maxStarSpawnDelay = 15f;
+    [Header("Pattern Spawn Settings")]
+    public float minPatternDelay = 2f;
+    public float maxPatternDelay = 4f;
+    public bool debugPatternSpawn = true;
 
     // Runtime
     int laneCount = 3;
@@ -53,9 +47,12 @@ public class ImprovedGameplaySpawner : MonoBehaviour
     FragmentRequirement[] levelRequirements;
     int starsSpawned = 0;
 
+    // Pattern spawn tracking
+    List<CoinSpawnPattern> weightedPatterns = new List<CoinSpawnPattern>();
+    int totalPatternWeight = 0;
+
     void Awake()
     {
-        // Auto-find LanesManager
         if (lanesManager == null)
         {
 #if UNITY_2023_1_OR_NEWER
@@ -77,6 +74,9 @@ public class ImprovedGameplaySpawner : MonoBehaviour
 
         if (spawnParent == null)
             spawnParent = transform;
+
+        // Build weighted pattern list
+        BuildWeightedPatternList();
     }
 
     void Start()
@@ -84,18 +84,7 @@ public class ImprovedGameplaySpawner : MonoBehaviour
         LoadLevelRequirements();
 
         StartCoroutine(PlanetSpawnLoop());
-        StartCoroutine(CoinSpawnLoop());
-        StartCoroutine(FragmentSpawnLoop());
-
-        // HANYA spawn star jika prefab assigned
-        if (starPrefab != null)
-        {
-            StartCoroutine(StarSpawnLoop());
-        }
-        else
-        {
-            Debug.LogWarning("[ImprovedSpawner] Star prefab not assigned. Stars will not spawn.");
-        }
+        StartCoroutine(PatternSpawnLoop()); // NEW: Pattern-based spawn
     }
 
     void LoadLevelRequirements()
@@ -114,7 +103,211 @@ public class ImprovedGameplaySpawner : MonoBehaviour
     }
 
     // ========================================
-    // PLANET SPAWNER
+    // PATTERN SYSTEM
+    // ========================================
+
+    void BuildWeightedPatternList()
+    {
+        weightedPatterns.Clear();
+        totalPatternWeight = 0;
+
+        if (coinPatterns == null || coinPatterns.Count == 0)
+        {
+            Debug.LogWarning("[ImprovedSpawner] No coin patterns assigned! Pattern spawn will not work.");
+            return;
+        }
+
+        foreach (var pattern in coinPatterns)
+        {
+            if (pattern == null) continue;
+            totalPatternWeight += pattern.selectionWeight;
+        }
+
+        Debug.Log($"[ImprovedSpawner] Loaded {coinPatterns.Count} patterns. Total weight: {totalPatternWeight}");
+    }
+
+    CoinSpawnPattern SelectRandomPattern()
+    {
+        // Test mode: force specific pattern
+        if (forcedPattern != null)
+        {
+            return forcedPattern;
+        }
+
+        if (coinPatterns == null || coinPatterns.Count == 0)
+        {
+            Debug.LogWarning("[ImprovedSpawner] No patterns available!");
+            return null;
+        }
+
+        // Weighted random selection
+        int randomWeight = Random.Range(0, totalPatternWeight);
+        int cumulative = 0;
+
+        foreach (var pattern in coinPatterns)
+        {
+            if (pattern == null) continue;
+
+            cumulative += pattern.selectionWeight;
+            if (randomWeight < cumulative)
+            {
+                return pattern;
+            }
+        }
+
+        // Fallback
+        return coinPatterns[0];
+    }
+
+    IEnumerator PatternSpawnLoop()
+    {
+        yield return new WaitForSeconds(3f); // Initial delay
+
+        while (true)
+        {
+            // Select random lane
+            List<int> availableLanes = GetAvailableLanes();
+            if (availableLanes.Count == 0)
+            {
+                yield return new WaitForSeconds(0.5f);
+                continue;
+            }
+
+            int baseLane = availableLanes[Random.Range(0, availableLanes.Count)];
+
+            // Select pattern
+            CoinSpawnPattern pattern = SelectRandomPattern();
+            if (pattern == null)
+            {
+                yield return new WaitForSeconds(1f);
+                continue;
+            }
+
+            // Spawn pattern
+            yield return StartCoroutine(SpawnPattern(pattern, baseLane));
+
+            // Wait before next pattern
+            float delay = pattern.GetRandomDelay();
+            if (debugPatternSpawn)
+            {
+                Debug.Log($"[PatternSpawner] Spawned pattern '{pattern.patternName}' at lane {baseLane}. Next in {delay:F1}s");
+            }
+
+            yield return new WaitForSeconds(delay);
+        }
+    }
+
+    IEnumerator SpawnPattern(CoinSpawnPattern pattern, int baseLane)
+    {
+        if (pattern == null || pattern.spawnPoints == null || pattern.spawnPoints.Count == 0)
+        {
+            yield break;
+        }
+
+        float currentY = spawnY;
+
+        for (int i = 0; i < pattern.spawnPoints.Count; i++)
+        {
+            Vector2 point = pattern.spawnPoints[i];
+
+            // Calculate lane (baseLane + offset)
+            int targetLane = Mathf.Clamp(baseLane + Mathf.RoundToInt(point.x), 0, laneCount - 1);
+
+            // Calculate Y position
+            currentY -= point.y * coinVerticalSpacing;
+
+            // Decide what to spawn (coin/fragment/star based on %)
+            GameObject prefabToSpawn = DecideSpawnItem(pattern);
+
+            if (prefabToSpawn != null)
+            {
+                Vector3 pos = new Vector3(GetLaneWorldX(targetLane), currentY, 0f);
+                GameObject spawned = Instantiate(prefabToSpawn, pos, Quaternion.identity, spawnParent);
+
+                // Setup mover
+                var mover = spawned.GetComponent<PlanetMover>();
+                if (mover != null) mover.SetSpeed(scrollSpeed);
+
+                // Setup collectible component if needed
+                SetupCollectibleComponent(spawned, prefabToSpawn);
+            }
+
+            // Small delay between items in pattern (untuk effect visual)
+            yield return new WaitForSeconds(0.05f);
+        }
+    }
+
+    GameObject DecideSpawnItem(CoinSpawnPattern pattern)
+    {
+        float roll = Random.Range(0f, 100f);
+
+        // Check star chance first (lebih rare)
+        if (roll < pattern.starSubstituteChance)
+        {
+            if (starPrefab != null)
+            {
+                return starPrefab;
+            }
+        }
+
+        // Check fragment chance
+        roll -= pattern.starSubstituteChance;
+        if (roll < pattern.fragmentSubstituteChance)
+        {
+            // Spawn fragment yang dibutuhkan level
+            GameObject fragmentPrefab = GetRequiredFragmentPrefab();
+            if (fragmentPrefab != null)
+            {
+                return fragmentPrefab;
+            }
+        }
+
+        // Default: spawn coin
+        return coinPrefab;
+    }
+
+    GameObject GetRequiredFragmentPrefab()
+    {
+        if (levelRequirements == null || levelRequirements.Length == 0)
+            return null;
+
+        if (fragmentRegistry == null)
+            return null;
+
+        // Pilih random requirement
+        var req = levelRequirements[Random.Range(0, levelRequirements.Length)];
+        return fragmentRegistry.GetPrefab(req.type, req.colorVariant);
+    }
+
+    void SetupCollectibleComponent(GameObject spawned, GameObject originalPrefab)
+    {
+        // Fragment collectible
+        if (originalPrefab != coinPrefab && originalPrefab != starPrefab)
+        {
+            var collectible = spawned.GetComponent<FragmentCollectible>();
+            if (collectible == null)
+            {
+                collectible = spawned.AddComponent<FragmentCollectible>();
+            }
+
+            // Find requirement for this fragment
+            if (levelRequirements != null)
+            {
+                foreach (var req in levelRequirements)
+                {
+                    var prefab = fragmentRegistry?.GetPrefab(req.type, req.colorVariant);
+                    if (prefab != null && prefab.name == originalPrefab.name)
+                    {
+                        collectible.Initialize(req.type, req.colorVariant);
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    // ========================================
+    // PLANET SPAWNER (unchanged)
     // ========================================
     IEnumerator PlanetSpawnLoop()
     {
@@ -147,157 +340,6 @@ public class ImprovedGameplaySpawner : MonoBehaviour
     }
 
     // ========================================
-    // COIN SPAWNER
-    // ========================================
-    IEnumerator CoinSpawnLoop()
-    {
-        yield return new WaitForSeconds(3f);
-
-        while (true)
-        {
-            yield return new WaitForSeconds(coinSpawnInterval);
-
-            List<int> availableLanes = GetAvailableLanes();
-            if (availableLanes.Count == 0) continue;
-
-            int coinCount = Random.Range(minCoinsInRow, maxCoinsInRow + 1);
-            int laneToUse = availableLanes[Random.Range(0, availableLanes.Count)];
-
-            StartCoroutine(SpawnCoinRow(laneToUse, coinCount));
-        }
-    }
-
-    IEnumerator SpawnCoinRow(int lane, int count)
-    {
-        if (coinPrefab == null) yield break;
-
-        float spawnDelay = coinSpacing / scrollSpeed;
-
-        for (int i = 0; i < count; i++)
-        {
-            Vector3 pos = new Vector3(GetLaneWorldX(lane), spawnY, 0f);
-            GameObject coin = Instantiate(coinPrefab, pos, Quaternion.identity, spawnParent);
-
-            var mover = coin.GetComponent<PlanetMover>();
-            if (mover != null) mover.SetSpeed(scrollSpeed);
-
-            yield return new WaitForSeconds(spawnDelay);
-        }
-    }
-
-    // ========================================
-    // FRAGMENT SPAWNER
-    // ========================================
-    IEnumerator FragmentSpawnLoop()
-    {
-        yield return new WaitForSeconds(4f);
-
-        while (true)
-        {
-            yield return new WaitForSeconds(fragmentInterval);
-
-            List<int> availableLanes = GetAvailableLanes();
-            if (availableLanes.Count > 0)
-            {
-                int lane = availableLanes[Random.Range(0, availableLanes.Count)];
-                SpawnFragment(lane);
-            }
-        }
-    }
-
-    void SpawnFragment(int lane)
-    {
-        if (levelRequirements == null || levelRequirements.Length == 0) return;
-        if (fragmentRegistry == null) return;
-
-        var req = levelRequirements[Random.Range(0, levelRequirements.Length)];
-        GameObject prefab = fragmentRegistry.GetPrefab(req.type, req.colorVariant);
-
-        if (prefab == null) return;
-
-        Vector3 pos = new Vector3(GetLaneWorldX(lane), spawnY, 0f);
-        GameObject frag = Instantiate(prefab, pos, Quaternion.identity, spawnParent);
-
-        var collectible = frag.GetComponent<FragmentCollectible>();
-        if (collectible == null)
-            collectible = frag.AddComponent<FragmentCollectible>();
-        collectible.Initialize(req.type, req.colorVariant);
-
-        var mover = frag.GetComponent<PlanetMover>();
-        if (mover != null) mover.SetSpeed(scrollSpeed);
-    }
-
-    // ========================================
-    // STAR SPAWNER (SAFE - tidak error jika GameplayStarManager belum ada)
-    // ========================================
-    IEnumerator StarSpawnLoop()
-    {
-        yield return new WaitForSeconds(5f);
-
-        // SAFE: Try notify GameplayStarManager (tidak error jika tidak ada)
-        try
-        {
-#if UNITY_2023_1_OR_NEWER
-            var starManager = FindFirstObjectByType<GameplayStarManager>();
-#else
-            var starManager = FindObjectOfType<GameplayStarManager>();
-#endif
-
-            if (starManager != null)
-            {
-                starManager.totalStarsInLevel = totalStarsToSpawn;
-                Debug.Log("[ImprovedSpawner] GameplayStarManager found, set total stars");
-            }
-            else
-            {
-                Debug.LogWarning("[ImprovedSpawner] GameplayStarManager not found. Stars will spawn but not tracked.");
-            }
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogWarning($"[ImprovedSpawner] Could not access GameplayStarManager: {e.Message}");
-        }
-
-        // Spawn stars
-        for (int i = 0; i < totalStarsToSpawn; i++)
-        {
-            float delay = Random.Range(minStarSpawnDelay, maxStarSpawnDelay);
-            yield return new WaitForSeconds(delay);
-
-            SpawnStar();
-        }
-
-        Debug.Log($"[ImprovedSpawner] Finished spawning {totalStarsToSpawn} stars");
-    }
-
-    void SpawnStar()
-    {
-        if (starPrefab == null)
-        {
-            Debug.LogWarning("[ImprovedSpawner] Star prefab not assigned!");
-            return;
-        }
-
-        List<int> availableLanes = GetAvailableLanes();
-        if (availableLanes.Count == 0)
-        {
-            Debug.LogWarning("[ImprovedSpawner] No available lanes for star!");
-            return;
-        }
-
-        int lane = availableLanes[Random.Range(0, availableLanes.Count)];
-        Vector3 pos = new Vector3(GetLaneWorldX(lane), spawnY, 0f);
-
-        GameObject star = Instantiate(starPrefab, pos, Quaternion.identity, spawnParent);
-
-        var mover = star.GetComponent<PlanetMover>();
-        if (mover != null) mover.SetSpeed(scrollSpeed);
-
-        starsSpawned++;
-        Debug.Log($"[ImprovedSpawner] Star {starsSpawned}/{totalStarsToSpawn} spawned at lane {lane}");
-    }
-
-    // ========================================
     // HELPER METHODS
     // ========================================
     List<int> GetAvailableLanes()
@@ -317,5 +359,20 @@ public class ImprovedGameplaySpawner : MonoBehaviour
         float centerX = lanesManager != null ? lanesManager.transform.position.x : 0f;
         float offset = lanesManager != null ? lanesManager.laneOffset : laneOffset;
         return centerX + (laneIndex - center) * offset;
+    }
+
+    // ========================================
+    // DEBUG
+    // ========================================
+    [ContextMenu("Test Spawn Pattern")]
+    void TestSpawnPattern()
+    {
+        if (!Application.isPlaying)
+        {
+            Debug.LogWarning("Must be in Play Mode to test spawn!");
+            return;
+        }
+
+        StartCoroutine(SpawnPattern(SelectRandomPattern(), 1));
     }
 }

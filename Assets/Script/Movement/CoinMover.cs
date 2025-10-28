@@ -1,16 +1,50 @@
-// CoinMover.cs
 using UnityEngine;
 
+/// <summary>
+/// Moves coin downward with synced speed from DifficultyManager
+/// REPLACE: Assets/Script/Movement/CoinMover.cs
+/// </summary>
 public class CoinMover : MonoBehaviour
 {
-    public float speed = 3f;
+    [Header("Settings")]
     public float destroyY = -12f;
+    public bool useDynamicSpeed = true;
 
-    public void SetSpeed(float s) { speed = s; }
+    [Header("Runtime (Debug)")]
+    [SerializeField] private float currentSpeed = 3f;
 
     void Update()
     {
-        transform.position += Vector3.down * speed * Time.deltaTime;
-        if (transform.position.y < destroyY) Destroy(gameObject);
+        // Update speed from DifficultyManager if available
+        if (useDynamicSpeed && DifficultyManager.Instance != null)
+        {
+            currentSpeed = DifficultyManager.Instance.CurrentSpeed;
+        }
+
+        // Move down
+        transform.position += Vector3.down * currentSpeed * Time.deltaTime;
+
+        // Destroy when off screen
+        if (transform.position.y < destroyY)
+        {
+            Destroy(gameObject);
+        }
+    }
+
+    /// <summary>
+    /// Set initial speed (called by spawner)
+    /// </summary>
+    public void SetSpeed(float speed)
+    {
+        currentSpeed = speed;
+    }
+
+    /// <summary>
+    /// Disable dynamic speed (use fixed speed)
+    /// </summary>
+    public void SetFixedSpeed(float speed)
+    {
+        currentSpeed = speed;
+        useDynamicSpeed = false;
     }
 }

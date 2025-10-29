@@ -3,7 +3,7 @@ using UnityEngine;
 
 /// <summary>
 /// Manager untuk handle semua booster active effects di gameplay
-/// Letakkan di: Assets/Script/Booster/BoosterManager.cs
+/// UPDATED: Fix SpeedBoost (obstacles speed up) & Magnet (pull all collectibles)
 /// </summary>
 public class BoosterManager : MonoBehaviour
 {
@@ -18,21 +18,21 @@ public class BoosterManager : MonoBehaviour
 
     [Header("Booster Settings")]
     [Tooltip("Duration untuk Coin2x (menit)")]
-    public float coin2xDuration = 10f; // 10 menit dalam detik akan di convert
+    public float coin2xDuration = 10f;
 
     [Tooltip("Duration untuk Magnet (detik)")]
     public float magnetDuration = 30f;
 
-    [Tooltip("Jarak magnet menarik coin")]
+    [Tooltip("Jarak magnet menarik collectibles")]
     public float magnetRange = 5f;
 
-    [Tooltip("Speed magnet menarik coin")]
+    [Tooltip("Speed magnet menarik collectibles")]
     public float magnetPullSpeed = 10f;
 
     [Tooltip("Duration untuk SpeedBoost (detik)")]
     public float speedBoostDuration = 10f;
 
-    [Tooltip("Speed multiplier untuk SpeedBoost")]
+    [Tooltip("Speed multiplier untuk obstacles (planet/coin/fragment/star)")]
     public float speedBoostMultiplier = 2f;
 
     [Tooltip("Duration untuk TimeFreeze (detik)")]
@@ -45,13 +45,11 @@ public class BoosterManager : MonoBehaviour
     private float timeFreezeTimer = 0f;
 
     // References
-    private PlayerLaneMovement playerMovement;
-    private FixedGameplaySpawner gameplaySpawner;
+    private Transform playerTransform;
     private PlayerHealth playerHealth;
 
     // Shield state
-    private int shieldHitCount = 0;
-    private bool shieldUsedThisLife = false;
+    private GameObject shieldVisual;
 
     void Awake()
     {
@@ -61,21 +59,19 @@ public class BoosterManager : MonoBehaviour
             return;
         }
         Instance = this;
-        DontDestroyOnLoad(gameObject);
     }
 
     void Start()
     {
         // Find references
-        playerMovement = FindFirstObjectByType<PlayerLaneMovement>();
-        gameplaySpawner = FindFirstObjectByType<FixedGameplaySpawner>();
+        var playerMovement = FindFirstObjectByType<PlayerLaneMovement>();
+        if (playerMovement != null)
+            playerTransform = playerMovement.transform;
+
         playerHealth = FindFirstObjectByType<PlayerHealth>();
 
-        if (playerMovement == null)
-            Debug.LogWarning("[BoosterManager] PlayerLaneMovement not found!");
-
-        if (gameplaySpawner == null)
-            Debug.LogWarning("[BoosterManager] FixedGameplaySpawner not found!");
+        if (playerTransform == null)
+            Debug.LogWarning("[BoosterManager] Player not found!");
 
         if (playerHealth == null)
             Debug.LogWarning("[BoosterManager] PlayerHealth not found!");
@@ -89,16 +85,16 @@ public class BoosterManager : MonoBehaviour
 
     void Update()
     {
-        // Update timers untuk booster yang aktif
+        // Update timers
         UpdateCoin2xTimer();
         UpdateMagnetTimer();
         UpdateSpeedBoostTimer();
         UpdateTimeFreezeTimer();
 
-        // Magnet logic - pull coins
-        if (magnetActive)
+        // Magnet logic - pull collectibles
+        if (magnetActive && playerTransform != null)
         {
-            PullNearbyCoins();
+            PullNearbyCollectibles();
         }
     }
 
@@ -112,7 +108,6 @@ public class BoosterManager : MonoBehaviour
             return false;
         }
 
-        // Check inventory
         if (BoosterInventory.Instance == null || !BoosterInventory.Instance.UseBooster("coin2x"))
         {
             Debug.Log("[BoosterManager] No Coin2x booster available!");
@@ -120,7 +115,7 @@ public class BoosterManager : MonoBehaviour
         }
 
         coin2xActive = true;
-        coin2xTimer = coin2xDuration * 60f; // convert menit ke detik
+        coin2xTimer = coin2xDuration * 60f;
 
         Debug.Log($"[BoosterManager] Coin2x activated for {coin2xDuration} minutes!");
         return true;
@@ -131,7 +126,6 @@ public class BoosterManager : MonoBehaviour
         if (!coin2xActive) return;
 
         coin2xTimer -= Time.deltaTime;
-
         if (coin2xTimer <= 0f)
         {
             coin2xActive = false;
@@ -140,16 +134,9 @@ public class BoosterManager : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Call ini dari CoinPickup untuk apply multiplier
-    /// </summary>
     public long ApplyCoinMultiplier(long baseAmount)
     {
-        if (coin2xActive)
-        {
-            return baseAmount * 2;
-        }
-        return baseAmount;
+        return coin2xActive ? baseAmount * 2 : baseAmount;
     }
 
     #endregion
@@ -164,7 +151,6 @@ public class BoosterManager : MonoBehaviour
             return false;
         }
 
-        // Check inventory
         if (BoosterInventory.Instance == null || !BoosterInventory.Instance.UseBooster("magnet"))
         {
             Debug.Log("[BoosterManager] No Magnet booster available!");
@@ -183,7 +169,6 @@ public class BoosterManager : MonoBehaviour
         if (!magnetActive) return;
 
         magnetTimer -= Time.deltaTime;
-
         if (magnetTimer <= 0f)
         {
             magnetActive = false;
@@ -192,20 +177,35 @@ public class BoosterManager : MonoBehaviour
         }
     }
 
-    void PullNearbyCoins()
+    void PullNearbyCollectibles()
     {
-        if (playerMovement == null) return;
+        if (playerTransform == null) return;
 
-        Vector3 playerPos = playerMovement.transform.position;
+        Vector3 playerPos = playerTransform.position;
 
-        // Find all coins dalam range
+        // Find all collectibles dalam range (Coin, Fragment, Star)
         Collider2D[] hits = Physics2D.OverlapCircleAll(playerPos, magnetRange);
 
         foreach (var hit in hits)
         {
+            // Check if it's a collectible
+            bool isCollectible = false;
+
+            // Coin
             if (hit.CompareTag("Coin") || hit.GetComponent<CoinPickup>() != null)
+                isCollectible = true;
+
+            // Fragment
+            if (hit.GetComponent<FragmentCollectible>() != null)
+                isCollectible = true;
+
+            // Star
+            if (hit.GetComponent<StarCollectible>() != null)
+                isCollectible = true;
+
+            if (isCollectible)
             {
-                // Pull coin ke arah player
+                // Pull ke arah player
                 Vector3 direction = (playerPos - hit.transform.position).normalized;
                 hit.transform.position += direction * magnetPullSpeed * Time.deltaTime;
             }
@@ -224,7 +224,6 @@ public class BoosterManager : MonoBehaviour
             return false;
         }
 
-        // Check inventory
         if (BoosterInventory.Instance == null || !BoosterInventory.Instance.UseBooster("shield"))
         {
             Debug.Log("[BoosterManager] No Shield booster available!");
@@ -232,37 +231,54 @@ public class BoosterManager : MonoBehaviour
         }
 
         shieldActive = true;
-        shieldHitCount = 0;
-        shieldUsedThisLife = false;
+        ShowShieldVisual();
 
         Debug.Log("[BoosterManager] Shield activated!");
         return true;
     }
 
-    /// <summary>
-    /// Call ini dari PlanetDamage sebelum apply damage ke player
-    /// Return true jika shield absorb hit, false jika damage harus apply
-    /// </summary>
+    void ShowShieldVisual()
+    {
+        if (playerTransform == null) return;
+
+        // Find existing shield visual di player
+        shieldVisual = playerTransform.Find("Shield")?.gameObject;
+
+        if (shieldVisual != null)
+        {
+            shieldVisual.SetActive(true);
+        }
+        else
+        {
+            Debug.LogWarning("[BoosterManager] Shield visual not found! Add 'Shield' GameObject as child of player.");
+        }
+    }
+
+    void HideShieldVisual()
+    {
+        if (shieldVisual != null)
+        {
+            shieldVisual.SetActive(false);
+        }
+    }
+
     public bool TryAbsorbHit()
     {
         if (!shieldActive) return false;
 
-        shieldHitCount++;
-        Debug.Log($"[BoosterManager] Shield absorbed hit {shieldHitCount}");
+        Debug.Log("[BoosterManager] Shield absorbed hit!");
 
-        // Shield hancur setelah 1 hit (sesuai spec: shield melindungi dari 1x hit planet)
+        // Shield hancur setelah 1 hit
         shieldActive = false;
-        shieldUsedThisLife = true;
+        HideShieldVisual();
 
-        return true; // Hit absorbed
+        return true; // Hit absorbed, planet hancur
     }
 
     void OnPlayerDied()
     {
-        // Reset shield saat player mati
         shieldActive = false;
-        shieldHitCount = 0;
-        shieldUsedThisLife = false;
+        HideShieldVisual();
         Debug.Log("[BoosterManager] Shield reset (player died)");
     }
 
@@ -278,7 +294,6 @@ public class BoosterManager : MonoBehaviour
             return false;
         }
 
-        // Check inventory
         if (BoosterInventory.Instance == null || !BoosterInventory.Instance.UseBooster("speedboost"))
         {
             Debug.Log("[BoosterManager] No SpeedBoost available!");
@@ -287,12 +302,6 @@ public class BoosterManager : MonoBehaviour
 
         speedBoostActive = true;
         speedBoostTimer = speedBoostDuration;
-
-        // Apply speed boost ke player
-        if (playerMovement != null)
-        {
-            playerMovement.moveSpeed *= speedBoostMultiplier;
-        }
 
         Debug.Log($"[BoosterManager] SpeedBoost activated for {speedBoostDuration} seconds!");
         return true;
@@ -303,24 +312,25 @@ public class BoosterManager : MonoBehaviour
         if (!speedBoostActive) return;
 
         speedBoostTimer -= Time.deltaTime;
-
         if (speedBoostTimer <= 0f)
         {
             speedBoostActive = false;
             speedBoostTimer = 0f;
-
-            // Reset speed ke normal
-            if (playerMovement != null)
-            {
-                playerMovement.moveSpeed /= speedBoostMultiplier;
-            }
-
             Debug.Log("[BoosterManager] SpeedBoost expired!");
         }
     }
 
     /// <summary>
-    /// Call ini dari PlanetDamage untuk check apakah planet harus hancur
+    /// Get speed multiplier for obstacles (planet/coin/fragment/star)
+    /// Call dari mover scripts untuk apply speed boost
+    /// </summary>
+    public float GetSpeedMultiplier()
+    {
+        return speedBoostActive ? speedBoostMultiplier : 1f;
+    }
+
+    /// <summary>
+    /// Check apakah planet harus hancur saat kena player (speedboost mode)
     /// </summary>
     public bool ShouldDestroyPlanet()
     {
@@ -339,7 +349,6 @@ public class BoosterManager : MonoBehaviour
             return false;
         }
 
-        // Check inventory
         if (BoosterInventory.Instance == null || !BoosterInventory.Instance.UseBooster("timefreeze"))
         {
             Debug.Log("[BoosterManager] No TimeFreeze available!");
@@ -348,12 +357,6 @@ public class BoosterManager : MonoBehaviour
 
         timeFreezeActive = true;
         timeFreezeTimer = timeFreezeDuration;
-
-        // Stop spawner
-        if (gameplaySpawner != null)
-        {
-            StopAllCoroutines(); // Stop spawner coroutines jika perlu
-        }
 
         Debug.Log($"[BoosterManager] TimeFreeze activated for {timeFreezeDuration} seconds!");
         return true;
@@ -364,21 +367,14 @@ public class BoosterManager : MonoBehaviour
         if (!timeFreezeActive) return;
 
         timeFreezeTimer -= Time.deltaTime;
-
         if (timeFreezeTimer <= 0f)
         {
             timeFreezeActive = false;
             timeFreezeTimer = 0f;
-
-            // Resume spawner jika perlu
-
             Debug.Log("[BoosterManager] TimeFreeze expired!");
         }
     }
 
-    /// <summary>
-    /// Call ini dari spawner untuk check apakah spawn dibolehkan
-    /// </summary>
     public bool CanSpawn()
     {
         return !timeFreezeActive;
@@ -388,31 +384,53 @@ public class BoosterManager : MonoBehaviour
 
     #region UTILITY
 
-    /// <summary>
-    /// Get remaining time untuk booster (untuk UI display)
-    /// </summary>
     public float GetRemainingTime(string boosterType)
     {
         switch (boosterType.ToLower())
         {
             case "coin2x": return coin2xActive ? coin2xTimer : 0f;
             case "magnet": return magnetActive ? magnetTimer : 0f;
-            case "speedboost": return speedBoostActive ? speedBoostTimer : 0f;
+            case "speedboost":
+            case "rocketboost": return speedBoostActive ? speedBoostTimer : 0f;
             case "timefreeze": return timeFreezeActive ? timeFreezeTimer : 0f;
             default: return 0f;
         }
     }
 
+    public float GetMaxDuration(string boosterType)
+    {
+        switch (boosterType.ToLower())
+        {
+            case "coin2x": return coin2xDuration * 60f;
+            case "magnet": return magnetDuration;
+            case "speedboost":
+            case "rocketboost": return speedBoostDuration;
+            case "timefreeze": return timeFreezeDuration;
+            default: return 0f;
+        }
+    }
+
+    public bool IsActive(string boosterType)
+    {
+        switch (boosterType.ToLower())
+        {
+            case "coin2x": return coin2xActive;
+            case "magnet": return magnetActive;
+            case "shield": return shieldActive;
+            case "speedboost":
+            case "rocketboost": return speedBoostActive;
+            case "timefreeze": return timeFreezeActive;
+            default: return false;
+        }
+    }
+
     void OnDrawGizmos()
     {
-        if (!Application.isPlaying || !magnetActive) return;
+        if (!Application.isPlaying || !magnetActive || playerTransform == null) return;
 
-        if (playerMovement != null)
-        {
-            // Draw magnet range
-            Gizmos.color = Color.cyan;
-            Gizmos.DrawWireSphere(playerMovement.transform.position, magnetRange);
-        }
+        // Draw magnet range
+        Gizmos.color = Color.cyan;
+        Gizmos.DrawWireSphere(playerTransform.position, magnetRange);
     }
 
     #endregion

@@ -4,8 +4,7 @@ using TMPro;
 
 /// <summary>
 /// Script untuk button booster di gameplay
-/// Attach ke setiap booster box di BoosterItem hierarchy
-/// Letakkan di: Assets/Script/Booster/BoosterButton.cs
+/// UPDATED: Spawn cooldown timer saat booster activated
 /// </summary>
 [RequireComponent(typeof(Button))]
 public class BoosterButton : MonoBehaviour
@@ -15,9 +14,9 @@ public class BoosterButton : MonoBehaviour
     public string boosterId = "coin2x";
 
     [Header("UI References")]
-    public TMP_Text countText; // Text untuk jumlah booster tersisa
-    public Image iconImage; // Optional: icon booster
-    public GameObject cooldownOverlay; // Optional: overlay untuk show cooldown
+    public TMP_Text countText;
+    public Image iconImage;
+    public GameObject cooldownOverlay; // Optional: overlay untuk disable button saat cooldown
 
     private Button button;
     private CanvasGroup canvasGroup;
@@ -60,11 +59,17 @@ public class BoosterButton : MonoBehaviour
 
     void Update()
     {
-        // Update UI every frame (untuk cooldown timer display)
+        // Check if booster is currently active (untuk disable button)
         if (cooldownOverlay != null && BoosterManager.Instance != null)
         {
-            float remaining = BoosterManager.Instance.GetRemainingTime(boosterId);
-            cooldownOverlay.SetActive(remaining > 0f);
+            bool isActive = BoosterManager.Instance.IsActive(boosterId);
+            cooldownOverlay.SetActive(isActive);
+
+            // Disable button while active (kecuali coin2x yang bisa stack)
+            if (button != null && boosterId.ToLower() != "coin2x")
+            {
+                button.interactable = !isActive && GetBoosterCount() > 0;
+            }
         }
     }
 
@@ -124,6 +129,14 @@ public class BoosterButton : MonoBehaviour
         if (success)
         {
             Debug.Log($"[BoosterButton] Activated {boosterId}!");
+
+            // Spawn cooldown timer UI
+            if (BoosterCooldownManager.Instance != null)
+            {
+                float duration = BoosterManager.Instance.GetMaxDuration(boosterId);
+                BoosterCooldownManager.Instance.ShowCooldown(boosterId, duration);
+            }
+
             RefreshUI();
         }
     }
@@ -140,7 +153,7 @@ public class BoosterButton : MonoBehaviour
     {
         if (BoosterInventory.Instance == null) return;
 
-        int count = BoosterInventory.Instance.GetBoosterCount(boosterId);
+        int count = GetBoosterCount();
 
         // Update count text
         if (countText != null)
@@ -151,7 +164,8 @@ public class BoosterButton : MonoBehaviour
         // Update button interactable
         if (button != null)
         {
-            button.interactable = count > 0;
+            bool isActive = BoosterManager.Instance != null && BoosterManager.Instance.IsActive(boosterId);
+            button.interactable = count > 0 && !isActive;
         }
 
         // Update visual (alpha)
@@ -159,6 +173,12 @@ public class BoosterButton : MonoBehaviour
         {
             canvasGroup.alpha = count > 0 ? 1f : 0.5f;
         }
+    }
+
+    int GetBoosterCount()
+    {
+        if (BoosterInventory.Instance == null) return 0;
+        return BoosterInventory.Instance.GetBoosterCount(boosterId);
     }
 
     [ContextMenu("Test Activate")]

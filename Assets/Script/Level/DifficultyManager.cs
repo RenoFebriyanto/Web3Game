@@ -1,10 +1,8 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 /// <summary>
-/// Manages gameplay difficulty progression (speed increase over time)
-/// Singleton pattern - accessible from anywhere via DifficultyManager.Instance
-/// 
-/// Letakkan di: Assets/Script/Movement/DifficultyManager.cs
+/// Manages gameplay difficulty (speed increase over time).
+/// Opsional - jika tidak ada, akan gunakan base speed.
 /// </summary>
 public class DifficultyManager : MonoBehaviour
 {
@@ -24,12 +22,11 @@ public class DifficultyManager : MonoBehaviour
     [Tooltip("How speed increases over time (0-1)")]
     public AnimationCurve speedCurve = AnimationCurve.EaseInOut(0, 0, 1, 1);
 
-    [Header("Runtime Info (Debug)")]
+    [Header("Runtime Info (Read-Only)")]
     [SerializeField] private float currentSpeed;
     [SerializeField] private float elapsedTime;
     [SerializeField] private float speedProgress; // 0-1
 
-    // Public getter for current speed
     public float CurrentSpeed => currentSpeed;
     public float SpeedProgress => speedProgress;
 
@@ -37,17 +34,20 @@ public class DifficultyManager : MonoBehaviour
     {
         if (Instance != null && Instance != this)
         {
+            Debug.LogWarning("[DifficultyManager] Duplicate instance found! Destroying...");
             Destroy(gameObject);
             return;
         }
+
         Instance = this;
+        DontDestroyOnLoad(gameObject);
+
+        Debug.Log($"[DifficultyManager] Initialized: base={baseSpeed}, max={maxSpeed}, ramp={speedRampDuration}s");
     }
 
     void Start()
     {
-        currentSpeed = baseSpeed;
-        elapsedTime = 0f;
-        speedProgress = 0f;
+        ResetDifficulty();
     }
 
     void Update()
@@ -63,60 +63,55 @@ public class DifficultyManager : MonoBehaviour
         currentSpeed = Mathf.Lerp(baseSpeed, maxSpeed, curveValue);
     }
 
-    /// <summary>
-    /// Reset difficulty to starting values (call on level restart)
-    /// </summary>
     public void ResetDifficulty()
     {
         elapsedTime = 0f;
         speedProgress = 0f;
         currentSpeed = baseSpeed;
-        Debug.Log("[DifficultyManager] Reset to base speed: " + baseSpeed);
+        Debug.Log($"[DifficultyManager] Reset to base speed: {baseSpeed}");
     }
 
-    /// <summary>
-    /// Manually set speed (for testing or special events)
-    /// </summary>
     public void SetSpeed(float speed)
     {
         currentSpeed = Mathf.Clamp(speed, baseSpeed, maxSpeed);
     }
 
-    /// <summary>
-    /// Get speed multiplier (useful for spawners)
-    /// </summary>
     public float GetSpeedMultiplier()
     {
         return currentSpeed / baseSpeed;
     }
 
     // ========================================
-    // CONTEXT MENU DEBUG
+    // STATIC AUTO-CREATE METHOD
     // ========================================
 
-    [ContextMenu("Reset Difficulty")]
-    void Debug_Reset()
+    public static DifficultyManager EnsureExists()
     {
-        ResetDifficulty();
+        if (Instance != null) return Instance;
+
+        Debug.LogWarning("[DifficultyManager] Instance not found! Creating default DifficultyManager...");
+
+        GameObject go = new GameObject("DifficultyManager");
+        var manager = go.AddComponent<DifficultyManager>();
+
+        // Set default values
+        manager.baseSpeed = 3f;
+        manager.maxSpeed = 8f;
+        manager.speedRampDuration = 180f;
+
+        Debug.Log("[DifficultyManager] ✓ Auto-created with default settings");
+
+        return manager;
     }
+
+    [ContextMenu("Reset Difficulty")]
+    void Context_Reset() => ResetDifficulty();
 
     [ContextMenu("Set Max Speed")]
-    void Debug_SetMaxSpeed()
-    {
-        SetSpeed(maxSpeed);
-        Debug.Log($"Speed set to MAX: {maxSpeed}");
-    }
-
-    [ContextMenu("Set Base Speed")]
-    void Debug_SetBaseSpeed()
-    {
-        SetSpeed(baseSpeed);
-        Debug.Log($"Speed set to BASE: {baseSpeed}");
-    }
+    void Context_SetMaxSpeed() => SetSpeed(maxSpeed);
 
     void OnValidate()
     {
-        // Ensure valid values in inspector
         baseSpeed = Mathf.Max(0.5f, baseSpeed);
         maxSpeed = Mathf.Max(baseSpeed, maxSpeed);
         speedRampDuration = Mathf.Max(10f, speedRampDuration);

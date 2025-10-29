@@ -46,7 +46,7 @@ public class FixedGameplaySpawner : MonoBehaviour
     [Header("⚙️ SPAWN SETTINGS")]
     public Transform spawnParent;
     public float spawnY = 10f;
-    public float coinVerticalSpacing = 0.8f;
+    public float coinVerticalSpacing = 2;
     public float planetInterval = 2.5f;
     public float itemSpawnDelay = 0.15f;
     public float minSpawnDistance = 2f;
@@ -105,7 +105,7 @@ public class FixedGameplaySpawner : MonoBehaviour
         for (int i = 0; i < laneCount; i++)
         {
             laneBlockedUntil[i] = 0f;
-            lastSpawnYInLane[i] = spawnY + 10f;
+            lastSpawnYInLane[i] = spawnY - minSpawnDistance - 5f;
         }
 
         if (spawnParent == null)
@@ -270,19 +270,36 @@ public class FixedGameplaySpawner : MonoBehaviour
         Log("Planet spawn loop started");
         yield return new WaitForSeconds(2f);
 
+        // ✅ TAMBAHKAN LOOP COUNTER:
+        int loopCount = 0;
         while (true)
         {
+            loopCount++;
             yield return new WaitForSeconds(planetInterval);
 
             List<int> availableLanes = GetAvailableLanes();
+
+            // ✅ TAMBAHKAN DEBUG LOG:
+            if (loopCount <= 3 || loopCount % 10 == 0)
+            {
+                Log($"PlanetLoop #{loopCount}: Available lanes: {availableLanes.Count}/{laneCount}", false);
+            }
+
             if (availableLanes.Count > 0)
             {
                 int lane = availableLanes[Random.Range(0, availableLanes.Count)];
-
                 if (IsLaneClearForSpawn(lane))
                 {
                     SpawnPlanet(lane);
                 }
+                else if (loopCount <= 5)
+                {
+                    Log($"PlanetLoop #{loopCount}: Lane {lane} not clear for spawn", false);
+                }
+            }
+            else if (loopCount <= 5)
+            {
+                Log($"PlanetLoop #{loopCount}: No available lanes (all blocked)", false);
             }
         }
     }
@@ -344,8 +361,25 @@ public class FixedGameplaySpawner : MonoBehaviour
                 continue;
             }
 
+            // ✅ CODE BARU (BLOCK SEMUA LANES YANG DIPAKAI):
+            // Hitung lanes yang akan dipakai pattern ini
+            HashSet<int> usedLanes = new HashSet<int>();
+            usedLanes.Add(baseLane);
+
+            foreach (var point in pattern.spawnPoints)
+            {
+                int targetLane = Mathf.Clamp(baseLane + Mathf.RoundToInt(point.x), 0, laneCount - 1);
+                usedLanes.Add(targetLane);
+            }
+
+            // Block SEMUA lanes yang dipakai
             float patternDuration = CalculatePatternDuration(pattern);
-            laneBlockedUntil[baseLane] = Time.time + patternDuration;
+            float blockUntil = Time.time + patternDuration + 1f;
+
+            foreach (int lane in usedLanes)
+            {
+                laneBlockedUntil[lane] = blockUntil;
+            }
 
             yield return StartCoroutine(SpawnPattern(pattern, baseLane));
 
@@ -367,15 +401,25 @@ public class FixedGameplaySpawner : MonoBehaviour
         float currentY = spawnY;
         float currentSpeed = GetCurrentSpeed();
 
+        float minY = -2f;
+
         Log($"Spawning pattern '{pattern.patternName}' with {pattern.spawnPoints.Count} items in lane {baseLane}", false);
 
         for (int i = 0; i < pattern.spawnPoints.Count; i++)
         {
-            Vector2 point = pattern.spawnPoints[i];
+            
 
+            Vector2 point = pattern.spawnPoints[i];
             int targetLane = Mathf.Clamp(baseLane + Mathf.RoundToInt(point.x), 0, laneCount - 1);
             currentY -= point.y * coinVerticalSpacing;
 
+            if (currentY < minY)
+            {
+                Log($"Pattern stopped at item {i}/{pattern.spawnPoints.Count} - Y too low ({currentY:F1})", false);
+                break;  // Stop spawning jika terlalu rendah
+            }
+
+            // langsung spawn tanpa check Y
             GameObject prefabToSpawn = DecideSpawnItem(pattern);
 
             if (prefabToSpawn != null)
@@ -523,8 +567,20 @@ public class FixedGameplaySpawner : MonoBehaviour
 
     bool IsLaneClearForSpawn(int lane)
     {
+        // ✅ CODE BARU (WITH SAFETY CHECK + DEBUG):
+        if (lane < 0 || lane >= laneCount) return false;
+
         float lastY = lastSpawnYInLane[lane];
-        return (spawnY - lastY) >= minSpawnDistance;
+        float distance = spawnY - lastY;
+        bool isClear = distance >= minSpawnDistance;
+
+        // Debug log untuk troubleshooting
+        if (!isClear && enableDebugLogs)
+        {
+            Log($"Lane {lane} NOT clear: distance={distance:F1}, need={minSpawnDistance}, lastY={lastY:F1}, spawnY={spawnY:F1}", false);
+        }
+
+        return isClear;
     }
 
     float GetLaneWorldX(int laneIndex)
@@ -559,9 +615,21 @@ public class FixedGameplaySpawner : MonoBehaviour
     {
         if (pattern == null || pattern.spawnPoints == null)
             return 1f;
+        // ✅ CODE BARU (HITUNG SPAWN + CLEAR TIME):
+        float spawnTime = pattern.spawnPoints.Count * itemSpawnDelay;
 
-        float totalDelay = pattern.spawnPoints.Count * itemSpawnDelay;
-        return totalDelay + 0.5f;
+        // Hitung total vertical distance
+        float totalVerticalDistance = 0f;
+        foreach (var point in pattern.spawnPoints)
+        {
+            totalVerticalDistance += point.y * coinVerticalSpacing;
+        }
+
+        // Waktu untuk clear dari spawn point
+        float currentSpeed = GetCurrentSpeed();
+        float clearTime = totalVerticalDistance / currentSpeed;
+
+        return spawnTime + clearTime + 1f;
     }
 
     // ========================================
@@ -681,5 +749,23 @@ public class FixedGameplaySpawner : MonoBehaviour
         GameObject planet = Instantiate(planetPrefabs[0], pos, Quaternion.identity, spawnParent);
         SetupMover(planet, GetCurrentSpeed());
         Log("✓ Test planet spawned at center");
+    }
+
+    [ContextMenu("🔄 Debug: Reset Lanes (Unblock All)")]
+    void Debug_ResetLanes()
+    {
+        if (!Application.isPlaying)
+        {
+            Debug.LogWarning("Must be in Play Mode!");
+            return;
+        }
+
+        for (int i = 0; i < laneCount; i++)
+        {
+            laneBlockedUntil[i] = 0f;
+            lastSpawnYInLane[i] = spawnY - minSpawnDistance - 5f;
+        }
+
+        Debug.Log("[DEBUG] All lanes reset and unblocked!");
     }
 }

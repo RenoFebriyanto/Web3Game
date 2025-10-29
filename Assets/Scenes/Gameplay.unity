@@ -3526,6 +3526,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   laneCount: 3
   laneOffset: 2.5
+  showDebugGizmos: 1
 --- !u!4 &1029806404
 Transform:
   m_ObjectHideFlags: 0
@@ -7008,8 +7009,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   lanesManager: {fileID: 1029806403}
-  spawnParent: {fileID: 1830271083}
-  levelDatabase: {fileID: 11400000, guid: 9d11e391857961a4d8bbf24bbab802f9, type: 2}
   difficultyManager: {fileID: 1255187841}
   planetPrefabs:
   - {fileID: 4859472085069953281, guid: 10e4436b3fbad98428c49d4f85793e83, type: 3}
@@ -7028,6 +7027,7 @@ MonoBehaviour:
   coinPrefab: {fileID: 8204258798340378091, guid: b7fb0df391297bb47a410c9ef6a278ad, type: 3}
   starPrefab: {fileID: 1303944969474664622, guid: 0dfa52ff868e79540a42b1dcd501025a, type: 3}
   fragmentRegistry: {fileID: 11400000, guid: 325c8016bc09c84428f9f8b2db5675db, type: 2}
+  levelDatabase: {fileID: 11400000, guid: 9d11e391857961a4d8bbf24bbab802f9, type: 2}
   coinPatterns:
   - {fileID: 11400000, guid: 1831c1d834a196147af62b15ce790cf6, type: 2}
   - {fileID: 11400000, guid: 8c76eb4b5ad35884494a0518692ecc6f, type: 2}
@@ -7035,16 +7035,19 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 1e94ac0a843bee44eb284182971c7fce, type: 2}
   - {fileID: 11400000, guid: a01c7687e54602a4dad32b499f323bdf, type: 2}
   - {fileID: 11400000, guid: c17b34447aebd1c4cb20617bc9c81b0f, type: 2}
-  forcedPattern: {fileID: 0}
-  spawnY: 10
-  coinVerticalSpacing: 0.8
+  spawnParent: {fileID: 1830271083}
+  spawnY: 20
+  coinVerticalSpacing: 2
   planetInterval: 2
-  planetBlockDuration: 2
-  minPatternDelay: 2
-  maxPatternDelay: 4
-  debugPatternSpawn: 1
   itemSpawnDelay: 0.15
-  minSpawnDistance: 2
+  minSpawnDistance: 3
+  enableDebugLogs: 1
+  showGizmos: 1
+  isInitialized: 1
+  totalSpawned: 0
+  coinSpawned: 0
+  planetSpawned: 0
+  fragmentSpawned: 0
 --- !u!1 &1942131223
 GameObject:
   m_ObjectHideFlags: 0

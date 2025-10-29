@@ -82,6 +82,7 @@ MonoBehaviour:
   boosterId: 
   maxDuration: 0
   remainingTime: 0
+  isShield: 0
 --- !u!1 &1330988413398635946
 GameObject:
   m_ObjectHideFlags: 0
@@ -167,7 +168,7 @@ MonoBehaviour:
   m_MinValue: 0
   m_MaxValue: 100
   m_WholeNumbers: 0
-  m_Value: 66.4
+  m_Value: 0
   m_OnValueChanged:
     m_PersistentCalls:
       m_Calls: []

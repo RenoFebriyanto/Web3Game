@@ -1,10 +1,10 @@
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
 /// <summary>
 /// Script untuk button booster di gameplay
-/// UPDATED: Spawn cooldown timer saat booster activated
+/// FIXED: Auto-refresh button state setiap frame untuk detect booster expire
 /// </summary>
 [RequireComponent(typeof(Button))]
 public class BoosterButton : MonoBehaviour
@@ -16,10 +16,14 @@ public class BoosterButton : MonoBehaviour
     [Header("UI References")]
     public TMP_Text countText;
     public Image iconImage;
-    public GameObject cooldownOverlay; // Optional: overlay untuk disable button saat cooldown
+    public GameObject cooldownOverlay;
 
     private Button button;
     private CanvasGroup canvasGroup;
+
+    // НОВОЕ: Track previous state untuk detect changes
+    private bool wasActive = false;
+    private int lastCount = -1;
 
     void Awake()
     {
@@ -42,7 +46,6 @@ public class BoosterButton : MonoBehaviour
     {
         RefreshUI();
 
-        // Subscribe ke inventory changes
         if (BoosterInventory.Instance != null)
         {
             BoosterInventory.Instance.OnBoosterChanged += OnInventoryChanged;
@@ -59,17 +62,23 @@ public class BoosterButton : MonoBehaviour
 
     void Update()
     {
-        // Check if booster is currently active (untuk disable button)
-        if (cooldownOverlay != null && BoosterManager.Instance != null)
-        {
-            bool isActive = BoosterManager.Instance.IsActive(boosterId);
-            cooldownOverlay.SetActive(isActive);
+        if (BoosterManager.Instance == null) return;
 
-            // Disable button while active (kecuali coin2x yang bisa stack)
-            if (button != null && boosterId.ToLower() != "coin2x")
-            {
-                button.interactable = !isActive && GetBoosterCount() > 0;
-            }
+        bool isActive = BoosterManager.Instance.IsActive(boosterId);
+        int currentCount = GetBoosterCount();
+
+        // Update cooldown overlay
+        if (cooldownOverlay != null)
+        {
+            cooldownOverlay.SetActive(isActive);
+        }
+
+        // ✅ FIX: Auto-refresh button ketika state berubah
+        if (isActive != wasActive || currentCount != lastCount)
+        {
+            RefreshButtonState(isActive, currentCount);
+            wasActive = isActive;
+            lastCount = currentCount;
         }
     }
 
@@ -87,7 +96,6 @@ public class BoosterButton : MonoBehaviour
             return;
         }
 
-        // Check count
         int count = BoosterInventory.Instance.GetBoosterCount(boosterId);
         if (count <= 0)
         {
@@ -95,7 +103,6 @@ public class BoosterButton : MonoBehaviour
             return;
         }
 
-        // Activate booster
         bool success = false;
 
         switch (boosterId.ToLower())
@@ -128,9 +135,8 @@ public class BoosterButton : MonoBehaviour
 
         if (success)
         {
-            Debug.Log($"[BoosterButton] Activated {boosterId}!");
+            Debug.Log($"[BoosterButton] ✓ Activated {boosterId}!");
 
-            // Spawn cooldown timer UI
             if (BoosterCooldownManager.Instance != null)
             {
                 float duration = BoosterManager.Instance.GetMaxDuration(boosterId);
@@ -138,6 +144,10 @@ public class BoosterButton : MonoBehaviour
             }
 
             RefreshUI();
+        }
+        else
+        {
+            Debug.LogWarning($"[BoosterButton] Failed to activate {boosterId}");
         }
     }
 
@@ -154,24 +164,37 @@ public class BoosterButton : MonoBehaviour
         if (BoosterInventory.Instance == null) return;
 
         int count = GetBoosterCount();
+        bool isActive = BoosterManager.Instance != null && BoosterManager.Instance.IsActive(boosterId);
 
-        // Update count text
         if (countText != null)
         {
             countText.text = count.ToString();
         }
 
-        // Update button interactable
-        if (button != null)
-        {
-            bool isActive = BoosterManager.Instance != null && BoosterManager.Instance.IsActive(boosterId);
-            button.interactable = count > 0 && !isActive;
-        }
+        RefreshButtonState(isActive, count);
 
-        // Update visual (alpha)
         if (canvasGroup != null)
         {
             canvasGroup.alpha = count > 0 ? 1f : 0.5f;
+        }
+    }
+
+    /// <summary>
+    /// ✅ NEW: Dedicated method untuk update button interactable state
+    /// </summary>
+    void RefreshButtonState(bool isActive, int count)
+    {
+        if (button == null) return;
+
+        // Coin2x bisa stack (multiple activation), booster lain tidak
+        bool canActivate = boosterId.ToLower() == "coin2x" ? count > 0 : (count > 0 && !isActive);
+
+        button.interactable = canActivate;
+
+        // Debug ketika button state berubah
+        if (button.interactable != wasActive)
+        {
+            Debug.Log($"[BoosterButton] {boosterId} button.interactable = {button.interactable} (count={count}, active={isActive})");
         }
     }
 

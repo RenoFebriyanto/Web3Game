@@ -7367,6 +7367,8 @@ MonoBehaviour:
   planetInterval: 2
   itemSpawnDelay: 0.15
   minSpawnDistance: 3
+  maxStarsPerLevel: 3
+  lastStarProgressThreshold: 0.7
   enableDebugLogs: 1
   showGizmos: 1
   isInitialized: 1
@@ -7374,6 +7376,7 @@ MonoBehaviour:
   coinSpawned: 0
   planetSpawned: 0
   fragmentSpawned: 0
+  starSpawned: 0
 --- !u!1 &1942131223
 GameObject:
   m_ObjectHideFlags: 0
@@ -8495,10 +8498,6 @@ PrefabInstance:
     - target: {fileID: 306846905927594683, guid: 907b466010d521b41b2d4e63512dffb0, type: 3}
       propertyPath: m_Name
       value: CooldownItem
-      objectReference: {fileID: 0}
-    - target: {fileID: 7549513057323071809, guid: 907b466010d521b41b2d4e63512dffb0, type: 3}
-      propertyPath: m_AnchorMax.x
-      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 7549513057323071809, guid: 907b466010d521b41b2d4e63512dffb0, type: 3}
       propertyPath: m_AnchorMax.y

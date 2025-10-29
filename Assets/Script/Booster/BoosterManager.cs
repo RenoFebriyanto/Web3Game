@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using UnityEngine;
 
 /// <summary>
@@ -393,6 +393,7 @@ public class BoosterManager : MonoBehaviour
             case "speedboost":
             case "rocketboost": return speedBoostActive ? speedBoostTimer : 0f;
             case "timefreeze": return timeFreezeActive ? timeFreezeTimer : 0f;
+            case "shield": return shieldActive ? 1f : 0f; // ✅ FIXED: Return 1 if active (for slider full display)
             default: return 0f;
         }
     }
@@ -406,6 +407,7 @@ public class BoosterManager : MonoBehaviour
             case "speedboost":
             case "rocketboost": return speedBoostDuration;
             case "timefreeze": return timeFreezeDuration;
+            case "shield": return 1f; // ✅ FIXED: Return 1 (shield has no timer, always full slider)
             default: return 0f;
         }
     }

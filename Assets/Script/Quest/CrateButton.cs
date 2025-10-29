@@ -21,7 +21,7 @@ public class CrateButton : MonoBehaviour, IPointerClickHandler
         // Auto-find QuestChestController jika belum di-assign
         if (chestController == null)
         {
-            chestController = FindObjectOfType<QuestChestController>();
+            chestController = FindFirstObjectByType<QuestChestController>();
         }
 
         if (chestController == null)

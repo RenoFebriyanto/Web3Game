@@ -21,7 +21,7 @@ public class DevQuestTester : MonoBehaviour
         // Auto-find QuestChestController jika tidak di-assign
         if (crateController == null)
         {
-            crateController = FindObjectOfType<QuestChestController>();
+            crateController = crateController = FindFirstObjectByType<QuestChestController>();
         }
     }
 
@@ -75,28 +75,28 @@ public class DevQuestTester : MonoBehaviour
         if (crateController == null)
         {
             Debug.LogWarning("[DevQuestTester] crateController is not assigned! Trying to find...");
-            crateController = FindObjectOfType<QuestChestController>();
-        }
+            crateController = crateController = FindFirstObjectByType<QuestChestController>();
 
-        if (crateController != null)
-        {
-            // Call context menu method via reflection (karena ContextMenu tidak bisa dipanggil langsung)
-            var method = crateController.GetType().GetMethod("DebugResetCrates",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-
-            if (method != null)
+            if (crateController != null)
             {
-                method.Invoke(crateController, null);
-                Debug.Log("[DevQuestTester] Crate progress reset!");
+                // Call context menu method via reflection (karena ContextMenu tidak bisa dipanggil langsung)
+                var method = crateController.GetType().GetMethod("DebugResetCrates",
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+                if (method != null)
+                {
+                    method.Invoke(crateController, null);
+                    Debug.Log("[DevQuestTester] Crate progress reset!");
+                }
+                else
+                {
+                    Debug.LogError("[DevQuestTester] DebugResetCrates method not found!");
+                }
             }
             else
             {
-                Debug.LogError("[DevQuestTester] DebugResetCrates method not found!");
+                Debug.LogError("[DevQuestTester] QuestChestController not found in scene!");
             }
-        }
-        else
-        {
-            Debug.LogError("[DevQuestTester] QuestChestController not found in scene!");
         }
     }
 
@@ -108,7 +108,7 @@ public class DevQuestTester : MonoBehaviour
         if (crateController == null)
         {
             Debug.LogWarning("[DevQuestTester] crateController is not assigned! Trying to find...");
-            crateController = FindObjectOfType<QuestChestController>();
+            crateController = crateController = FindFirstObjectByType<QuestChestController>();
         }
 
         if (crateController != null)
@@ -141,7 +141,7 @@ public class DevQuestTester : MonoBehaviour
         if (crateController == null)
         {
             Debug.LogWarning("[DevQuestTester] crateController is not assigned! Trying to find...");
-            crateController = FindObjectOfType<QuestChestController>();
+            crateController = crateController = FindFirstObjectByType<QuestChestController>();
         }
 
         if (crateController != null)

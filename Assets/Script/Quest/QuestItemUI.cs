@@ -199,7 +199,8 @@ public class QuestItemUI : MonoBehaviour
     /// </summary>
     void NotifyLevelDisplay()
     {
-        var levelDisplay = FindObjectOfType<DailyQuestDisplayLevel>();
+        var levelDisplay = FindFirstObjectByType<DailyQuestDisplayLevel>();
+
         if (levelDisplay != null)
         {
             levelDisplay.OnQuestClaimed();

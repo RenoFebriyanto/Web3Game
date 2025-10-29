@@ -270,16 +270,30 @@ public class FixedGameplaySpawner : MonoBehaviour
         Log("Planet spawn loop started");
         yield return new WaitForSeconds(2f);
 
-        // ✅ TAMBAHKAN LOOP COUNTER:
         int loopCount = 0;
         while (true)
         {
             loopCount++;
             yield return new WaitForSeconds(planetInterval);
 
+            // Check TimeFreeze
+            if (BoosterManager.Instance != null && !BoosterManager.Instance.CanSpawn())
+            {
+                continue; // Skip spawn
+            }
+
+            // ✅ CHECK TIMEFREEZE
+            if (BoosterManager.Instance != null && !BoosterManager.Instance.CanSpawn())
+            {
+                if (loopCount % 10 == 0)
+                {
+                    Log($"PlanetLoop #{loopCount}: Skipping spawn (TimeFreeze active)", false);
+                }
+                continue; // Skip spawn saat TimeFreeze aktif
+            }
+
             List<int> availableLanes = GetAvailableLanes();
 
-            // ✅ TAMBAHKAN DEBUG LOG:
             if (loopCount <= 3 || loopCount % 10 == 0)
             {
                 Log($"PlanetLoop #{loopCount}: Available lanes: {availableLanes.Count}/{laneCount}", false);
@@ -339,6 +353,13 @@ public class FixedGameplaySpawner : MonoBehaviour
 
         while (true)
         {
+            // ✅ CHECK TIMEFREEZE
+            if (BoosterManager.Instance != null && !BoosterManager.Instance.CanSpawn())
+            {
+                yield return new WaitForSeconds(0.5f);
+                continue; // Skip spawn saat TimeFreeze aktif
+            }
+
             List<int> availableLanes = GetAvailableLanes();
             if (availableLanes.Count == 0)
             {
@@ -361,7 +382,6 @@ public class FixedGameplaySpawner : MonoBehaviour
                 continue;
             }
 
-            // ✅ CODE BARU (BLOCK SEMUA LANES YANG DIPAKAI):
             // Hitung lanes yang akan dipakai pattern ini
             HashSet<int> usedLanes = new HashSet<int>();
             usedLanes.Add(baseLane);

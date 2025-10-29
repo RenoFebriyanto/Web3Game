@@ -208,7 +208,7 @@ public class QuestManager : MonoBehaviour
         UpdateUIForQuest(questId);
 
         // optional: inform chest controller to advance progress etc.
-        var chest = FindObjectOfType<QuestChestController>();
+        var chest = FindFirstObjectByType<QuestChestController>();
         chest?.OnQuestClaimed(qdata);
     }
     #endregion

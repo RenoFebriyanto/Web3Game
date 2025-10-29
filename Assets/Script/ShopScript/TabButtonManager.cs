@@ -20,7 +20,7 @@ public class TabButtonManager : MonoBehaviour
 
     void Start()
     {
-        shopManager = FindObjectOfType<ShopManager>();
+        shopManager = FindFirstObjectByType<ShopManager>();
 
         if (shopManager == null)
         {

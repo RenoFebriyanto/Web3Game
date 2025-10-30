@@ -9,19 +9,23 @@ public class PopupClaimQuest : MonoBehaviour
     public static PopupClaimQuest Instance { get; private set; }
 
     [Header("UI Components")]
-    public GameObject rootPopup;             // Root PopupClaimQuest
-    public GameObject blurEffect;            // BlurEffect (Image background)
+    public GameObject rootPopup;
+    public GameObject blurEffect;
 
     [Header("ContainerItems (ASSIGN INI!)")]
     [Tooltip("ContainerItems dengan HorizontalLayoutGroup - tempat spawn BorderIcon")]
-    public Transform containerItems;         // ContainerItems dari hierarchy
+    public Transform containerItems;
+
+    [Header("BorderIcon Template (OPTIONAL - auto-find if null)")]
+    [Tooltip("Template BorderIcon - jika null akan auto-find dari child pertama ContainerItems")]
+    public GameObject borderIconTemplate;
 
     [Header("Text Displays")]
-    public TMP_Text collectText;             // CollectText - title "Memperoleh Hadiah"
-    public TMP_Text deskItem;                // DeskItem - description
+    public TMP_Text collectText;
+    public TMP_Text deskItem;
 
     [Header("Buttons")]
-    public Button confirmButton;             // ConfirmBTN
+    public Button confirmButton;
 
     [Header("Icon sizing options")]
     [Tooltip("Jika true -> panggil SetNativeSize() saat mengganti sprite. Default: false (tidak mengubah ukuran).")]
@@ -30,7 +34,6 @@ public class PopupClaimQuest : MonoBehaviour
     // Runtime
     Action onConfirm;
     List<GameObject> spawnedBorderIcons = new List<GameObject>();
-    GameObject borderIconTemplate;           // Template BorderIcon dari hierarchy
 
     void Awake()
     {
@@ -48,7 +51,7 @@ public class PopupClaimQuest : MonoBehaviour
             confirmButton.onClick.AddListener(OnConfirmButton);
         }
 
-        // Setup blur effect click to close (optional)
+        // Setup blur effect click to close
         if (blurEffect != null)
         {
             var btn = blurEffect.GetComponent<Button>();
@@ -61,18 +64,34 @@ public class PopupClaimQuest : MonoBehaviour
             btn.onClick.AddListener(Close);
         }
 
-        // Get BorderIcon template dari ContainerItems
-        if (containerItems != null && containerItems.childCount > 0)
+        // PERBAIKAN: Auto-find BorderIcon template jika tidak di-assign
+        if (borderIconTemplate == null && containerItems != null)
         {
-            borderIconTemplate = containerItems.GetChild(0).gameObject;
-            Debug.Log($"[PopupClaimQuest] Found BorderIcon template: {borderIconTemplate.name}");
+            // Coba cari child pertama
+            if (containerItems.childCount > 0)
+            {
+                borderIconTemplate = containerItems.GetChild(0).gameObject;
+                Debug.Log($"[PopupClaimQuest] Auto-found BorderIcon template: {borderIconTemplate.name}");
+            }
+            else
+            {
+                Debug.LogWarning("[PopupClaimQuest] ContainerItems has no children! Please add a BorderIcon template.");
+            }
+        }
+
+        // Validate setup
+        if (containerItems == null)
+        {
+            Debug.LogError("[PopupClaimQuest] ❌ ContainerItems NOT ASSIGNED! Assign it in Inspector!");
+        }
+        else if (borderIconTemplate == null)
+        {
+            Debug.LogError("[PopupClaimQuest] ❌ BorderIcon template not found! Add a child to ContainerItems or assign manually.");
         }
         else
         {
-            Debug.LogError("[PopupClaimQuest] ContainerItems not assigned or has no children! Need BorderIcon template.");
+            Debug.Log($"[PopupClaimQuest] ✓ Initialized successfully. Template: {borderIconTemplate.name}");
         }
-
-        Debug.Log($"[PopupClaimQuest] Initialized. ContainerItems assigned: {(containerItems != null)}");
     }
 
     // ========================================
@@ -81,6 +100,19 @@ public class PopupClaimQuest : MonoBehaviour
 
     public void Open(Sprite iconSprite, string amountText, string titleText, Action confirmCallback)
     {
+        // Validation
+        if (containerItems == null)
+        {
+            Debug.LogError("[PopupClaimQuest] Cannot open popup: ContainerItems is null!");
+            return;
+        }
+
+        if (borderIconTemplate == null)
+        {
+            Debug.LogError("[PopupClaimQuest] Cannot open popup: borderIconTemplate is null!");
+            return;
+        }
+
         onConfirm = confirmCallback;
 
         if (rootPopup != null) rootPopup.SetActive(true);
@@ -100,16 +132,16 @@ public class PopupClaimQuest : MonoBehaviour
         if (collectText != null) collectText.text = "Memperoleh Hadiah";
         if (deskItem != null) deskItem.text = title ?? "";
 
-        // Show ONLY 1 BorderIcon (template) dengan data
+        // Show template dengan data
         if (borderIconTemplate != null)
         {
             borderIconTemplate.SetActive(true);
             UpdateBorderIconContent(borderIconTemplate, icon, amount);
-            Debug.Log($"[PopupClaimQuest] Displayed single item using template");
+            Debug.Log($"[PopupClaimQuest] ✓ Displayed single item using template");
         }
         else
         {
-            Debug.LogError("[PopupClaimQuest] borderIconTemplate is null!");
+            Debug.LogError("[PopupClaimQuest] ❌ borderIconTemplate is null! Cannot display item.");
         }
     }
 
@@ -119,6 +151,19 @@ public class PopupClaimQuest : MonoBehaviour
 
     public void OpenBundle(List<BundleItemData> items, string title, string description, Action confirmCallback)
     {
+        // Validation
+        if (containerItems == null)
+        {
+            Debug.LogError("[PopupClaimQuest] Cannot open bundle popup: ContainerItems is null!");
+            return;
+        }
+
+        if (borderIconTemplate == null)
+        {
+            Debug.LogError("[PopupClaimQuest] Cannot open bundle popup: borderIconTemplate is null!");
+            return;
+        }
+
         onConfirm = confirmCallback;
 
         if (rootPopup != null) rootPopup.SetActive(true);
@@ -218,7 +263,7 @@ public class PopupClaimQuest : MonoBehaviour
             foreach (var img in images)
             {
                 if (img == null) continue;
-                if (img.gameObject == borderIcon) continue; // skip root border image
+                if (img.gameObject == borderIcon) continue;
                 iconImage = img;
                 break;
             }
@@ -229,33 +274,29 @@ public class PopupClaimQuest : MonoBehaviour
             var rootImg = borderIcon.GetComponent<Image>();
             if (rootImg != null)
             {
-                Debug.LogWarning($"[PopupClaimQuest] No child Image found for {borderIcon.name}, falling back to root Image (this may replace border).");
+                Debug.LogWarning($"[PopupClaimQuest] No child Image found for {borderIcon.name}, falling back to root Image.");
                 iconImage = rootImg;
             }
         }
 
         if (iconImage != null)
         {
-            // Preserve rect size if requested (default behavior: preserve)
             RectTransform rt = iconImage.GetComponent<RectTransform>();
             Vector2 prevSize = rt != null ? rt.sizeDelta : Vector2.zero;
 
-            // Assign sprite
             if (icon != null)
             {
                 iconImage.sprite = icon;
                 iconImage.enabled = true;
-                // DO NOT call SetNativeSize() by default (keeps inspector/template size)
                 if (useNativeSize)
                 {
                     iconImage.SetNativeSize();
                 }
                 else
                 {
-                    // reapply previous size to be safe
                     if (rt != null) rt.sizeDelta = prevSize;
                 }
-                Debug.Log($"[PopupClaimQuest] ✓ Set icon '{icon.name}' on {iconImage.gameObject.name} (preserveSize={(!useNativeSize)})");
+                Debug.Log($"[PopupClaimQuest] ✓ Set icon '{icon.name}' on {iconImage.gameObject.name}");
             }
             else
             {
@@ -346,6 +387,71 @@ public class PopupClaimQuest : MonoBehaviour
 
         if (rootPopup != null) rootPopup.SetActive(false);
         if (blurEffect != null) blurEffect.SetActive(false);
+    }
+
+    // ========================================
+    // DEBUG HELPERS
+    // ========================================
+
+    [ContextMenu("Debug: Validate Setup")]
+    void DebugValidateSetup()
+    {
+        Debug.Log("===== PopupClaimQuest Setup Validation =====");
+        Debug.Log($"containerItems: {(containerItems != null ? containerItems.name : "NULL")}");
+        Debug.Log($"borderIconTemplate: {(borderIconTemplate != null ? borderIconTemplate.name : "NULL")}");
+        Debug.Log($"rootPopup: {(rootPopup != null ? rootPopup.name : "NULL")}");
+        Debug.Log($"confirmButton: {(confirmButton != null ? confirmButton.name : "NULL")}");
+
+        if (containerItems != null)
+        {
+            Debug.Log($"ContainerItems children count: {containerItems.childCount}");
+            for (int i = 0; i < containerItems.childCount; i++)
+            {
+                Debug.Log($"  Child {i}: {containerItems.GetChild(i).name}");
+            }
+        }
+    }
+    [ContextMenu("Debug: Check BorderIcon Structure")]
+    void DebugBorderIconStructure()
+    {
+        Debug.Log("===== BorderIcon Structure Check =====");
+
+        if (containerItems == null)
+        {
+            Debug.LogError("ContainerItems is NULL!");
+            return;
+        }
+        Debug.Log($"✓ ContainerItems: {containerItems.name}");
+
+        if (borderIconTemplate == null)
+        {
+            Debug.LogError("BorderIconTemplate is NULL!");
+            return;
+        }
+        Debug.Log($"✓ BorderIconTemplate: {borderIconTemplate.name}");
+
+        // Check children
+        Debug.Log($"BorderIcon children count: {borderIconTemplate.transform.childCount}");
+        for (int i = 0; i < borderIconTemplate.transform.childCount; i++)
+        {
+            var child = borderIconTemplate.transform.GetChild(i);
+            var img = child.GetComponent<Image>();
+            var txt = child.GetComponent<TMP_Text>();
+
+            Debug.Log($"  Child {i}: {child.name}");
+            Debug.Log($"    - Has Image: {(img != null)}");
+            Debug.Log($"    - Has TMP_Text: {(txt != null)}");
+
+            // Check grandchildren
+            if (child.childCount > 0)
+            {
+                for (int j = 0; j < child.childCount; j++)
+                {
+                    var grandchild = child.GetChild(j);
+                    Debug.Log($"      Grandchild {j}: {grandchild.name}");
+                }
+            }
+        }
     }
 }
 

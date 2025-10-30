@@ -248,6 +248,18 @@ public class ShopManager : MonoBehaviour
         string amountText = GetItemAmountText(data);
         string title = $"Purchase {data.displayName}";
 
+        // DEBUG: Check icon
+        if (icon == null)
+        {
+            Debug.LogError($"[ShopManager] ✗✗✗ ICON IS NULL for {data.itemId}! ✗✗✗");
+            Debug.LogError($"[ShopManager] iconPreview: {(data.iconPreview != null ? data.iconPreview.name : "NULL")}");
+            Debug.LogError($"[ShopManager] iconGrid: {(data.iconGrid != null ? data.iconGrid.name : "NULL")}");
+        }
+        else
+        {
+            Debug.Log($"[ShopManager] ✓ Sending icon to popup: {icon.name}");
+        }
+
         PopupClaimQuest.Instance.Open(
             icon,
             amountText,

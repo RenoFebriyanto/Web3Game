@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
@@ -169,6 +169,17 @@ public class QuestItemUI : MonoBehaviour
         // Get reward display name
         string rewardDisplayName = GetRewardDisplayName();
         Sprite rewardIcon = GetRewardIcon();
+
+        // DEBUG: Check icon before sending to popup
+        if (rewardIcon == null)
+        {
+            Debug.LogError($"[QuestItemUI] ✗✗✗ ICON IS NULL for quest {questData.questId}! ✗✗✗");
+            Debug.LogError($"[QuestItemUI] questData.icon: {(questData.icon != null ? questData.icon.name : "NULL")}");
+        }
+        else
+        {
+            Debug.Log($"[QuestItemUI] ✓ Sending icon to popup: {rewardIcon.name}");
+        }
 
         // Open popup dengan nama item yang benar
         if (PopupClaimQuest.Instance != null)

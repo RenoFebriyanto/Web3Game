@@ -205,6 +205,15 @@ public class ShopManager : MonoBehaviour
         return true;
     }
 
+
+
+
+
+
+
+    // REPLACE bagian ShowPurchasePopup() sampai GetBundleItemIcon() di ShopManager.cs
+    // dengan kode ini:
+
     /// <summary>
     /// Show PopupClaimQuest dengan items yang dibeli
     /// </summary>
@@ -217,7 +226,7 @@ public class ShopManager : MonoBehaviour
             return;
         }
 
-        // Check if bundle or single item
+        // Check if bundle or single
         if (data.IsBundle)
         {
             // BUNDLE: Show multiple items
@@ -254,9 +263,15 @@ public class ShopManager : MonoBehaviour
     {
         List<BundleItemData> bundleItems = new List<BundleItemData>();
 
+        Debug.Log($"[ShopManager] ShowBundlePurchasePopup: {data.bundleItems.Count} items in bundle");
+
         foreach (var item in data.bundleItems)
         {
-            if (item == null) continue;
+            if (item == null)
+            {
+                Debug.LogWarning("[ShopManager] Bundle item is null, skipping");
+                continue;
+            }
 
             Sprite itemIcon = GetBundleItemIcon(item);
 
@@ -267,11 +282,18 @@ public class ShopManager : MonoBehaviour
                     item.amount,
                     item.displayName
                 ));
+                Debug.Log($"[ShopManager] Added bundle item: {item.displayName}, icon={itemIcon.name}, amount={item.amount}");
+            }
+            else
+            {
+                Debug.LogWarning($"[ShopManager] No icon found for bundle item: {item.itemId}");
             }
         }
 
         string title = $"Purchase {data.displayName}";
-        string description = $"You will receive {bundleItems.Count} items";
+        string description = data.description ?? $"You will receive {bundleItems.Count} items";
+
+        Debug.Log($"[ShopManager] Opening bundle popup with {bundleItems.Count} items");
 
         PopupClaimQuest.Instance.OpenBundle(
             bundleItems,
@@ -310,7 +332,11 @@ public class ShopManager : MonoBehaviour
     Sprite GetBundleItemIcon(BundleItem item)
     {
         // Jika item punya icon sendiri, pakai itu
-        if (item.icon != null) return item.icon;
+        if (item.icon != null)
+        {
+            Debug.Log($"[ShopManager] Using assigned icon for {item.itemId}: {item.icon.name}");
+            return item.icon;
+        }
 
         // Fallback: detect dari itemId
         string id = item.itemId.ToLower().Trim();
@@ -328,7 +354,9 @@ public class ShopManager : MonoBehaviour
                 if (shopItem == null) continue;
                 if (shopItem.itemId.Equals(id, StringComparison.OrdinalIgnoreCase))
                 {
-                    return shopItem.iconPreview != null ? shopItem.iconPreview : shopItem.iconGrid;
+                    Sprite foundIcon = shopItem.iconPreview != null ? shopItem.iconPreview : shopItem.iconGrid;
+                    Debug.Log($"[ShopManager] Found icon from database for {item.itemId}: {(foundIcon != null ? foundIcon.name : "NULL")}");
+                    return foundIcon;
                 }
             }
         }

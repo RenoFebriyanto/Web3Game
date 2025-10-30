@@ -1,85 +1,87 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
 /// <summary>
-/// UPDATED: Support multiple items display untuk bundle purchases.
-/// Structure:
-///   - Single item: show icon + amount text
-///   - Multiple items (bundle): spawn IconsItem prefabs di grid
+/// UPDATED: Support bundle display dengan multiple BorderIcon clones
+/// STRUCTURE HIERARCHY:
+///   PopupClaimQuest (root)
+///     ├─ CollectText (TMP_Text) - title "Memperoleh Hadiah"
+///     ├─ BlurEffect (Image) - background blur
+///     ├─ ContainerItems (Transform + HorizontalLayoutGroup) - ASSIGN INI!
+///     │   └─ BorderIcon (template - akan di-clone untuk bundle)
+///     │       ├─ Icons (Image) - icon item
+///     │       └─ Amount (TMP_Text) - jumlah item
+///     ├─ DeskItem (TMP_Text) - description
+///     └─ ConfirmBTN (Button) - confirm button
 /// </summary>
 public class PopupClaimQuest : MonoBehaviour
 {
     public static PopupClaimQuest Instance { get; private set; }
 
-    [Header("UI refs (assign in Inspector)")]
-    public GameObject rootPopup;
-    public GameObject blurOverlay;
+    [Header("UI Components")]
+    public GameObject rootPopup;             // Root PopupClaimQuest
+    public GameObject blurEffect;            // BlurEffect (Image background)
 
-    [Header("Single Item Display")]
-    public Image iconImage;              // Icon untuk single item
-    public TMP_Text rewardAmountText;    // Amount text untuk single item
-    public GameObject singleItemRoot;    // Root untuk single item display (hide untuk bundle)
+    [Header("ContainerItems (ASSIGN INI!)")]
+    [Tooltip("ContainerItems dengan HorizontalLayoutGroup - tempat spawn BorderIcon")]
+    public Transform containerItems;         // ContainerItems dari hierarchy
 
-    [Header("Bundle Items Display")]
-    public Transform bundleItemsContainer;  // Container untuk spawn bundle items
-    public GameObject bundleItemPrefab;     // Prefab IconsItem untuk bundle
-    public int maxVisibleBundleItems = 5;   // Max items visible (enable scroll if more)
-    public ScrollRect bundleScrollRect;     // Optional: scroll untuk bundle items
-
-    [Header("Info Display")]
-    public TMP_Text titleText;           // Title/description
-    public TMP_Text deskText;            // Optional: extra description
+    [Header("Text Displays")]
+    public TMP_Text collectText;             // CollectText - title "Memperoleh Hadiah"
+    public TMP_Text deskItem;                // DeskItem - description
 
     [Header("Buttons")]
-    public Button confirmButton;
-    public Button closeButton;           // Optional: X button
+    public Button confirmButton;             // ConfirmBTN
 
     // Runtime
     Action onConfirm;
-    List<GameObject> spawnedBundleItems = new List<GameObject>();
+    List<GameObject> spawnedBorderIcons = new List<GameObject>();
+    GameObject borderIconTemplate;           // Template BorderIcon dari hierarchy
 
     void Awake()
     {
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
         Instance = this;
 
+        // Hide popup di start
         if (rootPopup != null) rootPopup.SetActive(false);
-        if (blurOverlay != null) blurOverlay.SetActive(false);
+        if (blurEffect != null) blurEffect.SetActive(false);
 
-        // Setup buttons
+        // Setup confirm button
         if (confirmButton != null)
         {
             confirmButton.onClick.RemoveAllListeners();
             confirmButton.onClick.AddListener(OnConfirmButton);
         }
 
-        if (closeButton != null)
+        // Setup blur effect click to close (optional)
+        if (blurEffect != null)
         {
-            closeButton.onClick.RemoveAllListeners();
-            closeButton.onClick.AddListener(Close);
-        }
-
-        // Blur overlay click to close
-        if (blurOverlay != null)
-        {
-            var btn = blurOverlay.GetComponent<Button>();
+            var btn = blurEffect.GetComponent<Button>();
             if (btn == null)
             {
-                btn = blurOverlay.AddComponent<Button>();
+                btn = blurEffect.AddComponent<Button>();
                 btn.transition = Selectable.Transition.None;
             }
             btn.onClick.RemoveAllListeners();
             btn.onClick.AddListener(Close);
         }
 
-        // Auto-find scroll rect
-        if (bundleScrollRect == null && bundleItemsContainer != null)
+        // Get BorderIcon template dari ContainerItems
+        if (containerItems != null && containerItems.childCount > 0)
         {
-            bundleScrollRect = bundleItemsContainer.GetComponentInParent<ScrollRect>();
+            borderIconTemplate = containerItems.GetChild(0).gameObject;
+            Debug.Log($"[PopupClaimQuest] Found BorderIcon template: {borderIconTemplate.name}");
         }
+        else
+        {
+            Debug.LogError("[PopupClaimQuest] ContainerItems not assigned or has no children! Need BorderIcon template.");
+        }
+
+        Debug.Log($"[PopupClaimQuest] Initialized. ContainerItems assigned: {(containerItems != null)}");
     }
 
     // ========================================
@@ -87,36 +89,42 @@ public class PopupClaimQuest : MonoBehaviour
     // ========================================
 
     /// <summary>
-    /// Open popup dengan single item display (quest/single shop item)
+    /// Open popup dengan single item display
     /// </summary>
-    public void Open(Sprite iconSprite, string rewardText, string titleText, Action confirmCallback)
+    public void Open(Sprite iconSprite, string amountText, string titleText, Action confirmCallback)
     {
         onConfirm = confirmCallback;
 
         if (rootPopup != null) rootPopup.SetActive(true);
-        if (blurOverlay != null) blurOverlay.SetActive(true);
+        if (blurEffect != null) blurEffect.SetActive(true);
 
         // Show single item display
-        ShowSingleItem(iconSprite, rewardText, titleText);
+        ShowSingleItem(iconSprite, amountText, titleText);
     }
 
-    void ShowSingleItem(Sprite icon, string amountText, string title)
+    void ShowSingleItem(Sprite icon, string amount, string title)
     {
-        // Show single item root, hide bundle
-        if (singleItemRoot != null) singleItemRoot.SetActive(true);
-        if (bundleItemsContainer != null) bundleItemsContainer.gameObject.SetActive(false);
+        Debug.Log($"[PopupClaimQuest] ShowSingleItem: icon={icon?.name}, amount={amount}, title={title}");
 
-        // Clear any spawned bundle items
-        ClearBundleItems();
+        // Clear spawned icons
+        ClearSpawnedIcons();
 
-        // Update single item display
-        if (iconImage != null) iconImage.sprite = icon;
-        if (rewardAmountText != null) rewardAmountText.text = amountText ?? "";
-        if (titleText != null) this.titleText.text = title ?? "";
-        if (deskText != null) deskText.text = "";
+        // Update text displays
+        if (collectText != null) collectText.text = "Memperoleh Hadiah"; // Fixed title
+        if (deskItem != null) deskItem.text = title ?? "";
 
-        // Disable scroll (not used for single item)
-        if (bundleScrollRect != null) bundleScrollRect.enabled = false;
+        // Show ONLY 1 BorderIcon (template) dengan data
+        if (borderIconTemplate != null)
+        {
+            borderIconTemplate.SetActive(true);
+            UpdateBorderIconContent(borderIconTemplate, icon, amount);
+
+            Debug.Log($"[PopupClaimQuest] Displayed single item using template");
+        }
+        else
+        {
+            Debug.LogError("[PopupClaimQuest] borderIconTemplate is null!");
+        }
     }
 
     // ========================================
@@ -124,14 +132,14 @@ public class PopupClaimQuest : MonoBehaviour
     // ========================================
 
     /// <summary>
-    /// Open popup dengan bundle items display (untuk shop bundle)
+    /// Open popup dengan bundle items display (multiple items)
     /// </summary>
     public void OpenBundle(List<BundleItemData> items, string title, string description, Action confirmCallback)
     {
         onConfirm = confirmCallback;
 
         if (rootPopup != null) rootPopup.SetActive(true);
-        if (blurOverlay != null) blurOverlay.SetActive(true);
+        if (blurEffect != null) blurEffect.SetActive(true);
 
         // Show bundle display
         ShowBundleItems(items, title, description);
@@ -139,74 +147,141 @@ public class PopupClaimQuest : MonoBehaviour
 
     void ShowBundleItems(List<BundleItemData> items, string title, string description)
     {
-        // Hide single item display, show bundle container
-        if (singleItemRoot != null) singleItemRoot.SetActive(false);
-        if (bundleItemsContainer != null) bundleItemsContainer.gameObject.SetActive(true);
+        Debug.Log($"[PopupClaimQuest] ShowBundleItems: {items?.Count ?? 0} items, title={title}");
 
-        // Clear previous bundle items
-        ClearBundleItems();
+        // Clear previous spawned icons
+        ClearSpawnedIcons();
 
-        // Update title/description
-        if (titleText != null) this.titleText.text = title ?? "";
-        if (deskText != null) deskText.text = description ?? "";
+        // Update text displays
+        if (collectText != null) collectText.text = "Memperoleh Hadiah"; // Fixed title
+        if (deskItem != null) deskItem.text = title ?? "";
 
-        // Spawn bundle items
+        // Validate
         if (items == null || items.Count == 0)
         {
             Debug.LogWarning("[PopupClaimQuest] No items in bundle!");
             return;
         }
 
-        if (bundleItemPrefab == null)
+        if (containerItems == null)
         {
-            Debug.LogError("[PopupClaimQuest] bundleItemPrefab not assigned!");
+            Debug.LogError("[PopupClaimQuest] ContainerItems not assigned!");
             return;
         }
 
+        if (borderIconTemplate == null)
+        {
+            Debug.LogError("[PopupClaimQuest] borderIconTemplate not found!");
+            return;
+        }
+
+        // Hide template (akan di-clone)
+        borderIconTemplate.SetActive(false);
+
+        // Spawn bundle items - clone BorderIcon untuk setiap item
         int spawnedCount = 0;
         foreach (var item in items)
         {
-            if (item == null || item.icon == null) continue;
-
-            var go = Instantiate(bundleItemPrefab, bundleItemsContainer);
-            go.SetActive(true);
-
-            var display = go.GetComponent<BundleItemDisplay>();
-            if (display != null)
+            if (item == null)
             {
-                display.Setup(item.icon, item.amount);
-                spawnedBundleItems.Add(go);
-                spawnedCount++;
+                Debug.LogWarning("[PopupClaimQuest] Bundle item is null, skipping");
+                continue;
+            }
+
+            if (item.icon == null)
+            {
+                Debug.LogWarning($"[PopupClaimQuest] Item '{item.displayName}' has null icon, skipping");
+                continue;
+            }
+
+            // Clone BorderIcon template
+            GameObject clonedIcon = Instantiate(borderIconTemplate, containerItems);
+            clonedIcon.SetActive(true);
+
+            // Update content
+            UpdateBorderIconContent(clonedIcon, item.icon, item.amount.ToString());
+
+            spawnedBorderIcons.Add(clonedIcon);
+            spawnedCount++;
+
+            Debug.Log($"[PopupClaimQuest] Spawned item {spawnedCount}: {item.displayName} x{item.amount}");
+        }
+
+        Debug.Log($"[PopupClaimQuest] Total spawned: {spawnedCount} items. HorizontalLayoutGroup akan auto-arrange.");
+    }
+
+    // ========================================
+    // HELPER METHODS
+    // ========================================
+
+    /// <summary>
+    /// Update content BorderIcon (icon + amount text)
+    /// Structure: BorderIcon -> Icons (Image) -> Amount (TMP_Text)
+    /// </summary>
+    void UpdateBorderIconContent(GameObject borderIcon, Sprite icon, string amountText)
+    {
+        if (borderIcon == null) return;
+
+        // Find Icons child (Image untuk icon item)
+        Transform iconsTransform = borderIcon.transform.Find("Icons");
+        if (iconsTransform != null)
+        {
+            Image iconsImage = iconsTransform.GetComponent<Image>();
+            if (iconsImage != null && icon != null)
+            {
+                iconsImage.sprite = icon;
+                iconsImage.enabled = true;
             }
             else
             {
-                Debug.LogWarning("[PopupClaimQuest] bundleItemPrefab doesn't have BundleItemDisplay!");
-                Destroy(go);
+                Debug.LogWarning($"[PopupClaimQuest] Icons Image not found or icon is null");
             }
         }
-
-        // Enable scroll if items > maxVisibleBundleItems
-        if (bundleScrollRect != null)
+        else
         {
-            bundleScrollRect.enabled = spawnedCount > maxVisibleBundleItems;
-
-            if (bundleScrollRect.enabled)
-            {
-                Canvas.ForceUpdateCanvases();
-                bundleScrollRect.horizontalNormalizedPosition = 0f;
-            }
+            Debug.LogWarning($"[PopupClaimQuest] Icons child not found in {borderIcon.name}");
         }
 
-        Debug.Log($"[PopupClaimQuest] Displayed {spawnedCount} bundle items. Scroll: {(bundleScrollRect != null && bundleScrollRect.enabled)}");
+        // Find Amount child (TMP_Text)
+        Transform amountTransform = borderIcon.transform.Find("Amount");
+        if (amountTransform != null)
+        {
+            TMP_Text amountTMP = amountTransform.GetComponent<TMP_Text>();
+            if (amountTMP != null)
+            {
+                if (!string.IsNullOrEmpty(amountText))
+                {
+                    amountTMP.text = amountText;
+                    amountTMP.gameObject.SetActive(true);
+                }
+                else
+                {
+                    amountTMP.gameObject.SetActive(false);
+                }
+            }
+            else
+            {
+                Debug.LogWarning($"[PopupClaimQuest] Amount TMP_Text not found");
+            }
+        }
+        else
+        {
+            Debug.LogWarning($"[PopupClaimQuest] Amount child not found in {borderIcon.name}");
+        }
     }
 
-    void ClearBundleItems()
+    /// <summary>
+    /// Clear all spawned BorderIcon clones (keep template)
+    /// </summary>
+    void ClearSpawnedIcons()
     {
-        foreach (var go in spawnedBundleItems)
+        foreach (var go in spawnedBorderIcons)
         {
             if (go != null) Destroy(go);
         }
-        spawnedBundleItems.Clear();
+        spawnedBorderIcons.Clear();
+
+        Debug.Log("[PopupClaimQuest] Cleared spawned icons");
     }
 
     // ========================================
@@ -231,22 +306,17 @@ public class PopupClaimQuest : MonoBehaviour
     {
         onConfirm = null;
 
-        // Clear bundle items
-        ClearBundleItems();
+        // Clear spawned icons
+        ClearSpawnedIcons();
 
-        // Show single item root (default state)
-        if (singleItemRoot != null) singleItemRoot.SetActive(true);
-        if (bundleItemsContainer != null) bundleItemsContainer.gameObject.SetActive(false);
-
-        // Reset scroll
-        if (bundleScrollRect != null)
+        // Restore template visibility
+        if (borderIconTemplate != null)
         {
-            bundleScrollRect.horizontalNormalizedPosition = 0f;
-            bundleScrollRect.enabled = false;
+            borderIconTemplate.SetActive(true);
         }
 
         if (rootPopup != null) rootPopup.SetActive(false);
-        if (blurOverlay != null) blurOverlay.SetActive(false);
+        if (blurEffect != null) blurEffect.SetActive(false);
     }
 }
 

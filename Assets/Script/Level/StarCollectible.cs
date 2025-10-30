@@ -1,20 +1,21 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 /// <summary>
-/// Bintang yang bisa dikumpulkan player di gameplay.
-/// Tempel script ini pada prefab Star.
-/// Tag prefab sebagai "Collectible" atau "Star".
+/// UPDATED: Added star collect sound
 /// </summary>
 [RequireComponent(typeof(Collider2D))]
 public class StarCollectible : MonoBehaviour
 {
     [Header("Settings")]
-    public int starValue = 1; // 1 bintang
-    public GameObject collectEffect; // Optional VFX saat collected
+    public int starValue = 1;
+    public GameObject collectEffect;
 
     void OnTriggerEnter2D(Collider2D other)
     {
         if (!other.CompareTag("Player")) return;
+
+        // ✅ AUDIO: Play star collect sound
+        SoundManager.StarCollect();
 
         // Notify star manager
         var starManager = FindFirstObjectByType<GameplayStarManager>();
@@ -33,7 +34,6 @@ public class StarCollectible : MonoBehaviour
             Instantiate(collectEffect, transform.position, Quaternion.identity);
         }
 
-        // Destroy star
         Destroy(gameObject);
     }
 }

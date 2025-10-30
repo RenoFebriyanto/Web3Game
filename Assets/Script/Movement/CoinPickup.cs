@@ -1,8 +1,7 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 /// <summary>
-/// REPLACE: Assets/Script/Movement/CoinPickup.cs
-/// Updated dengan support untuk Coin2x booster
+/// UPDATED: Added random coin pickup sound
 /// </summary>
 public class CoinPickup : MonoBehaviour
 {
@@ -23,6 +22,9 @@ public class CoinPickup : MonoBehaviour
             }
 
             PlayerEconomy.Instance.AddCoins(finalValue);
+
+            // ✅ AUDIO: Play random coin pickup sound
+            SoundManager.CoinPickup();
 
             // Debug log untuk check multiplier
             if (finalValue != value)

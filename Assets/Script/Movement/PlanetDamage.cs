@@ -1,8 +1,7 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 /// <summary>
-/// REPLACE: Assets/Script/Movement/PlanetDamage.cs
-/// Updated dengan support untuk Shield dan SpeedBoost booster
+/// UPDATED: Added planet destroy & shield absorb sounds
 /// </summary>
 [RequireComponent(typeof(Collider2D))]
 public class PlanetDamage : MonoBehaviour
@@ -11,16 +10,19 @@ public class PlanetDamage : MonoBehaviour
     public string playerTag = "Player";
 
     [Header("Destroy Effect (Optional)")]
-    public GameObject destroyEffect; // VFX saat planet hancur
+    public GameObject destroyEffect;
 
     void OnTriggerEnter2D(Collider2D other)
     {
         if (!other.CompareTag(playerTag)) return;
 
-        // Check SpeedBoost - planet hancur, player tidak kena damage
+        // Check SpeedBoost - planet hancur
         if (BoosterManager.Instance != null && BoosterManager.Instance.ShouldDestroyPlanet())
         {
             Debug.Log("[PlanetDamage] Planet destroyed by SpeedBoost!");
+
+            // ✅ AUDIO: Planet destroy sound
+            SoundManager.PlanetDestroy();
 
             // Spawn effect
             if (destroyEffect != null)
@@ -28,7 +30,6 @@ public class PlanetDamage : MonoBehaviour
                 Instantiate(destroyEffect, transform.position, Quaternion.identity);
             }
 
-            // Destroy planet
             Destroy(gameObject);
             return;
         }
@@ -38,20 +39,18 @@ public class PlanetDamage : MonoBehaviour
         {
             Debug.Log("[PlanetDamage] Hit absorbed by Shield!");
 
-            // Optional: play shield effect, sound, etc
+            // ✅ AUDIO: Shield absorb sound
+            SoundManager.ShieldAbsorb();
 
-            // Planet tetap hidup (tidak hancur), tapi hit diabsorb
             return;
         }
 
-        // Normal damage - shield tidak aktif atau habis
+        // Normal damage
         var ph = PlayerHealth.Instance;
         if (ph != null)
         {
             ph.TakeDamage(damage);
             Debug.Log("[PlanetDamage] Player took damage!");
         }
-
-        // Optional: play damage sound/effect here
     }
 }

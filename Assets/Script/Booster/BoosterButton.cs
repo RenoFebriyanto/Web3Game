@@ -3,7 +3,8 @@ using UnityEngine.UI;
 using TMPro;
 
 /// <summary>
-/// UPDATED: Added booster activation sound
+/// Script untuk button booster di gameplay
+/// FIXED: Auto-refresh button state setiap frame untuk detect booster expire
 /// </summary>
 [RequireComponent(typeof(Button))]
 public class BoosterButton : MonoBehaviour
@@ -20,6 +21,7 @@ public class BoosterButton : MonoBehaviour
     private Button button;
     private CanvasGroup canvasGroup;
 
+    // НОВОЕ: Track previous state untuk detect changes
     private bool wasActive = false;
     private int lastCount = -1;
 
@@ -65,11 +67,13 @@ public class BoosterButton : MonoBehaviour
         bool isActive = BoosterManager.Instance.IsActive(boosterId);
         int currentCount = GetBoosterCount();
 
+        // Update cooldown overlay
         if (cooldownOverlay != null)
         {
             cooldownOverlay.SetActive(isActive);
         }
 
+        // ✅ FIX: Auto-refresh button ketika state berubah
         if (isActive != wasActive || currentCount != lastCount)
         {
             RefreshButtonState(isActive, currentCount);
@@ -133,9 +137,6 @@ public class BoosterButton : MonoBehaviour
         {
             Debug.Log($"[BoosterButton] ✓ Activated {boosterId}!");
 
-            // ✅ AUDIO: Booster activation sound
-            SoundManager.BoosterActivate();
-
             if (BoosterCooldownManager.Instance != null)
             {
                 float duration = BoosterManager.Instance.GetMaxDuration(boosterId);
@@ -178,14 +179,19 @@ public class BoosterButton : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// ✅ NEW: Dedicated method untuk update button interactable state
+    /// </summary>
     void RefreshButtonState(bool isActive, int count)
     {
         if (button == null) return;
 
+        // Coin2x bisa stack (multiple activation), booster lain tidak
         bool canActivate = boosterId.ToLower() == "coin2x" ? count > 0 : (count > 0 && !isActive);
 
         button.interactable = canActivate;
 
+        // Debug ketika button state berubah
         if (button.interactable != wasActive)
         {
             Debug.Log($"[BoosterButton] {boosterId} button.interactable = {button.interactable} (count={count}, active={isActive})");

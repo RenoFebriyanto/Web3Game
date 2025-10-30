@@ -1,10 +1,8 @@
-﻿using System.Collections;
+// PlayerHealth.cs
+using System.Collections;
 using UnityEngine;
 using UnityEngine.Events;
 
-/// <summary>
-/// UPDATED: Added player damage sound
-/// </summary>
 public class PlayerHealth : MonoBehaviour
 {
     public static PlayerHealth Instance { get; private set; }
@@ -18,8 +16,8 @@ public class PlayerHealth : MonoBehaviour
     public float blinkFrequency = 10f;
 
     [Header("Death")]
-    public float deathDelay = 0.9f;
-    public bool disableOnDeath = true;
+    public float deathDelay = 0.9f; // delay before calling OnPlayerDeath
+    public bool disableOnDeath = true; // apakah disable object saat benar2 mati
 
     [Header("Visual")]
     public SpriteRenderer[] renderersToBlink;
@@ -43,12 +41,7 @@ public class PlayerHealth : MonoBehaviour
     public void TakeDamage(int amount = 1)
     {
         if (invincible) return;
-
         currentLives = Mathf.Max(0, currentLives - amount);
-
-        // ✅ AUDIO: Play damage sound
-        SoundManager.PlayerDamage();
-
         OnPlayerDamaged?.Invoke();
 
         if (invCoroutine != null) StopCoroutine(invCoroutine);
@@ -56,6 +49,7 @@ public class PlayerHealth : MonoBehaviour
 
         if (currentLives <= 0)
         {
+            // begin death routine (don't immediately destroy)
             StartCoroutine(DieRoutine());
         }
         else
@@ -82,11 +76,16 @@ public class PlayerHealth : MonoBehaviour
 
     IEnumerator DieRoutine()
     {
+        // immediately disable player input/movement if any
+        var laneMove = GetComponent<MonoBehaviour>(); // fallback: try to disable known script names
         var plMove = GetComponent<PlayerLaneMovement>();
         if (plMove != null) plMove.enabled = false;
 
+        // optionally play death FX here
+
         yield return new WaitForSeconds(deathDelay);
 
+        // fire death event so UI/manager can handle game over
         OnPlayerDeath?.Invoke();
 
         if (disableOnDeath)

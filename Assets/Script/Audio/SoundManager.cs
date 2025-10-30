@@ -1,8 +1,9 @@
 using UnityEngine;
 
 /// <summary>
-/// UPDATED: Support for multiple coin sounds, background music, and all game SFX.
-/// Singleton persistent across scenes with PlayerPrefs save.
+/// Centralized sound manager untuk button clicks, hover, dan music.
+/// Singleton persistent across scenes.
+/// Settings disimpan di PlayerPrefs.
 /// </summary>
 public class SoundManager : MonoBehaviour
 {
@@ -12,31 +13,11 @@ public class SoundManager : MonoBehaviour
     public AudioSource musicSource;      // Background music
     public AudioSource sfxSource;        // Sound effects (button, UI)
 
-    [Header("Background Music")]
-    public AudioClip musicMainMenu;      // Music untuk MainMenu scene
-    public AudioClip musicGameplay;      // Music untuk Gameplay scene
-
-    [Header("UI Sound Clips")]
+    [Header("UI Sound Clips (Assign in Inspector)")]
     public AudioClip buttonClickSound;
     public AudioClip buttonHoverSound;
-
-    [Header("Coin Pickup Sounds (Multiple Variants)")]
-    [Tooltip("Drag multiple coin sounds untuk variety")]
-    public AudioClip[] coinPickupSounds; // Array untuk random coin sounds
-
-    [Header("Gameplay Sounds")]
-    public AudioClip playerDamageSound;
-    public AudioClip fragmentCollectSound;
-    public AudioClip starCollectSound;
-    public AudioClip planetDestroySound;  // Untuk SpeedBoost
-    public AudioClip shieldAbsorbSound;   // Shield absorb hit
-    public AudioClip boosterActivateSound; // Booster activation
-
-    [Header("Quest/Shop Sounds")]
     public AudioClip purchaseSuccessSound;
     public AudioClip purchaseFailSound;
-    public AudioClip questCompleteSound;
-    public AudioClip levelCompleteSound;
 
     [Header("Volume Settings")]
     [Range(0f, 1f)]
@@ -122,7 +103,7 @@ public class SoundManager : MonoBehaviour
     }
 
     // ========================================
-    // MUSIC CONTROL
+    // PUBLIC API - Music Control
     // ========================================
 
     public void SetMusicVolume(float volume)
@@ -149,22 +130,9 @@ public class SoundManager : MonoBehaviour
     {
         if (musicSource == null || clip == null) return;
 
-        // Don't restart if same music already playing
-        if (musicSource.clip == clip && musicSource.isPlaying) return;
-
         musicSource.clip = clip;
         musicSource.loop = loop;
         musicSource.Play();
-    }
-
-    public void PlayMainMenuMusic()
-    {
-        PlayMusic(musicMainMenu, true);
-    }
-
-    public void PlayGameplayMusic()
-    {
-        PlayMusic(musicGameplay, true);
     }
 
     public void StopMusic()
@@ -183,7 +151,7 @@ public class SoundManager : MonoBehaviour
     }
 
     // ========================================
-    // SFX CONTROL
+    // PUBLIC API - SFX Control
     // ========================================
 
     public void PlaySFX(AudioClip clip)
@@ -194,10 +162,7 @@ public class SoundManager : MonoBehaviour
         sfxSource.PlayOneShot(clip, sfxVolume);
     }
 
-    // ========================================
-    // UI SOUNDS
-    // ========================================
-
+    // Convenience methods untuk UI sounds
     public void PlayButtonClick()
     {
         if (buttonClickSound != null)
@@ -213,83 +178,6 @@ public class SoundManager : MonoBehaviour
             PlaySFX(buttonHoverSound);
         }
     }
-
-    // ========================================
-    // COIN SOUNDS (RANDOM VARIANT)
-    // ========================================
-
-    public void PlayCoinPickup()
-    {
-        if (coinPickupSounds == null || coinPickupSounds.Length == 0)
-        {
-            Debug.LogWarning("[SoundManager] No coin pickup sounds assigned!");
-            return;
-        }
-
-        // Pick random coin sound
-        AudioClip randomCoin = coinPickupSounds[Random.Range(0, coinPickupSounds.Length)];
-
-        if (randomCoin != null)
-        {
-            PlaySFX(randomCoin);
-        }
-    }
-
-    // ========================================
-    // GAMEPLAY SOUNDS
-    // ========================================
-
-    public void PlayPlayerDamage()
-    {
-        if (playerDamageSound != null)
-        {
-            PlaySFX(playerDamageSound);
-        }
-    }
-
-    public void PlayFragmentCollect()
-    {
-        if (fragmentCollectSound != null)
-        {
-            PlaySFX(fragmentCollectSound);
-        }
-    }
-
-    public void PlayStarCollect()
-    {
-        if (starCollectSound != null)
-        {
-            PlaySFX(starCollectSound);
-        }
-    }
-
-    public void PlayPlanetDestroy()
-    {
-        if (planetDestroySound != null)
-        {
-            PlaySFX(planetDestroySound);
-        }
-    }
-
-    public void PlayShieldAbsorb()
-    {
-        if (shieldAbsorbSound != null)
-        {
-            PlaySFX(shieldAbsorbSound);
-        }
-    }
-
-    public void PlayBoosterActivate()
-    {
-        if (boosterActivateSound != null)
-        {
-            PlaySFX(boosterActivateSound);
-        }
-    }
-
-    // ========================================
-    // QUEST/SHOP SOUNDS
-    // ========================================
 
     public void PlayPurchaseSuccess()
     {
@@ -307,22 +195,6 @@ public class SoundManager : MonoBehaviour
         }
     }
 
-    public void PlayQuestComplete()
-    {
-        if (questCompleteSound != null)
-        {
-            PlaySFX(questCompleteSound);
-        }
-    }
-
-    public void PlayLevelComplete()
-    {
-        if (levelCompleteSound != null)
-        {
-            PlaySFX(levelCompleteSound);
-        }
-    }
-
     // ========================================
     // STATIC HELPERS (untuk easy access)
     // ========================================
@@ -337,41 +209,6 @@ public class SoundManager : MonoBehaviour
         Instance?.PlayButtonHover();
     }
 
-    public static void CoinPickup()
-    {
-        Instance?.PlayCoinPickup();
-    }
-
-    public static void PlayerDamage()
-    {
-        Instance?.PlayPlayerDamage();
-    }
-
-    public static void FragmentCollect()
-    {
-        Instance?.PlayFragmentCollect();
-    }
-
-    public static void StarCollect()
-    {
-        Instance?.PlayStarCollect();
-    }
-
-    public static void PlanetDestroy()
-    {
-        Instance?.PlayPlanetDestroy();
-    }
-
-    public static void ShieldAbsorb()
-    {
-        Instance?.PlayShieldAbsorb();
-    }
-
-    public static void BoosterActivate()
-    {
-        Instance?.PlayBoosterActivate();
-    }
-
     public static void PurchaseSuccess()
     {
         Instance?.PlayPurchaseSuccess();
@@ -380,16 +217,6 @@ public class SoundManager : MonoBehaviour
     public static void PurchaseFail()
     {
         Instance?.PlayPurchaseFail();
-    }
-
-    public static void QuestComplete()
-    {
-        Instance?.PlayQuestComplete();
-    }
-
-    public static void LevelComplete()
-    {
-        Instance?.PlayLevelComplete();
     }
 
     // ========================================
@@ -402,17 +229,11 @@ public class SoundManager : MonoBehaviour
     [ContextMenu("Test Button Hover")]
     void TestHover() => PlayButtonHover();
 
-    [ContextMenu("Test Coin Pickup (Random)")]
-    void TestCoin() => PlayCoinPickup();
+    [ContextMenu("Test Purchase Success")]
+    void TestPurchaseSuccess() => PlayPurchaseSuccess();
 
-    [ContextMenu("Test Player Damage")]
-    void TestDamage() => PlayPlayerDamage();
-
-    [ContextMenu("Play MainMenu Music")]
-    void TestMainMenuMusic() => PlayMainMenuMusic();
-
-    [ContextMenu("Play Gameplay Music")]
-    void TestGameplayMusic() => PlayGameplayMusic();
+    [ContextMenu("Test Purchase Fail")]
+    void TestPurchaseFail() => PlayPurchaseFail();
 
     [ContextMenu("Reset Volumes to Default")]
     void ResetVolumes()

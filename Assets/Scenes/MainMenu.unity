@@ -8783,6 +8783,58 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1426581447}
   m_CullTransparentMesh: 1
+--- !u!1 &1442387046
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1442387048}
+  - component: {fileID: 1442387049}
+  m_Layer: 0
+  m_Name: SoundManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1442387048
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1442387046}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1442387049
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1442387046}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0d55ab1b99926db46a01aab7627a7bcb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  musicSource: {fileID: 0}
+  sfxSource: {fileID: 0}
+  buttonClickSound: {fileID: 8300000, guid: 7f1c786cebf304542bb8a31fd3df1383, type: 3}
+  buttonHoverSound: {fileID: 8300000, guid: 36b472d7bdb4280438e5d744f12596b8, type: 3}
+  purchaseSuccessSound: {fileID: 8300000, guid: 83b4d5a8c3b360248bc8cdc890239c7f, type: 3}
+  purchaseFailSound: {fileID: 0}
+  defaultMusicVolume: 0.7
+  defaultSFXVolume: 1
 --- !u!1 &1454273804
 GameObject:
   m_ObjectHideFlags: 0
@@ -12960,6 +13012,7 @@ MonoBehaviour:
   m_hasFontAssetChanged: 0
   m_baseMaterial: {fileID: 0}
   m_maskOffset: {x: 0, y: 0, z: 0, w: 0}
+
 --- !u!1001 &5818890188109496786
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -13049,6 +13102,8 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 746925ba80c63d54aac4f8d3997efc99, type: 3}
+
+
 --- !u!1001 &6199070513044541167
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -13548,4 +13603,4 @@ SceneRoots:
   - {fileID: 1678268021}
   - {fileID: 6586319588453275141}
   - {fileID: 53229002}
-  - {fileID: 5818890188109496786}
+  - {fileID: 1442387048}

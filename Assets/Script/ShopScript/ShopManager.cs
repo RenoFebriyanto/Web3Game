@@ -5,6 +5,10 @@ using UnityEngine;
 
 public enum Currency { Coins, Shards }
 
+/// <summary>
+/// UPDATED: Integration dengan PopupClaimQuest untuk purchase flow.
+/// Flow: ShopItem → BuyPreview → PopupClaimQuest → Grant Reward
+/// </summary>
 public class ShopManager : MonoBehaviour
 {
     [Header("Prefabs & UI")]
@@ -20,6 +24,14 @@ public class ShopManager : MonoBehaviour
     public ShopDatabase database;
     [Tooltip("Fallback manual list of ShopItemData if no database assigned.")]
     public List<ShopItemData> shopItems = new List<ShopItemData>();
+
+    [Header("Icons for Economy Items (untuk bundle display)")]
+    [Tooltip("Icon untuk Coins (dipakai di PopupClaimQuest bundle)")]
+    public Sprite iconCoin;
+    [Tooltip("Icon untuk Shards")]
+    public Sprite iconShard;
+    [Tooltip("Icon untuk Energy")]
+    public Sprite iconEnergy;
 
     List<ShopItemUI> spawned = new List<ShopItemUI>();
 
@@ -139,38 +151,252 @@ public class ShopManager : MonoBehaviour
         else Debug.LogWarning("[ShopManager] buyPreviewUI not assigned. Cannot show preview.");
     }
 
+    // ========================================
+    // UPDATED: Purchase Flow dengan PopupClaimQuest
+    // ========================================
+
     public bool TryBuy(ShopItemData data, Currency currency)
     {
         if (data == null) return false;
 
         if (PlayerEconomy.Instance == null)
         {
-            Debug.LogError("[ShopManager] PlayerEconomy.Instance is null. Ensure PlayerEconomy exists and its Awake ran before buying.");
+            Debug.LogError("[ShopManager] PlayerEconomy.Instance is null.");
             return false;
         }
+
+        // Check if player has enough currency
+        bool canAfford = false;
+        long price = 0;
 
         if (currency == Currency.Coins)
         {
             if (!data.allowBuyWithCoins) return false;
-            bool ok = PlayerEconomy.Instance.SpendCoins(data.coinPrice);
-            if (!ok) { Debug.Log("[ShopManager] Not enough coins."); return false; }
-            GrantReward(data);
-            buyPreviewUI?.Close();
-            return true;
+            price = data.coinPrice;
+            canAfford = PlayerEconomy.Instance.Coins >= price;
         }
-
-        if (currency == Currency.Shards)
+        else if (currency == Currency.Shards)
         {
             if (!data.allowBuyWithShards) return false;
-            bool ok = PlayerEconomy.Instance.SpendShards(data.shardPrice);
-            if (!ok) { Debug.Log("[ShopManager] Not enough shards."); return false; }
-            GrantReward(data);
-            buyPreviewUI?.Close();
-            return true;
+            price = data.shardPrice;
+            canAfford = PlayerEconomy.Instance.Shards >= price;
         }
 
-        return false;
+        if (!canAfford)
+        {
+            Debug.Log($"[ShopManager] Not enough {currency}. Need {price}");
+
+            // Play fail sound
+            if (SoundManager.Instance != null)
+            {
+                SoundManager.Instance.PlayPurchaseFail();
+            }
+
+            return false;
+        }
+
+        // PURCHASE FLOW: BuyPreview → PopupClaimQuest → Grant Reward
+        // Close BuyPreview first
+        buyPreviewUI?.Close();
+
+        // Show PopupClaimQuest dengan items yang akan didapat
+        ShowPurchasePopup(data, currency);
+
+        return true;
     }
+
+    /// <summary>
+    /// Show PopupClaimQuest dengan items yang dibeli
+    /// </summary>
+    void ShowPurchasePopup(ShopItemData data, Currency currency)
+    {
+        if (PopupClaimQuest.Instance == null)
+        {
+            Debug.LogError("[ShopManager] PopupClaimQuest.Instance is null! Granting reward directly.");
+            CompletePurchase(data, currency);
+            return;
+        }
+
+        // Check if bundle or single item
+        if (data.IsBundle)
+        {
+            // BUNDLE: Show multiple items
+            ShowBundlePurchasePopup(data, currency);
+        }
+        else
+        {
+            // SINGLE ITEM: Show single icon + amount
+            ShowSingleItemPurchasePopup(data, currency);
+        }
+    }
+
+    /// <summary>
+    /// Show popup untuk single item purchase
+    /// </summary>
+    void ShowSingleItemPurchasePopup(ShopItemData data, Currency currency)
+    {
+        Sprite icon = GetItemIcon(data);
+        string amountText = GetItemAmountText(data);
+        string title = $"Purchase {data.displayName}";
+
+        PopupClaimQuest.Instance.Open(
+            icon,
+            amountText,
+            title,
+            () => CompletePurchase(data, currency)
+        );
+    }
+
+    /// <summary>
+    /// Show popup untuk bundle purchase dengan multiple items
+    /// </summary>
+    void ShowBundlePurchasePopup(ShopItemData data, Currency currency)
+    {
+        List<BundleItemData> bundleItems = new List<BundleItemData>();
+
+        foreach (var item in data.bundleItems)
+        {
+            if (item == null) continue;
+
+            Sprite itemIcon = GetBundleItemIcon(item);
+
+            if (itemIcon != null)
+            {
+                bundleItems.Add(new BundleItemData(
+                    itemIcon,
+                    item.amount,
+                    item.displayName
+                ));
+            }
+        }
+
+        string title = $"Purchase {data.displayName}";
+        string description = $"You will receive {bundleItems.Count} items";
+
+        PopupClaimQuest.Instance.OpenBundle(
+            bundleItems,
+            title,
+            description,
+            () => CompletePurchase(data, currency)
+        );
+    }
+
+    /// <summary>
+    /// Get icon untuk item (single item atau booster)
+    /// </summary>
+    Sprite GetItemIcon(ShopItemData data)
+    {
+        // Priority: iconPreview → iconGrid
+        if (data.iconPreview != null) return data.iconPreview;
+        if (data.iconGrid != null) return data.iconGrid;
+
+        // Fallback untuk economy items
+        switch (data.rewardType)
+        {
+            case ShopRewardType.Coin:
+                return iconCoin;
+            case ShopRewardType.Shard:
+                return iconShard;
+            case ShopRewardType.Energy:
+                return iconEnergy;
+            default:
+                return null;
+        }
+    }
+
+    /// <summary>
+    /// Get icon untuk bundle item (bisa economy atau booster)
+    /// </summary>
+    Sprite GetBundleItemIcon(BundleItem item)
+    {
+        // Jika item punya icon sendiri, pakai itu
+        if (item.icon != null) return item.icon;
+
+        // Fallback: detect dari itemId
+        string id = item.itemId.ToLower().Trim();
+
+        // Economy items
+        if (id == "coin" || id == "coins") return iconCoin;
+        if (id == "shard" || id == "shards") return iconShard;
+        if (id == "energy") return iconEnergy;
+
+        // Booster items - cari dari database
+        if (database != null)
+        {
+            foreach (var shopItem in database.items)
+            {
+                if (shopItem == null) continue;
+                if (shopItem.itemId.Equals(id, StringComparison.OrdinalIgnoreCase))
+                {
+                    return shopItem.iconPreview != null ? shopItem.iconPreview : shopItem.iconGrid;
+                }
+            }
+        }
+
+        Debug.LogWarning($"[ShopManager] No icon found for bundle item: {item.itemId}");
+        return null;
+    }
+
+    /// <summary>
+    /// Get amount text untuk single item
+    /// </summary>
+    string GetItemAmountText(ShopItemData data)
+    {
+        if (data.rewardAmount <= 0) return "";
+
+        // Untuk booster, tampilkan "x5" style
+        if (data.rewardType == ShopRewardType.Booster)
+        {
+            return $"x{data.rewardAmount}";
+        }
+
+        // Untuk currency, tampilkan angka dengan format
+        return data.rewardAmount.ToString("N0");
+    }
+
+    /// <summary>
+    /// Complete purchase: deduct currency & grant reward
+    /// Called from PopupClaimQuest confirm button
+    /// </summary>
+    void CompletePurchase(ShopItemData data, Currency currency)
+    {
+        // Deduct currency
+        if (currency == Currency.Coins)
+        {
+            bool ok = PlayerEconomy.Instance.SpendCoins(data.coinPrice);
+            if (!ok)
+            {
+                Debug.LogError("[ShopManager] Failed to spend coins!");
+                if (SoundManager.Instance != null)
+                {
+                    SoundManager.Instance.PlayPurchaseFail();
+                }
+                return;
+            }
+        }
+        else if (currency == Currency.Shards)
+        {
+            bool ok = PlayerEconomy.Instance.SpendShards(data.shardPrice);
+            if (!ok)
+            {
+                Debug.LogError("[ShopManager] Failed to spend shards!");
+                if (SoundManager.Instance != null)
+                {
+                    SoundManager.Instance.PlayPurchaseFail();
+                }
+                return;
+            }
+        }
+
+        // Grant reward
+        GrantReward(data);
+
+        Debug.Log($"[ShopManager] Purchase completed: {data.displayName}");
+    }
+
+    // ========================================
+    // Reward Granting (unchanged)
+    // ========================================
 
     void GrantReward(ShopItemData data)
     {
@@ -289,6 +515,10 @@ public class ShopManager : MonoBehaviour
         }
     }
 
+    // ========================================
+    // Filter Methods (unchanged)
+    // ========================================
+
     [ContextMenu("Repopulate Shop")]
     void Context_Repopulate()
     {
@@ -299,14 +529,9 @@ public class ShopManager : MonoBehaviour
     {
         currentFilter = filter;
         Debug.Log($"[ShopManager] FilterShop called: {filter}");
-
-        // Refresh shop dengan filter baru
         RepopulateWithFilter();
     }
 
-    /// <summary>
-    /// Repopulate shop dengan filter aktif
-    /// </summary>
     void RepopulateWithFilter()
     {
         Debug.Log($"[ShopManager] RepopulateWithFilter: {currentFilter}");
@@ -322,7 +547,6 @@ public class ShopManager : MonoBehaviour
             return;
         }
 
-        // Clear existing items
         spawned.Clear();
         for (int i = itemsParent.childCount - 1; i >= 0; i--)
         {
@@ -330,7 +554,6 @@ public class ShopManager : MonoBehaviour
             Destroy(child.gameObject);
         }
 
-        // Get data source
         List<ShopItemData> source = null;
         if (database != null && database.items != null && database.items.Count > 0)
         {
@@ -347,12 +570,10 @@ public class ShopManager : MonoBehaviour
             return;
         }
 
-        // Filter items berdasarkan currentFilter
         List<ShopItemData> filteredItems = FilterItems(source);
 
         Debug.Log($"[ShopManager] Filtered {filteredItems.Count} items from {source.Count} total (filter: {currentFilter})");
 
-        // Instantiate filtered items
         foreach (var data in filteredItems)
         {
             if (data == null) continue;
@@ -394,9 +615,6 @@ public class ShopManager : MonoBehaviour
         Debug.Log($"[ShopManager] Populated {spawned.Count} shop items (filter: {currentFilter})");
     }
 
-    /// <summary>
-    /// Filter list items berdasarkan filter aktif
-    /// </summary>
     List<ShopItemData> FilterItems(List<ShopItemData> source)
     {
         List<ShopItemData> filtered = new List<ShopItemData>();
@@ -408,12 +626,10 @@ public class ShopManager : MonoBehaviour
             switch (currentFilter)
             {
                 case ShopFilter.All:
-                    // Tampilkan semua item
                     filtered.Add(data);
                     break;
 
                 case ShopFilter.Items:
-                    // Tampilkan semua KECUALI bundle
                     if (data.rewardType != ShopRewardType.Bundle)
                     {
                         filtered.Add(data);
@@ -421,7 +637,6 @@ public class ShopManager : MonoBehaviour
                     break;
 
                 case ShopFilter.Bundle:
-                    // Tampilkan HANYA bundle
                     if (data.rewardType == ShopRewardType.Bundle)
                     {
                         filtered.Add(data);
@@ -433,7 +648,6 @@ public class ShopManager : MonoBehaviour
         return filtered;
     }
 
-    // Public methods untuk dipanggil dari button
     public void ShowAll()
     {
         FilterShop(ShopFilter.All);

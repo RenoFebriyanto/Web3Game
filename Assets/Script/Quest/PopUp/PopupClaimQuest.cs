@@ -5,55 +5,36 @@ using UnityEngine.UI;
 using TMPro;
 
 /// <summary>
-/// REBUILT: PopupClaimQuest dengan structure detection yang lebih robust
+/// FIXED: PopupClaimQuest dengan icon detection yang benar
 /// Support untuk single item dan bundle items
-/// Integrated dengan SoundManager untuk audio feedback
 /// </summary>
 public class PopupClaimQuest : MonoBehaviour
 {
     public static PopupClaimQuest Instance { get; private set; }
 
     [Header("=== ROOT COMPONENTS ===")]
-    [Tooltip("Root popup GameObject (ContainerPopUp)")]
     public GameObject rootPopup;
-
-    [Tooltip("Blur overlay background")]
     public GameObject blurEffect;
 
-    [Header("=== CONTAINER ITEMS (CRITICAL!) ===")]
-    [Tooltip("ContainerItems - parent untuk BorderIcon items")]
+    [Header("=== CONTAINER ITEMS ===")]
     public Transform containerItems;
 
     [Header("=== TEXT DISPLAYS ===")]
-    public TMP_Text collectText;  // "Memperoleh Hadiah"
-    public TMP_Text deskItem;     // Item description/title
+    public TMP_Text collectText;
+    public TMP_Text deskItem;
 
     [Header("=== BUTTONS ===")]
     public Button confirmButton;
-    public Button closeButton;
-
-    [Header("=== PREFAB TEMPLATE ===")]
-    [Tooltip("BorderIcon prefab untuk spawn items (optional - will auto-find if null)")]
-    public GameObject borderIconPrefab;
-
-    [Header("=== LAYOUT SETTINGS ===")]
-    [Tooltip("Apakah menggunakan native size untuk icon sprites")]
-    public bool useNativeSize = false;
-
-    [Tooltip("Max items yang ditampilkan (untuk scroll detection)")]
-    public int maxVisibleItems = 5;
 
     [Header("=== DEBUG ===")]
-    public bool enableDebugLogs = true;
+    public bool enableDebugLogs = false;
 
-    // Runtime
     private Action onConfirmCallback;
     private List<GameObject> spawnedItems = new List<GameObject>();
     private GameObject templateItem;
 
     void Awake()
     {
-        // Singleton
         if (Instance != null && Instance != this)
         {
             Destroy(gameObject);
@@ -61,45 +42,21 @@ public class PopupClaimQuest : MonoBehaviour
         }
         Instance = this;
 
-        Log("=== POPUP CLAIM QUEST AWAKE ===");
+        if (rootPopup != null) rootPopup.SetActive(false);
+        if (blurEffect != null) blurEffect.SetActive(false);
 
-        // Hide popup at start
-        if (rootPopup != null)
-        {
-            rootPopup.SetActive(false);
-        }
-        if (blurEffect != null)
-        {
-            blurEffect.SetActive(false);
-        }
-
-        // Setup buttons
         SetupButtons();
-
-        // Initialize template
         InitializeTemplate();
-
-        // Validate setup
-        ValidateSetup();
     }
 
     void SetupButtons()
     {
-        // Confirm button
         if (confirmButton != null)
         {
             confirmButton.onClick.RemoveAllListeners();
             confirmButton.onClick.AddListener(OnConfirmClicked);
         }
 
-        // Close button
-        if (closeButton != null)
-        {
-            closeButton.onClick.RemoveAllListeners();
-            closeButton.onClick.AddListener(OnCloseClicked);
-        }
-
-        // Blur effect click to close
         if (blurEffect != null)
         {
             Button blurBtn = blurEffect.GetComponent<Button>();
@@ -109,142 +66,36 @@ public class PopupClaimQuest : MonoBehaviour
                 blurBtn.transition = Selectable.Transition.None;
             }
             blurBtn.onClick.RemoveAllListeners();
-            blurBtn.onClick.AddListener(OnCloseClicked);
+            blurBtn.onClick.AddListener(OnConfirmClicked);
         }
     }
 
     void InitializeTemplate()
     {
-        Log("--- Initializing Template ---");
-
-        if (containerItems == null)
-        {
-            LogError("containerItems is NULL! Cannot initialize template.");
-            return;
-        }
-
-        // Try to find template from containerItems children
-        if (borderIconPrefab == null)
-        {
-            if (containerItems.childCount > 0)
-            {
-                templateItem = containerItems.GetChild(0).gameObject;
-                Log($"Auto-found template from containerItems: {templateItem.name}");
-            }
-            else
-            {
-                LogError("containerItems has no children! Add a BorderIcon template as child.");
-                return;
-            }
-        }
-        else
-        {
-            templateItem = borderIconPrefab;
-            Log($"Using assigned borderIconPrefab: {templateItem.name}");
-        }
-
-        // Validate template structure
-        ValidateTemplateStructure(templateItem);
-
-        // Hide template (will be cloned later)
-        if (templateItem != null)
-        {
-            templateItem.SetActive(false);
-            Log($"Template '{templateItem.name}' hidden and ready for cloning");
-        }
-    }
-
-    void ValidateTemplateStructure(GameObject template)
-    {
-        if (template == null)
-        {
-            LogError("Template is NULL!");
-            return;
-        }
-
-        Log($"=== Validating Template Structure: {template.name} ===");
-
-        // Check for Image components
-        Image[] images = template.GetComponentsInChildren<Image>(true);
-        Log($"Found {images.Length} Image components in template");
-
-        foreach (var img in images)
-        {
-            Log($"  - {img.gameObject.name}: sprite={(img.sprite != null ? img.sprite.name : "NULL")}");
-        }
-
-        // Check for TMP_Text components
-        TMP_Text[] texts = template.GetComponentsInChildren<TMP_Text>(true);
-        Log($"Found {texts.Length} TMP_Text components in template");
-
-        foreach (var txt in texts)
-        {
-            Log($"  - {txt.gameObject.name}: text='{txt.text}'");
-        }
-
-        // Check for specific named children
-        Transform iconChild = template.transform.Find("Icons");
-        Transform amountChild = template.transform.Find("Amount");
-
-        Log($"Icons child: {(iconChild != null ? "FOUND" : "NOT FOUND")}");
-        Log($"Amount child: {(amountChild != null ? "FOUND" : "NOT FOUND")}");
-    }
-
-    bool ValidateSetup()
-    {
-        bool valid = true;
-
-        if (rootPopup == null)
-        {
-            LogError("rootPopup is NULL!");
-            valid = false;
-        }
-
         if (containerItems == null)
         {
             LogError("containerItems is NULL!");
-            valid = false;
+            return;
         }
 
-        if (templateItem == null)
+        if (containerItems.childCount > 0)
         {
-            LogError("templateItem is NULL!");
-            valid = false;
-        }
-
-        if (confirmButton == null)
-        {
-            LogError("confirmButton is NULL!");
-            valid = false;
-        }
-
-        if (valid)
-        {
-            Log("✓ Setup validation PASSED");
+            templateItem = containerItems.GetChild(0).gameObject;
+            templateItem.SetActive(false);
+            Log($"Template initialized: {templateItem.name}");
         }
         else
         {
-            LogError("✗ Setup validation FAILED! Check Inspector assignments.");
+            LogError("containerItems has no children!");
         }
-
-        return valid;
     }
 
     // ========================================
     // PUBLIC API: OPEN POPUP
     // ========================================
 
-    /// <summary>
-    /// Open popup dengan SINGLE ITEM
-    /// </summary>
     public void Open(Sprite icon, string amountText, string title, Action onConfirm)
     {
-        if (!ValidateSetup())
-        {
-            LogError("Cannot open popup: Setup validation failed!");
-            return;
-        }
-
         Log($"=== OPEN SINGLE ITEM ===");
         Log($"Icon: {(icon != null ? icon.name : "NULL")}");
         Log($"Amount: {amountText}");
@@ -252,50 +103,30 @@ public class PopupClaimQuest : MonoBehaviour
 
         onConfirmCallback = onConfirm;
 
-        // Show popup
         if (rootPopup != null) rootPopup.SetActive(true);
         if (blurEffect != null) blurEffect.SetActive(true);
 
-        // Update texts
         if (collectText != null) collectText.text = "Memperoleh Hadiah";
         if (deskItem != null) deskItem.text = title ?? "";
 
-        // Display single item
         DisplaySingleItem(icon, amountText);
-
-        // Play sound
         PlayPopupOpenSound();
     }
 
-    /// <summary>
-    /// Open popup dengan BUNDLE ITEMS (multiple items)
-    /// </summary>
     public void OpenBundle(List<BundleItemData> items, string title, string description, Action onConfirm)
     {
-        if (!ValidateSetup())
-        {
-            LogError("Cannot open bundle popup: Setup validation failed!");
-            return;
-        }
-
         Log($"=== OPEN BUNDLE ===");
         Log($"Items count: {items?.Count ?? 0}");
-        Log($"Title: {title}");
 
         onConfirmCallback = onConfirm;
 
-        // Show popup
         if (rootPopup != null) rootPopup.SetActive(true);
         if (blurEffect != null) blurEffect.SetActive(true);
 
-        // Update texts
         if (collectText != null) collectText.text = "Memperoleh Hadiah";
         if (deskItem != null) deskItem.text = title ?? "";
 
-        // Display bundle items
         DisplayBundleItems(items);
-
-        // Play sound
         PlayPopupOpenSound();
     }
 
@@ -305,34 +136,26 @@ public class PopupClaimQuest : MonoBehaviour
 
     void DisplaySingleItem(Sprite icon, string amountText)
     {
-        Log("--- Display Single Item ---");
-
-        // Clear previous spawned items
         ClearSpawnedItems();
 
         if (templateItem == null)
         {
-            LogError("templateItem is NULL! Cannot display item.");
+            LogError("templateItem is NULL!");
             return;
         }
 
-        // Show template directly (not cloning for single item)
         templateItem.SetActive(true);
         UpdateItemContent(templateItem, icon, amountText);
-
-        Log("✓ Single item displayed using template");
+        Log("✓ Single item displayed");
     }
 
     void DisplayBundleItems(List<BundleItemData> items)
     {
-        Log("--- Display Bundle Items ---");
-
-        // Clear previous spawned items
         ClearSpawnedItems();
 
         if (templateItem == null)
         {
-            LogError("templateItem is NULL! Cannot display bundle.");
+            LogError("templateItem is NULL!");
             return;
         }
 
@@ -342,36 +165,25 @@ public class PopupClaimQuest : MonoBehaviour
             return;
         }
 
-        // Hide template
         templateItem.SetActive(false);
 
-        // Spawn items (clone template for each item)
         int spawnCount = 0;
         foreach (var item in items)
         {
-            if (item == null)
+            if (item == null || item.icon == null)
             {
                 Log("Skipping null bundle item");
                 continue;
             }
 
-            if (item.icon == null)
-            {
-                Log($"Skipping item with null icon: {item.displayName}");
-                continue;
-            }
-
-            // Clone template
             GameObject clonedItem = Instantiate(templateItem, containerItems);
             clonedItem.SetActive(true);
             clonedItem.name = $"BundleItem_{spawnCount}_{item.displayName}";
 
-            // Update content
             UpdateItemContent(clonedItem, item.icon, item.amount.ToString());
 
             spawnedItems.Add(clonedItem);
             spawnCount++;
-
             Log($"Spawned bundle item {spawnCount}: {item.displayName} x{item.amount}");
         }
 
@@ -382,11 +194,9 @@ public class PopupClaimQuest : MonoBehaviour
     {
         if (itemObject == null)
         {
-            LogError("itemObject is NULL in UpdateItemContent!");
+            LogError("itemObject is NULL!");
             return;
         }
-
-        Log($"Updating content for: {itemObject.name}");
 
         // === UPDATE ICON ===
         Image iconImage = FindIconImage(itemObject);
@@ -395,17 +205,11 @@ public class PopupClaimQuest : MonoBehaviour
         {
             iconImage.sprite = icon;
             iconImage.enabled = true;
-
-            if (useNativeSize)
-            {
-                iconImage.SetNativeSize();
-            }
-
-            Log($"✓ Icon set: {icon.name} on {iconImage.gameObject.name}");
+            Log($"✓ Icon set: {icon.name}");
         }
         else
         {
-            LogError($"Cannot set icon! iconImage={(iconImage != null ? iconImage.gameObject.name : "NULL")}, icon={(icon != null ? icon.name : "NULL")}");
+            LogError($"Cannot set icon! iconImage={(iconImage != null)}, icon={(icon != null)}");
         }
 
         // === UPDATE AMOUNT TEXT ===
@@ -417,47 +221,47 @@ public class PopupClaimQuest : MonoBehaviour
             {
                 amountTMP.text = amountText;
                 amountTMP.gameObject.SetActive(true);
-                Log($"✓ Amount set: {amountText} on {amountTMP.gameObject.name}");
+                Log($"✓ Amount set: {amountText}");
             }
             else
             {
                 amountTMP.gameObject.SetActive(false);
             }
         }
-        else
-        {
-            LogError("Amount TMP_Text not found!");
-        }
     }
 
     // ========================================
-    // HELPER: FIND COMPONENTS
+    // HELPER: FIND COMPONENTS (IMPROVED)
     // ========================================
 
     Image FindIconImage(GameObject parent)
     {
-        // Try direct child named "Icons" or "Icon"
-        string[] iconNames = new string[] { "Icons", "Icon", "IconImage", "Image" };
-
-        foreach (var name in iconNames)
+        // Try direct child named "Icons"
+        Transform iconsChild = parent.transform.Find("Icons");
+        if (iconsChild != null)
         {
-            Transform child = parent.transform.Find(name);
-            if (child != null)
+            Image img = iconsChild.GetComponent<Image>();
+            if (img != null)
             {
-                Image img = child.GetComponent<Image>();
-                if (img != null)
-                {
-                    Log($"Found icon via Find('{name}'): {child.name}");
-                    return img;
-                }
+                Log($"Found icon via Find('Icons'): {iconsChild.name}");
+                return img;
             }
         }
 
-        // Fallback: find any child Image (skip if it's the parent/background)
+        // Fallback: find any Image component (skip background)
         Image[] images = parent.GetComponentsInChildren<Image>(true);
         foreach (var img in images)
         {
-            if (img.gameObject == parent) continue; // Skip parent background image
+            if (img.gameObject == parent) continue; // Skip parent background
+
+            // Skip if name contains "background", "bg", "border"
+            string lowerName = img.gameObject.name.ToLower();
+            if (lowerName.Contains("background") ||
+                lowerName.Contains("bg") ||
+                lowerName.Contains("border"))
+            {
+                continue;
+            }
 
             Log($"Found icon via GetComponentsInChildren: {img.gameObject.name}");
             return img;
@@ -481,7 +285,7 @@ public class PopupClaimQuest : MonoBehaviour
             }
         }
 
-        // Fallback: find any child TMP_Text
+        // Fallback: find any TMP_Text
         TMP_Text[] texts = parent.GetComponentsInChildren<TMP_Text>(true);
         if (texts.Length > 0)
         {
@@ -504,7 +308,6 @@ public class PopupClaimQuest : MonoBehaviour
             if (item != null) Destroy(item);
         }
         spawnedItems.Clear();
-
         Log("Cleared spawned items");
     }
 
@@ -515,11 +318,8 @@ public class PopupClaimQuest : MonoBehaviour
     void OnConfirmClicked()
     {
         Log("Confirm button clicked");
-
-        // Play confirm sound
         PlayConfirmSound();
 
-        // Execute callback
         try
         {
             onConfirmCallback?.Invoke();
@@ -529,18 +329,6 @@ public class PopupClaimQuest : MonoBehaviour
             LogError($"Confirm callback error: {ex.Message}");
         }
 
-        // Close popup
-        Close();
-    }
-
-    void OnCloseClicked()
-    {
-        Log("Close button clicked");
-
-        // Play close sound
-        PlayCloseSound();
-
-        // Close popup (no callback)
         Close();
     }
 
@@ -548,31 +336,25 @@ public class PopupClaimQuest : MonoBehaviour
     {
         Log("=== CLOSE POPUP ===");
 
-        // Clear callback
         onConfirmCallback = null;
-
-        // Clear spawned items
         ClearSpawnedItems();
 
-        // Show template again (for next use)
         if (templateItem != null)
         {
             templateItem.SetActive(true);
         }
 
-        // Hide popup
         if (rootPopup != null) rootPopup.SetActive(false);
         if (blurEffect != null) blurEffect.SetActive(false);
     }
 
     // ========================================
-    // AUDIO INTEGRATION
+    // AUDIO
     // ========================================
 
     void PlayPopupOpenSound()
     {
-        // TODO: Add popup open sound (optional)
-        // SoundManager.Instance?.PlayPopupOpen();
+        // Optional: Add popup open sound
     }
 
     void PlayConfirmSound()
@@ -580,14 +362,6 @@ public class PopupClaimQuest : MonoBehaviour
         if (SoundManager.Instance != null)
         {
             SoundManager.Instance.PlayPurchaseSuccess();
-        }
-    }
-
-    void PlayCloseSound()
-    {
-        if (SoundManager.Instance != null)
-        {
-            SoundManager.Instance.PlayButtonClick();
         }
     }
 
@@ -606,82 +380,5 @@ public class PopupClaimQuest : MonoBehaviour
     void LogError(string message)
     {
         Debug.LogError($"[PopupClaimQuest] ❌ {message}");
-    }
-
-    // ========================================
-    // DEBUG HELPERS
-    // ========================================
-
-    [ContextMenu("Debug: Validate Setup")]
-    void Debug_ValidateSetup()
-    {
-        ValidateSetup();
-    }
-
-    [ContextMenu("Debug: Print Hierarchy")]
-    void Debug_PrintHierarchy()
-    {
-        if (containerItems == null)
-        {
-            LogError("containerItems is NULL!");
-            return;
-        }
-
-        Log("=== ContainerItems Hierarchy ===");
-        Log($"Children count: {containerItems.childCount}");
-
-        for (int i = 0; i < containerItems.childCount; i++)
-        {
-            Transform child = containerItems.GetChild(i);
-            Log($"Child {i}: {child.name} (active: {child.gameObject.activeSelf})");
-
-            // Print child's children
-            for (int j = 0; j < child.childCount; j++)
-            {
-                Transform grandchild = child.GetChild(j);
-                var img = grandchild.GetComponent<Image>();
-                var txt = grandchild.GetComponent<TMP_Text>();
-
-                Log($"  - {grandchild.name}: Image={img != null}, Text={txt != null}");
-            }
-        }
-    }
-
-    [ContextMenu("Test: Open Single Item")]
-    void Test_OpenSingleItem()
-    {
-        // Create test sprite (white square)
-        Texture2D tex = new Texture2D(64, 64);
-        Color[] pixels = new Color[64 * 64];
-        for (int i = 0; i < pixels.Length; i++)
-        {
-            pixels[i] = Color.white;
-        }
-        tex.SetPixels(pixels);
-        tex.Apply();
-
-        Sprite testSprite = Sprite.Create(tex, new Rect(0, 0, 64, 64), new Vector2(0.5f, 0.5f));
-
-        Open(testSprite, "x99", "Test Item", () => {
-            Log("Test confirm callback executed!");
-        });
-    }
-}
-
-/// <summary>
-/// Bundle item data structure
-/// </summary>
-[System.Serializable]
-public class BundleItemData
-{
-    public Sprite icon;
-    public int amount;
-    public string displayName;
-
-    public BundleItemData(Sprite icon, int amount, string displayName = "")
-    {
-        this.icon = icon;
-        this.amount = amount;
-        this.displayName = displayName;
     }
 }

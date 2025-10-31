@@ -268,8 +268,10 @@ public class ShopManager : MonoBehaviour
         );
     }
 
+    // REPLACE method ini di ShopManager.cs (line ~247-283)
+
     /// <summary>
-    /// Show popup untuk bundle purchase dengan multiple items
+    /// FIXED: Show popup untuk bundle purchase dengan HANYA items dari bundleItems
     /// </summary>
     void ShowBundlePurchasePopup(ShopItemData data, Currency currency)
     {
@@ -277,6 +279,7 @@ public class ShopManager : MonoBehaviour
 
         Debug.Log($"[ShopManager] ShowBundlePurchasePopup: {data.bundleItems.Count} items in bundle");
 
+        // FIXED: HANYA ambil dari data.bundleItems (tidak ada item extra)
         foreach (var item in data.bundleItems)
         {
             if (item == null)
@@ -285,21 +288,22 @@ public class ShopManager : MonoBehaviour
                 continue;
             }
 
-            Sprite itemIcon = GetBundleItemIcon(item);
+            // FIXED: Gunakan icon yang sudah di-assign di BundleItem
+            Sprite itemIcon = item.icon;
 
-            if (itemIcon != null)
+            if (itemIcon == null)
             {
-                bundleItems.Add(new BundleItemData(
-                    itemIcon,
-                    item.amount,
-                    item.displayName
-                ));
-                Debug.Log($"[ShopManager] Added bundle item: {item.displayName}, icon={itemIcon.name}, amount={item.amount}");
+                Debug.LogWarning($"[ShopManager] Bundle item {item.itemId} has no icon assigned!");
+                continue;
             }
-            else
-            {
-                Debug.LogWarning($"[ShopManager] No icon found for bundle item: {item.itemId}");
-            }
+
+            bundleItems.Add(new BundleItemData(
+                itemIcon,
+                item.amount,
+                item.displayName
+            ));
+
+            Debug.Log($"[ShopManager] Added bundle item: {item.displayName}, icon={itemIcon.name}, amount={item.amount}");
         }
 
         string title = $"Purchase {data.displayName}";
@@ -314,15 +318,25 @@ public class ShopManager : MonoBehaviour
             () => CompletePurchase(data, currency)
         );
     }
-
     /// <summary>
-    /// Get icon untuk item (single item atau booster)
+    /// FIXED: Get icon untuk single item (Shield, Magnet, dll)
     /// </summary>
     Sprite GetItemIcon(ShopItemData data)
     {
-        // Priority: iconPreview → iconGrid
-        if (data.iconPreview != null) return data.iconPreview;
-        if (data.iconGrid != null) return data.iconGrid;
+        if (data == null) return null;
+
+        // FIXED: Prioritas: iconPreview → iconGrid
+        if (data.iconPreview != null)
+        {
+            Debug.Log($"[ShopManager] Using iconPreview for {data.itemId}: {data.iconPreview.name}");
+            return data.iconPreview;
+        }
+
+        if (data.iconGrid != null)
+        {
+            Debug.Log($"[ShopManager] Using iconGrid for {data.itemId}: {data.iconGrid.name}");
+            return data.iconGrid;
+        }
 
         // Fallback untuk economy items
         switch (data.rewardType)
@@ -334,48 +348,12 @@ public class ShopManager : MonoBehaviour
             case ShopRewardType.Energy:
                 return iconEnergy;
             default:
+                Debug.LogWarning($"[ShopManager] No icon found for {data.itemId}");
                 return null;
         }
     }
 
-    /// <summary>
-    /// Get icon untuk bundle item (bisa economy atau booster)
-    /// </summary>
-    Sprite GetBundleItemIcon(BundleItem item)
-    {
-        // Jika item punya icon sendiri, pakai itu
-        if (item.icon != null)
-        {
-            Debug.Log($"[ShopManager] Using assigned icon for {item.itemId}: {item.icon.name}");
-            return item.icon;
-        }
-
-        // Fallback: detect dari itemId
-        string id = item.itemId.ToLower().Trim();
-
-        // Economy items
-        if (id == "coin" || id == "coins") return iconCoin;
-        if (id == "shard" || id == "shards") return iconShard;
-        if (id == "energy") return iconEnergy;
-
-        // Booster items - cari dari database
-        if (database != null)
-        {
-            foreach (var shopItem in database.items)
-            {
-                if (shopItem == null) continue;
-                if (shopItem.itemId.Equals(id, StringComparison.OrdinalIgnoreCase))
-                {
-                    Sprite foundIcon = shopItem.iconPreview != null ? shopItem.iconPreview : shopItem.iconGrid;
-                    Debug.Log($"[ShopManager] Found icon from database for {item.itemId}: {(foundIcon != null ? foundIcon.name : "NULL")}");
-                    return foundIcon;
-                }
-            }
-        }
-
-        Debug.LogWarning($"[ShopManager] No icon found for bundle item: {item.itemId}");
-        return null;
-    }
+    
 
     /// <summary>
     /// Get amount text untuk single item

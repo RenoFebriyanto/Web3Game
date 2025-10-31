@@ -1,6 +1,9 @@
-// Assets/Script/Movement/FragmentCollectible.cs
+﻿// Assets/Script/Movement/FragmentCollectible.cs
 using UnityEngine;
 
+/// <summary>
+/// UPDATED: Fragment pickup dengan sound
+/// </summary>
 public class FragmentCollectible : MonoBehaviour
 {
     [HideInInspector] public FragmentType fragmentType;
@@ -16,7 +19,12 @@ public class FragmentCollectible : MonoBehaviour
     {
         if (!other.CompareTag("Player")) return;
 
-        // Fix: ganti FindObjectOfType dengan FindFirstObjectByType
+        // ✅ NEW: Play fragment pickup sound
+        if (SoundManager.Instance != null)
+        {
+            SoundManager.Instance.PlayFragmentPickup();
+        }
+
         var missionUI = FindFirstObjectByType<FragmentMissionUI>();
         if (missionUI != null)
         {

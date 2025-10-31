@@ -1,23 +1,44 @@
 using UnityEngine;
 
 /// <summary>
-/// Centralized sound manager untuk button clicks, hover, dan music.
-/// Singleton persistent across scenes.
-/// Settings disimpan di PlayerPrefs.
+/// EXTENDED: SoundManager dengan support untuk semua gameplay sounds
+/// Tambahan: Coin pickup variants, gameplay SFX, collision sounds
 /// </summary>
 public class SoundManager : MonoBehaviour
 {
     public static SoundManager Instance { get; private set; }
 
     [Header("Audio Sources")]
-    public AudioSource musicSource;      // Background music
-    public AudioSource sfxSource;        // Sound effects (button, UI)
+    public AudioSource musicSource;
+    public AudioSource sfxSource;
 
-    [Header("UI Sound Clips (Assign in Inspector)")]
+    [Header("UI Sound Clips")]
     public AudioClip buttonClickSound;
     public AudioClip buttonHoverSound;
     public AudioClip purchaseSuccessSound;
     public AudioClip purchaseFailSound;
+
+    [Header("=== GAMEPLAY SOUNDS ===")]
+
+    [Header("Coin Pickup (5 Variants - Random)")]
+    public AudioClip coinPickup1;
+    public AudioClip coinPickup2;
+    public AudioClip coinPickup3;
+    public AudioClip coinPickup4;
+    
+
+    [Header("Collectibles")]
+    public AudioClip fragmentPickupSound;
+    public AudioClip starPickupSound;
+
+    [Header("Booster Sounds")]
+    public AudioClip boosterActivateSound;      // Ketika klik booster button
+    public AudioClip shieldActivateSound;       // Shield visual muncul
+    public AudioClip shieldBreakSound;          // Shield hancur
+
+    [Header("Collision Sounds")]
+    public AudioClip planetCollisionSound;      // Planet hit player (damage)
+    public AudioClip planetDestroySound;        // Shield absorb hit (planet hancur)
 
     [Header("Volume Settings")]
     [Range(0f, 1f)]
@@ -25,11 +46,9 @@ public class SoundManager : MonoBehaviour
     [Range(0f, 1f)]
     public float defaultSFXVolume = 1.0f;
 
-    // PlayerPrefs keys
     const string PREF_MUSIC_VOLUME = "Kulino_MusicVolume_v1";
     const string PREF_SFX_VOLUME = "Kulino_SFXVolume_v1";
 
-    // Runtime
     private float musicVolume;
     private float sfxVolume;
 
@@ -38,7 +57,6 @@ public class SoundManager : MonoBehaviour
 
     void Awake()
     {
-        // Singleton pattern
         if (Instance != null && Instance != this)
         {
             Destroy(gameObject);
@@ -48,10 +66,7 @@ public class SoundManager : MonoBehaviour
         Instance = this;
         DontDestroyOnLoad(gameObject);
 
-        // Setup audio sources
         SetupAudioSources();
-
-        // Load saved volumes
         LoadVolumes();
 
         Debug.Log($"[SoundManager] Initialized: Music={musicVolume:F2}, SFX={sfxVolume:F2}");
@@ -59,7 +74,6 @@ public class SoundManager : MonoBehaviour
 
     void SetupAudioSources()
     {
-        // Create music source if not assigned
         if (musicSource == null)
         {
             GameObject musicGO = new GameObject("MusicSource");
@@ -69,7 +83,6 @@ public class SoundManager : MonoBehaviour
             musicSource.playOnAwake = false;
         }
 
-        // Create SFX source if not assigned
         if (sfxSource == null)
         {
             GameObject sfxGO = new GameObject("SFXSource");
@@ -82,15 +95,12 @@ public class SoundManager : MonoBehaviour
 
     void LoadVolumes()
     {
-        // Load music volume (default 0.7)
         musicVolume = PlayerPrefs.GetFloat(PREF_MUSIC_VOLUME, defaultMusicVolume);
         musicVolume = Mathf.Clamp01(musicVolume);
 
-        // Load SFX volume (default 1.0)
         sfxVolume = PlayerPrefs.GetFloat(PREF_SFX_VOLUME, defaultSFXVolume);
         sfxVolume = Mathf.Clamp01(sfxVolume);
 
-        // Apply to sources
         if (musicSource != null) musicSource.volume = musicVolume;
         if (sfxSource != null) sfxSource.volume = sfxVolume;
     }
@@ -103,7 +113,7 @@ public class SoundManager : MonoBehaviour
     }
 
     // ========================================
-    // PUBLIC API - Music Control
+    // MUSIC CONTROL
     // ========================================
 
     public void SetMusicVolume(float volume)
@@ -151,18 +161,17 @@ public class SoundManager : MonoBehaviour
     }
 
     // ========================================
-    // PUBLIC API - SFX Control
+    // SFX CONTROL (EXISTING)
     // ========================================
 
     public void PlaySFX(AudioClip clip)
     {
         if (sfxSource == null || clip == null) return;
-        if (sfxVolume <= 0f) return; // Muted
+        if (sfxVolume <= 0f) return;
 
         sfxSource.PlayOneShot(clip, sfxVolume);
     }
 
-    // Convenience methods untuk UI sounds
     public void PlayButtonClick()
     {
         if (buttonClickSound != null)
@@ -196,28 +205,94 @@ public class SoundManager : MonoBehaviour
     }
 
     // ========================================
-    // STATIC HELPERS (untuk easy access)
+    // NEW: GAMEPLAY SOUNDS
     // ========================================
 
-    public static void Click()
+    /// <summary>
+    /// Play random coin pickup sound (5 variants)
+    /// </summary>
+    public void PlayCoinPickup()
     {
-        Instance?.PlayButtonClick();
+        AudioClip[] coinSounds = { coinPickup1, coinPickup2, coinPickup3, coinPickup4 };
+
+        // Filter out null clips
+        var validSounds = System.Array.FindAll(coinSounds, clip => clip != null);
+
+        if (validSounds.Length == 0)
+        {
+            Debug.LogWarning("[SoundManager] No coin pickup sounds assigned!");
+            return;
+        }
+
+        // Play random variant
+        AudioClip randomCoin = validSounds[Random.Range(0, validSounds.Length)];
+        PlaySFX(randomCoin);
     }
 
-    public static void Hover()
+    public void PlayFragmentPickup()
     {
-        Instance?.PlayButtonHover();
+        if (fragmentPickupSound != null)
+        {
+            PlaySFX(fragmentPickupSound);
+        }
     }
 
-    public static void PurchaseSuccess()
+    public void PlayStarPickup()
     {
-        Instance?.PlayPurchaseSuccess();
+        if (starPickupSound != null)
+        {
+            PlaySFX(starPickupSound);
+        }
     }
 
-    public static void PurchaseFail()
+    public void PlayBoosterActivate()
     {
-        Instance?.PlayPurchaseFail();
+        if (boosterActivateSound != null)
+        {
+            PlaySFX(boosterActivateSound);
+        }
     }
+
+    public void PlayShieldActivate()
+    {
+        if (shieldActivateSound != null)
+        {
+            PlaySFX(shieldActivateSound);
+        }
+    }
+
+    public void PlayShieldBreak()
+    {
+        if (shieldBreakSound != null)
+        {
+            PlaySFX(shieldBreakSound);
+        }
+    }
+
+    public void PlayPlanetCollision()
+    {
+        if (planetCollisionSound != null)
+        {
+            PlaySFX(planetCollisionSound);
+        }
+    }
+
+    public void PlayPlanetDestroy()
+    {
+        if (planetDestroySound != null)
+        {
+            PlaySFX(planetDestroySound);
+        }
+    }
+
+    // ========================================
+    // STATIC HELPERS
+    // ========================================
+
+    public static void Click() => Instance?.PlayButtonClick();
+    public static void Hover() => Instance?.PlayButtonHover();
+    public static void PurchaseSuccess() => Instance?.PlayPurchaseSuccess();
+    public static void PurchaseFail() => Instance?.PlayPurchaseFail();
 
     // ========================================
     // DEBUG / CONTEXT MENU
@@ -226,14 +301,14 @@ public class SoundManager : MonoBehaviour
     [ContextMenu("Test Button Click")]
     void TestClick() => PlayButtonClick();
 
-    [ContextMenu("Test Button Hover")]
-    void TestHover() => PlayButtonHover();
+    [ContextMenu("Test Coin Pickup (Random)")]
+    void TestCoinPickup() => PlayCoinPickup();
 
-    [ContextMenu("Test Purchase Success")]
-    void TestPurchaseSuccess() => PlayPurchaseSuccess();
+    [ContextMenu("Test Shield Activate")]
+    void TestShieldActivate() => PlayShieldActivate();
 
-    [ContextMenu("Test Purchase Fail")]
-    void TestPurchaseFail() => PlayPurchaseFail();
+    [ContextMenu("Test Planet Collision")]
+    void TestPlanetCollision() => PlayPlanetCollision();
 
     [ContextMenu("Reset Volumes to Default")]
     void ResetVolumes()

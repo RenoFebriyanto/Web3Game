@@ -337,6 +337,7 @@ GameObject:
   - component: {fileID: 3553356052132054350}
   - component: {fileID: 7883804719257417061}
   - component: {fileID: 9160433342251384647}
+  - component: {fileID: 780902149667121718}
   m_Layer: 5
   m_Name: Level
   m_TagString: Untagged
@@ -424,8 +425,8 @@ MonoBehaviour:
     m_SelectOnRight: {fileID: 0}
   m_Transition: 1
   m_Colors:
-    m_NormalColor: {r: 1, g: 1, b: 1, a: 1}
-    m_HighlightedColor: {r: 0.9607843, g: 0.9607843, b: 0.9607843, a: 1}
+    m_NormalColor: {r: 0.8396226, g: 0.8396226, b: 0.8396226, a: 1}
+    m_HighlightedColor: {r: 1, g: 1, b: 1, a: 1}
     m_PressedColor: {r: 0.78431374, g: 0.78431374, b: 0.78431374, a: 1}
     m_SelectedColor: {r: 0.9607843, g: 0.9607843, b: 0.9607843, a: 1}
     m_DisabledColor: {r: 0.78431374, g: 0.78431374, b: 0.78431374, a: 0.5019608}
@@ -467,6 +468,22 @@ MonoBehaviour:
   star1: {fileID: 3177266138146541539}
   star2: {fileID: 1429729690359624281}
   star3: {fileID: 8811757789038405231}
+--- !u!114 &780902149667121718
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5597025808112532493}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4466aa1087fc9f8428b1d1b1c9d629c0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  playClickSound: 1
+  playHoverSound: 1
+  customClickSound: {fileID: 8300000, guid: fa30ee4ac3ad1bc48a29e54e3351b797, type: 3}
+  customHoverSound: {fileID: 8300000, guid: 43dce11f7396d4e489f86402c89baec2, type: 3}
 --- !u!1 &8811757789038405231
 GameObject:
   m_ObjectHideFlags: 0

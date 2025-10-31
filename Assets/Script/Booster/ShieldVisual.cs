@@ -1,9 +1,7 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 /// <summary>
-/// Script untuk visual shield (lingkaran biru di player)
-/// Attach ke GameObject "Shield" sebagai child dari player
-/// Structure: Player -> Shield (with SpriteRenderer of blue circle)
+/// UPDATED: Shield visual dengan activate sound
 /// </summary>
 public class ShieldVisual : MonoBehaviour
 {
@@ -26,7 +24,6 @@ public class ShieldVisual : MonoBehaviour
             Debug.LogWarning("[ShieldVisual] No SpriteRenderer found!");
         }
 
-        // Disable di start (akan di-enable dari BoosterManager)
         gameObject.SetActive(false);
     }
 
@@ -34,7 +31,6 @@ public class ShieldVisual : MonoBehaviour
     {
         if (shieldRenderer == null) return;
 
-        // Pulse effect (breathing animation)
         float pulse = Mathf.PingPong(Time.time * pulseSpeed, pulseAmount);
         float alpha = baseAlpha + pulse;
 
@@ -46,6 +42,12 @@ public class ShieldVisual : MonoBehaviour
     void OnEnable()
     {
         Debug.Log("[ShieldVisual] Shield visual enabled");
+
+        // ✅ NEW: Play shield activate sound
+        if (SoundManager.Instance != null)
+        {
+            SoundManager.Instance.PlayShieldActivate();
+        }
     }
 
     void OnDisable()

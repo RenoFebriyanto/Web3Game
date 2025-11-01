@@ -17,11 +17,12 @@ MonoBehaviour:
   iconGrid: {fileID: 6132651842909860728, guid: aa93ae8787a4adf409f84799302e1cfd, type: 3}
   iconPreview: {fileID: -7213742777133032008, guid: ecb8ef9b287f24e4fb5ce589825d2010, type: 3}
   coinPrice: 10000
-  shardPrice: 1000
+  shardPrice: 100
   allowBuyWithCoins: 1
   allowBuyWithShards: 1
   rewardType: 0
   rewardAmount: 100
+  bundleItems: []
   description: 'bisa didapatkan dari menyelesaikan event
 
     atau dibeli di shop'

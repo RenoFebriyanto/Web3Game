@@ -19,10 +19,4 @@ MonoBehaviour:
   - type: 0
     colorVariant: 1
     count: 5
-  - type: 0
-    colorVariant: 2
-    count: 8
-  - type: 1
-    colorVariant: 1
-    count: 9
   showPreviewInSelector: 1

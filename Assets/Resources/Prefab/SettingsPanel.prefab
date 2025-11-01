@@ -303,8 +303,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   musicSlider: {fileID: 718158047038221201}
   sfxSlider: {fileID: 7734724365969087925}
-  confirmButton: {fileID: 7627881103581315855}
-  cancelButton: {fileID: 7263517969433829194}
   updateRealtime: 0
 --- !u!1 &901561311778542541
 GameObject:
@@ -1010,7 +1008,19 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 6114132541590693698}
   m_OnClick:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 4977081898113112753}
+        m_TargetAssemblyTypeName: VolumeSettingsUI, Assembly-CSharp
+        m_MethodName: ConfirmChanges
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
 --- !u!114 &1565908172789140909
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1551,7 +1561,19 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 6471755204697730535}
   m_OnClick:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 4977081898113112753}
+        m_TargetAssemblyTypeName: VolumeSettingsUI, Assembly-CSharp
+        m_MethodName: CancelChanges
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
 --- !u!114 &4275217642794902928
 MonoBehaviour:
   m_ObjectHideFlags: 0

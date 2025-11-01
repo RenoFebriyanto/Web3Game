@@ -1,9 +1,10 @@
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
 /// Volume control untuk Pause Menu di gameplay.
-/// UPDATED: Auto-save saat Resume (langsung apply perubahan)
+/// BEHAVIOR: Auto-save saat OnDisable (Resume button clicked)
+/// BERBEDA dengan MainMenu yang hanya save saat Confirm button
 /// </summary>
 public class PauseVolumeUI : MonoBehaviour
 {
@@ -29,7 +30,7 @@ public class PauseVolumeUI : MonoBehaviour
 
     void OnDisable()
     {
-        // Auto-save saat pause menu closed (Resume button)
+        // ✅ GAMEPLAY BEHAVIOR: Auto-save saat pause menu closed (Resume button)
         SaveCurrentVolumes();
 
         // Cleanup listeners
@@ -124,7 +125,7 @@ public class PauseVolumeUI : MonoBehaviour
 
     /// <summary>
     /// Save current slider values ke PlayerPrefs
-    /// Called saat Resume (OnDisable) atau manual
+    /// Called saat Resume (OnDisable)
     /// </summary>
     void SaveCurrentVolumes()
     {
@@ -140,7 +141,7 @@ public class PauseVolumeUI : MonoBehaviour
             SoundManager.Instance.SetSFXVolume(sfxSlider.value);
         }
 
-        Debug.Log($"[PauseVolumeUI] Saved volumes: Music={musicSlider?.value:F2}, SFX={sfxSlider?.value:F2}");
+        Debug.Log($"[PauseVolumeUI] ✓ Auto-saved volumes: Music={musicSlider?.value:F2}, SFX={sfxSlider?.value:F2}");
     }
 
     // ========================================

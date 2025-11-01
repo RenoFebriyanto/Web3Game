@@ -1,9 +1,9 @@
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
 /// Volume control untuk Settings di MainMenu.
-/// UPDATED: Support Confirm/Cancel - perubahan hanya disimpan saat Confirm
+/// FIXED: Enhanced logging untuk debug button connection issue
 /// </summary>
 public class VolumeSettingsUI : MonoBehaviour
 {
@@ -12,6 +12,13 @@ public class VolumeSettingsUI : MonoBehaviour
 
     [Header("SFX Volume")]
     public Slider sfxSlider;
+
+    [Header("Buttons (Assign di Inspector untuk auto-setup)")]
+    [Tooltip("Button Confirm (hijau) - akan auto-setup OnClick")]
+    public Button confirmButton;
+
+    [Tooltip("Button Cancel/Close (X merah) - akan auto-setup OnClick")]
+    public Button cancelButton;
 
     [Header("Settings")]
     public bool updateRealtime = false;   // FALSE: hanya preview, tidak save langsung
@@ -23,6 +30,12 @@ public class VolumeSettingsUI : MonoBehaviour
     // Original values (untuk cancel)
     private float originalMusicVolume;
     private float originalSfxVolume;
+
+    void Awake()
+    {
+        // ✅ AUTO-SETUP BUTTONS di Awake (sebelum Start)
+        SetupButtons();
+    }
 
     void Start()
     {
@@ -46,6 +59,34 @@ public class VolumeSettingsUI : MonoBehaviour
         if (sfxSlider != null)
         {
             sfxSlider.onValueChanged.RemoveListener(OnSFXSliderChanged);
+        }
+    }
+
+    /// <summary>
+    /// ✅ NEW: Auto-setup buttons di Awake
+    /// </summary>
+    void SetupButtons()
+    {
+        if (confirmButton != null)
+        {
+            confirmButton.onClick.RemoveAllListeners();
+            confirmButton.onClick.AddListener(ConfirmChanges);
+            Debug.Log("[VolumeSettingsUI] ✓ Confirm button auto-setup complete");
+        }
+        else
+        {
+            Debug.LogWarning("[VolumeSettingsUI] ⚠️ confirmButton not assigned in Inspector!");
+        }
+
+        if (cancelButton != null)
+        {
+            cancelButton.onClick.RemoveAllListeners();
+            cancelButton.onClick.AddListener(CancelChanges);
+            Debug.Log("[VolumeSettingsUI] ✓ Cancel button auto-setup complete");
+        }
+        else
+        {
+            Debug.LogWarning("[VolumeSettingsUI] ⚠️ cancelButton not assigned in Inspector!");
         }
     }
 
@@ -149,27 +190,51 @@ public class VolumeSettingsUI : MonoBehaviour
     /// </summary>
     public void ConfirmChanges()
     {
-        if (SoundManager.Instance == null) return;
+        Debug.Log("=== [VolumeSettingsUI] ConfirmChanges() CALLED ===");
+
+        if (SoundManager.Instance == null)
+        {
+            Debug.LogError("[VolumeSettingsUI] SoundManager.Instance is NULL!");
+            return;
+        }
 
         // Save ke SoundManager (akan auto-save ke PlayerPrefs)
         SoundManager.Instance.SetMusicVolume(tempMusicVolume);
         SoundManager.Instance.SetSFXVolume(tempSfxVolume);
 
-        Debug.Log($"[VolumeSettingsUI] Changes confirmed and saved: Music={tempMusicVolume:F2}, SFX={tempSfxVolume:F2}");
+        Debug.Log($"[VolumeSettingsUI] ✓✓✓ SAVED: Music={tempMusicVolume:F2}, SFX={tempSfxVolume:F2}");
 
-        // Play success sound
+        // Update original values (sekarang ini jadi values yang disimpan)
+        originalMusicVolume = tempMusicVolume;
+        originalSfxVolume = tempSfxVolume;
+
+        // Play button click sound (bukan purchase success)
         if (SoundManager.Instance != null)
         {
-            SoundManager.Instance.PlayPurchaseSuccess();
+            SoundManager.Instance.PlayButtonClick();
+        }
+
+        // Auto-close settings setelah confirm
+        var settingsController = FindFirstObjectByType<Settings>();
+        if (settingsController != null)
+        {
+            Debug.Log("[VolumeSettingsUI] Closing settings via Settings.CloseSettings()");
+            settingsController.CloseSettings();
+        }
+        else
+        {
+            Debug.LogWarning("[VolumeSettingsUI] Settings controller not found!");
         }
     }
 
     /// <summary>
     /// CANCEL: Revert ke original values dan close settings
-    /// Call dari button "Close" (button merah)
+    /// Call dari button "Close" (button merah) atau tombol X
     /// </summary>
     public void CancelChanges()
     {
+        Debug.Log("=== [VolumeSettingsUI] CancelChanges() CALLED ===");
+
         if (SoundManager.Instance == null) return;
 
         // Restore original values (tanpa save)
@@ -197,7 +262,14 @@ public class VolumeSettingsUI : MonoBehaviour
         tempMusicVolume = originalMusicVolume;
         tempSfxVolume = originalSfxVolume;
 
-        Debug.Log($"[VolumeSettingsUI] Changes cancelled, restored to: Music={originalMusicVolume:F2}, SFX={originalSfxVolume:F2}");
+        Debug.Log($"[VolumeSettingsUI] ✓ REVERTED to: Music={originalMusicVolume:F2}, SFX={originalSfxVolume:F2}");
+
+        // Auto-close settings setelah cancel
+        var settingsController = FindFirstObjectByType<Settings>();
+        if (settingsController != null)
+        {
+            settingsController.CloseSettings();
+        }
     }
 
     /// <summary>
@@ -224,6 +296,18 @@ public class VolumeSettingsUI : MonoBehaviour
         tempSfxVolume = defaultSfx;
 
         Debug.Log("[VolumeSettingsUI] Reset to default (preview only, not saved yet)");
+    }
+
+    [ContextMenu("Test: Confirm Changes")]
+    void TestConfirm()
+    {
+        ConfirmChanges();
+    }
+
+    [ContextMenu("Test: Cancel Changes")]
+    void TestCancel()
+    {
+        CancelChanges();
     }
 
     [ContextMenu("Test: Load Volumes")]

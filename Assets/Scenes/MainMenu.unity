@@ -7117,6 +7117,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_Padding: {x: 0, y: 0, z: 0, w: 0}
   m_Softness: {x: 0, y: 0}
+--- !u!1 &997914954 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 422621935128966314, guid: f5f02582e7bb83c42a417f02b30dd481, type: 3}
+  m_PrefabInstance: {fileID: 6292685500769674959}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &1009823667
 GameObject:
   m_ObjectHideFlags: 0
@@ -10439,6 +10444,7 @@ GameObject:
   - component: {fileID: 1730465339}
   - component: {fileID: 1730465338}
   - component: {fileID: 1730465341}
+  - component: {fileID: 1730465342}
   m_Layer: 5
   m_Name: Settings
   m_TagString: Untagged
@@ -10561,8 +10567,21 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   playClickSound: 1
   playHoverSound: 1
-  customClickSound: {fileID: 0}
-  customHoverSound: {fileID: 0}
+  customClickSound: {fileID: 8300000, guid: 7f1c786cebf304542bb8a31fd3df1383, type: 3}
+  customHoverSound: {fileID: 8300000, guid: 36b472d7bdb4280438e5d744f12596b8, type: 3}
+--- !u!114 &1730465342
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1730465336}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f41cd8c250d1250478adbc06c6f560ee, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  settingsMenu: {fileID: 997914954}
 --- !u!1 &1760147722
 GameObject:
   m_ObjectHideFlags: 0
@@ -13976,10 +13995,10 @@ PrefabInstance:
       propertyPath: m_AnchoredPosition.y
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 4334364874744693283, guid: f5f02582e7bb83c42a417f02b30dd481, type: 3}
-      propertyPath: m_Sprite
-      value: 
-      objectReference: {fileID: -6146024965887056814, guid: 86813722051079f4e9c63a35d606dfba, type: 3}
+    - target: {fileID: 1565908172789140909, guid: f5f02582e7bb83c42a417f02b30dd481, type: 3}
+      propertyPath: playClickSound
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 4486855712378000681, guid: f5f02582e7bb83c42a417f02b30dd481, type: 3}
       propertyPath: m_AnchorMax.y
       value: 0

@@ -1,25 +1,20 @@
 using UnityEngine;
 using UnityEngine.UI;
-using TMPro;
 
 /// <summary>
 /// Volume control untuk Pause Menu di gameplay.
-/// 2 Sliders: Music & SFX
-/// Sync dengan SoundManager (persistent).
+/// UPDATED: Auto-save saat Resume (langsung apply perubahan)
 /// </summary>
 public class PauseVolumeUI : MonoBehaviour
 {
     [Header("Music Volume")]
     public Slider musicSlider;
-    public TMP_Text musicValueText;      // Optional: "70%"
 
     [Header("SFX Volume")]
     public Slider sfxSlider;
-    public TMP_Text sfxValueText;        // Optional: "100%"
 
     [Header("Settings")]
-    public bool updateRealtime = true;   // Update saat slider berubah
-    public bool showPercentage = true;   // Show "70%" text
+    public bool updateRealtime = true;   // TRUE: langsung apply perubahan
 
     void Start()
     {
@@ -29,12 +24,24 @@ public class PauseVolumeUI : MonoBehaviour
 
     void OnEnable()
     {
-        LoadVolumes();
+        LoadVolumes(); // Refresh saat pause menu dibuka
     }
 
     void OnDisable()
     {
-        // Save volumes saat pause menu closed (optional, karena sudah auto-save di SoundManager)
+        // Auto-save saat pause menu closed (Resume button)
+        SaveCurrentVolumes();
+
+        // Cleanup listeners
+        if (musicSlider != null)
+        {
+            musicSlider.onValueChanged.RemoveListener(OnMusicSliderChanged);
+        }
+
+        if (sfxSlider != null)
+        {
+            sfxSlider.onValueChanged.RemoveListener(OnSFXSliderChanged);
+        }
     }
 
     void SetupSliders()
@@ -56,21 +63,8 @@ public class PauseVolumeUI : MonoBehaviour
         }
     }
 
-    void OnDestroy()
-    {
-        if (musicSlider != null)
-        {
-            musicSlider.onValueChanged.RemoveListener(OnMusicSliderChanged);
-        }
-
-        if (sfxSlider != null)
-        {
-            sfxSlider.onValueChanged.RemoveListener(OnSFXSliderChanged);
-        }
-    }
-
     /// <summary>
-    /// Load current volumes dari SoundManager
+    /// Load current volumes dari SoundManager (sinkron dengan MainMenu changes)
     /// </summary>
     void LoadVolumes()
     {
@@ -80,6 +74,7 @@ public class PauseVolumeUI : MonoBehaviour
             return;
         }
 
+        // Load current saved volumes (akan sync dengan perubahan dari MainMenu)
         if (musicSlider != null)
         {
             musicSlider.value = SoundManager.Instance.MusicVolume;
@@ -90,8 +85,7 @@ public class PauseVolumeUI : MonoBehaviour
             sfxSlider.value = SoundManager.Instance.SFXVolume;
         }
 
-        UpdateMusicText(SoundManager.Instance.MusicVolume);
-        UpdateSFXText(SoundManager.Instance.SFXVolume);
+        Debug.Log($"[PauseVolumeUI] Loaded volumes: Music={SoundManager.Instance.MusicVolume:F2}, SFX={SoundManager.Instance.SFXVolume:F2}");
     }
 
     /// <summary>
@@ -101,12 +95,11 @@ public class PauseVolumeUI : MonoBehaviour
     {
         if (!updateRealtime) return;
 
-        if (SoundManager.Instance != null)
+        // Apply langsung (preview)
+        if (SoundManager.Instance != null && SoundManager.Instance.musicSource != null)
         {
-            SoundManager.Instance.SetMusicVolume(value);
+            SoundManager.Instance.musicSource.volume = value;
         }
-
-        UpdateMusicText(value);
     }
 
     /// <summary>
@@ -116,12 +109,11 @@ public class PauseVolumeUI : MonoBehaviour
     {
         if (!updateRealtime) return;
 
-        if (SoundManager.Instance != null)
+        // Apply langsung (preview)
+        if (SoundManager.Instance != null && SoundManager.Instance.sfxSource != null)
         {
-            SoundManager.Instance.SetSFXVolume(value);
+            SoundManager.Instance.sfxSource.volume = value;
         }
-
-        UpdateSFXText(value);
 
         // Play test sound
         if (SoundManager.Instance != null)
@@ -130,41 +122,11 @@ public class PauseVolumeUI : MonoBehaviour
         }
     }
 
-    void UpdateMusicText(float value)
-    {
-        if (musicValueText == null) return;
-
-        if (showPercentage)
-        {
-            int percentage = Mathf.RoundToInt(value * 100f);
-            musicValueText.text = $"{percentage}%";
-        }
-        else
-        {
-            musicValueText.text = value.ToString("F2");
-        }
-    }
-
-    void UpdateSFXText(float value)
-    {
-        if (sfxValueText == null) return;
-
-        if (showPercentage)
-        {
-            int percentage = Mathf.RoundToInt(value * 100f);
-            sfxValueText.text = $"{percentage}%";
-        }
-        else
-        {
-            sfxValueText.text = value.ToString("F2");
-        }
-    }
-
-    // ========================================
-    // PUBLIC API (untuk button OnClick)
-    // ========================================
-
-    public void ApplyVolumes()
+    /// <summary>
+    /// Save current slider values ke PlayerPrefs
+    /// Called saat Resume (OnDisable) atau manual
+    /// </summary>
+    void SaveCurrentVolumes()
     {
         if (SoundManager.Instance == null) return;
 
@@ -178,24 +140,51 @@ public class PauseVolumeUI : MonoBehaviour
             SoundManager.Instance.SetSFXVolume(sfxSlider.value);
         }
 
-        Debug.Log("[PauseVolumeUI] Volumes applied");
+        Debug.Log($"[PauseVolumeUI] Saved volumes: Music={musicSlider?.value:F2}, SFX={sfxSlider?.value:F2}");
     }
 
+    // ========================================
+    // PUBLIC API (optional manual controls)
+    // ========================================
+
+    /// <summary>
+    /// Manual save (opsional, karena auto-save di OnDisable)
+    /// </summary>
+    public void ApplyVolumes()
+    {
+        SaveCurrentVolumes();
+    }
+
+    /// <summary>
+    /// Reset to default
+    /// </summary>
     public void ResetToDefault()
     {
         if (SoundManager.Instance == null) return;
 
-        SoundManager.Instance.SetMusicVolume(SoundManager.Instance.defaultMusicVolume);
-        SoundManager.Instance.SetSFXVolume(SoundManager.Instance.defaultSFXVolume);
+        if (musicSlider != null)
+        {
+            musicSlider.value = SoundManager.Instance.defaultMusicVolume;
+        }
 
-        LoadVolumes();
+        if (sfxSlider != null)
+        {
+            sfxSlider.value = SoundManager.Instance.defaultSFXVolume;
+        }
 
-        Debug.Log("[PauseVolumeUI] Volumes reset to default");
+        // Auto-save via OnDisable saat Resume
+        Debug.Log("[PauseVolumeUI] Reset to default");
     }
 
     [ContextMenu("Test: Load Volumes")]
     void TestLoad()
     {
         LoadVolumes();
+    }
+
+    [ContextMenu("Test: Save Volumes")]
+    void TestSave()
+    {
+        SaveCurrentVolumes();
     }
 }

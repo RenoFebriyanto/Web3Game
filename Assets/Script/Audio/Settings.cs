@@ -1,36 +1,57 @@
 using UnityEngine;
 
+/// <summary>
+/// FIXED: Settings controller - hanya open via button, bukan Mouse0
+/// Attach ke GameObject di scene, assign settingsMenu GameObject
+/// </summary>
 public class Settings : MonoBehaviour
 {
+    [Header("Settings Menu")]
     public GameObject settingsMenu;
 
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
+        // Pastikan settings menu hidden di start
         if (settingsMenu != null)
         {
-            settingsMenu.SetActive(false); // Ensure the settings menu is hidden at the start
+            settingsMenu.SetActive(false);
         }
     }
 
-    // Update is called once per frame
-    void Update()
-    {
-        if (Input.GetKeyDown(KeyCode.Mouse0))
-        {
-            if (settingsMenu != null)
-            {
-                bool isActive = settingsMenu.activeSelf;
-                settingsMenu.SetActive(!isActive); // Toggle the settings menu visibility
-            }
-        }
-    }
-
+    /// <summary>
+    /// Open settings menu (call dari Button.onClick)
+    /// </summary>
     public void OpenSettings()
     {
         if (settingsMenu != null)
         {
             settingsMenu.SetActive(true);
+            Debug.Log("[Settings] Settings menu opened");
+        }
+    }
+
+    /// <summary>
+    /// Close settings menu (call dari Button.onClick - button close/cancel)
+    /// </summary>
+    public void CloseSettings()
+    {
+        if (settingsMenu != null)
+        {
+            settingsMenu.SetActive(false);
+            Debug.Log("[Settings] Settings menu closed");
+        }
+    }
+
+    /// <summary>
+    /// Toggle settings menu (optional - untuk button gear toggle)
+    /// </summary>
+    public void ToggleSettings()
+    {
+        if (settingsMenu != null)
+        {
+            bool isActive = settingsMenu.activeSelf;
+            settingsMenu.SetActive(!isActive);
+            Debug.Log($"[Settings] Settings menu toggled: {!isActive}");
         }
     }
 }

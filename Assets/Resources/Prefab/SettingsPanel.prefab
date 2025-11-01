@@ -1033,7 +1033,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4466aa1087fc9f8428b1d1b1c9d629c0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  playClickSound: 0
+  playClickSound: 1
   playHoverSound: 1
   customClickSound: {fileID: 8300000, guid: 8e0af4fdf08c5b541b400cf4e21cd3fb, type: 3}
   customHoverSound: {fileID: 8300000, guid: 43dce11f7396d4e489f86402c89baec2, type: 3}

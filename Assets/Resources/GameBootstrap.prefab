@@ -50,7 +50,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 626138940886702212}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: cdf73e6788291254e9c379aa4d3fe075, type: 3}
   m_Name: 
@@ -127,7 +127,16 @@ MonoBehaviour:
   weeklyPool:
   - {fileID: 11400000, guid: 701a1658aa761a04394bfeb3bfceff37, type: 2}
   - {fileID: 11400000, guid: d158b5a5dd6cf2a478fa47cb7cac8059, type: 2}
-  weeklyVisibleCount: 3
+  - {fileID: 11400000, guid: 63e697f885acabb4789ed3ddd4e06ef8, type: 2}
+  - {fileID: 11400000, guid: e1da40fb331654443b408c9d64d7bb6f, type: 2}
+  - {fileID: 11400000, guid: 90ad899be7fa0474086f1cb937642f46, type: 2}
+  - {fileID: 11400000, guid: 723d38bc241a25e4d97e4d357c630a25, type: 2}
+  - {fileID: 11400000, guid: 723d38bc241a25e4d97e4d357c630a25, type: 2}
+  - {fileID: 11400000, guid: 9fd11310d8070b74cb8e614f7ab13932, type: 2}
+  - {fileID: 11400000, guid: 0604acb1339b2934aba951fdb3b7e6d7, type: 2}
+  - {fileID: 11400000, guid: 249a2178b5523a045ab1533e35002a11, type: 2}
+  - {fileID: 11400000, guid: c136c79a657315c418f932a8e1a92c4a, type: 2}
+  weeklyVisibleCount: 5
 --- !u!114 &8040292311826353771
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -157,6 +166,9 @@ MonoBehaviour:
   buyPreviewUI: {fileID: 0}
   database: {fileID: 11400000, guid: c0dff845c5d907549b49301d4d4d8bb2, type: 2}
   shopItems: []
+  iconCoin: {fileID: 6765926063464852416, guid: c36ed03bf5abb2e45a972295e241e11a, type: 3}
+  iconShard: {fileID: -4101916017452507219, guid: 17c51150cca33ca46bb76c4c0df5bffd, type: 3}
+  iconEnergy: {fileID: -7213742777133032008, guid: ecb8ef9b287f24e4fb5ce589825d2010, type: 3}
 --- !u!114 &8329373074072348770
 MonoBehaviour:
   m_ObjectHideFlags: 0

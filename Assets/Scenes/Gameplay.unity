@@ -1070,11 +1070,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   musicSlider: {fileID: 1281606951866475229}
-  musicValueText: {fileID: 0}
   sfxSlider: {fileID: 8316183269083469049}
-  sfxValueText: {fileID: 0}
   updateRealtime: 1
-  showPercentage: 1
 --- !u!1 &308090481
 GameObject:
   m_ObjectHideFlags: 0
@@ -4583,6 +4580,7 @@ GameObject:
   - component: {fileID: 1256130065}
   - component: {fileID: 1256130064}
   - component: {fileID: 1256130063}
+  - component: {fileID: 1256130066}
   m_Layer: 5
   m_Name: Home
   m_TagString: Untagged
@@ -4704,6 +4702,22 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1256130061}
   m_CullTransparentMesh: 1
+--- !u!114 &1256130066
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1256130061}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4466aa1087fc9f8428b1d1b1c9d629c0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  playClickSound: 1
+  playHoverSound: 1
+  customClickSound: {fileID: 8300000, guid: 8e0af4fdf08c5b541b400cf4e21cd3fb, type: 3}
+  customHoverSound: {fileID: 8300000, guid: 43dce11f7396d4e489f86402c89baec2, type: 3}
 --- !u!1 &1259124873
 GameObject:
   m_ObjectHideFlags: 0
@@ -7424,6 +7438,7 @@ GameObject:
   - component: {fileID: 2043754196}
   - component: {fileID: 2043754195}
   - component: {fileID: 2043754194}
+  - component: {fileID: 2043754197}
   m_Layer: 5
   m_Name: Replay
   m_TagString: Untagged
@@ -7545,6 +7560,22 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2043754192}
   m_CullTransparentMesh: 1
+--- !u!114 &2043754197
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2043754192}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4466aa1087fc9f8428b1d1b1c9d629c0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  playClickSound: 1
+  playHoverSound: 1
+  customClickSound: {fileID: 8300000, guid: 8e0af4fdf08c5b541b400cf4e21cd3fb, type: 3}
+  customHoverSound: {fileID: 8300000, guid: 43dce11f7396d4e489f86402c89baec2, type: 3}
 --- !u!1 &2048565770
 GameObject:
   m_ObjectHideFlags: 0
@@ -7632,6 +7663,7 @@ GameObject:
   - component: {fileID: 2066820213}
   - component: {fileID: 2066820212}
   - component: {fileID: 2066820211}
+  - component: {fileID: 2066820214}
   m_Layer: 5
   m_Name: Resume
   m_TagString: Untagged
@@ -7753,6 +7785,22 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2066820209}
   m_CullTransparentMesh: 1
+--- !u!114 &2066820214
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2066820209}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4466aa1087fc9f8428b1d1b1c9d629c0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  playClickSound: 1
+  playHoverSound: 1
+  customClickSound: {fileID: 8300000, guid: 8e0af4fdf08c5b541b400cf4e21cd3fb, type: 3}
+  customHoverSound: {fileID: 8300000, guid: 43dce11f7396d4e489f86402c89baec2, type: 3}
 --- !u!1 &2103430296
 GameObject:
   m_ObjectHideFlags: 0

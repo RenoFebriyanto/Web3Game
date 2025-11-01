@@ -12,6 +12,7 @@ GameObject:
   - component: {fileID: 608725865647027155}
   - component: {fileID: 3645908489962108268}
   - component: {fileID: 4904761843575784914}
+  - component: {fileID: 6183284638829649732}
   m_Layer: 5
   m_Name: BackgroundItem
   m_TagString: Untagged
@@ -123,6 +124,22 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls: []
+--- !u!114 &6183284638829649732
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 24570040814610614}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4466aa1087fc9f8428b1d1b1c9d629c0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  playClickSound: 1
+  playHoverSound: 1
+  customClickSound: {fileID: 0}
+  customHoverSound: {fileID: 0}
 --- !u!1 &557371529082622833
 GameObject:
   m_ObjectHideFlags: 0
@@ -1002,6 +1019,7 @@ GameObject:
   - component: {fileID: 4983517055877798003}
   - component: {fileID: 2155719216966557467}
   - component: {fileID: 5588388592242468369}
+  - component: {fileID: 3026303966940387733}
   m_Layer: 5
   m_Name: ParentItemsShop
   m_TagString: Untagged
@@ -1092,6 +1110,22 @@ MonoBehaviour:
   buyButton: {fileID: 3178104966949130112}
   coinIconRoot: {fileID: 3958829925381644078}
   shardIconRoot: {fileID: 743108297691955855}
+--- !u!114 &3026303966940387733
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7612720540475846766}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4466aa1087fc9f8428b1d1b1c9d629c0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  playClickSound: 1
+  playHoverSound: 1
+  customClickSound: {fileID: 0}
+  customHoverSound: {fileID: 0}
 --- !u!1 &9044379238843416590
 GameObject:
   m_ObjectHideFlags: 0

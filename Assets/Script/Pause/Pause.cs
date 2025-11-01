@@ -1,10 +1,10 @@
-using UnityEngine;
+﻿using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class Pause : MonoBehaviour
 {
     [Header("Pause Menu")]
     public GameObject pauseRootObject;
-    
 
     private void Awake()
     {
@@ -17,30 +17,32 @@ public class Pause : MonoBehaviour
             pauseRootObject.SetActive(false);
         }
     }
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
-    
 
     public void PauseGame()
     {
         Time.timeScale = 0;
         pauseRootObject.SetActive(true);
-        
     }
+
     public void ResumeGame()
     {
         Time.timeScale = 1;
         pauseRootObject.SetActive(false);
-        
     }
 
     public void ReplayGame()
     {
         Time.timeScale = 1;
-        UnityEngine.SceneManagement.SceneManager.LoadScene(UnityEngine.SceneManagement.SceneManager.GetActiveScene().name);
+
+        // ✅ PENTING: Pastikan DontDestroyOnLoad objects tetap ada
+        SceneManager.LoadScene(SceneManager.GetActiveScene().name, LoadSceneMode.Single);
     }
+
     public void HomeGame()
     {
         Time.timeScale = 1;
-        UnityEngine.SceneManagement.SceneManager.LoadScene("MainMenu");
+
+        // ✅ Load MainMenu tanpa destroy persistent objects
+        SceneManager.LoadScene("MainMenu", LoadSceneMode.Single);
     }
 }

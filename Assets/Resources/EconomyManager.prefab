@@ -44,6 +44,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: bb7f077529d537f4e8530c32d4eab966, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  defaultEnergy: 5
-  defaultCoins: 0
+  defaultEnergy: 100
+  defaultCoins: 5000
   defaultShards: 0
+  defaultMaxEnergy: 100

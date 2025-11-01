@@ -6,6 +6,7 @@ TagManager:
   tags:
   - Planet
   - Collectible
+  - Coin
   layers:
   - Default
   - TransparentFX

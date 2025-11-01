@@ -6,7 +6,7 @@ using UnityEngine;
 public enum Currency { Coins, Shards }
 
 /// <summary>
-/// UPDATED: Integration dengan PopupClaimQuest untuk purchase flow.
+/// FIXED: PlayerEconomy null check dengan auto-create
 /// Flow: ShopItem → BuyPreview → PopupClaimQuest → Grant Reward
 /// </summary>
 public class ShopManager : MonoBehaviour
@@ -40,6 +40,9 @@ public class ShopManager : MonoBehaviour
 
     void Awake()
     {
+        // ✅ CRITICAL FIX: Ensure PlayerEconomy exists first
+        EnsurePlayerEconomy();
+
         if (buyPreviewUI == null)
         {
             try
@@ -59,6 +62,45 @@ public class ShopManager : MonoBehaviour
         }
 
         PopulateShop();
+    }
+
+    /// <summary>
+    /// ✅ NEW: Ensure PlayerEconomy instance exists before any operations
+    /// </summary>
+    void EnsurePlayerEconomy()
+    {
+        if (PlayerEconomy.Instance != null)
+        {
+            Debug.Log("[ShopManager] PlayerEconomy already exists");
+            return;
+        }
+
+        Debug.LogWarning("[ShopManager] PlayerEconomy.Instance is null! Attempting to find or create...");
+
+        // Try to find existing PlayerEconomy in scene
+        var existing = FindFirstObjectByType<PlayerEconomy>();
+        if (existing != null)
+        {
+            Debug.Log("[ShopManager] Found existing PlayerEconomy in scene");
+            return;
+        }
+
+        // Try to load from Resources
+        var prefab = Resources.Load<GameObject>("EconomyManager");
+        if (prefab != null)
+        {
+            var instance = Instantiate(prefab);
+            instance.name = "EconomyManager";
+            DontDestroyOnLoad(instance);
+            Debug.Log("[ShopManager] Created PlayerEconomy from Resources/EconomyManager prefab");
+            return;
+        }
+
+        // Last resort: create empty GameObject with PlayerEconomy
+        var go = new GameObject("PlayerEconomy");
+        go.AddComponent<PlayerEconomy>();
+        DontDestroyOnLoad(go);
+        Debug.Log("[ShopManager] Created fallback PlayerEconomy GameObject");
     }
 
     public void PopulateShop()
@@ -152,17 +194,32 @@ public class ShopManager : MonoBehaviour
     }
 
     // ========================================
-    // UPDATED: Purchase Flow dengan PopupClaimQuest
+    // ✅ FIXED: Purchase Flow dengan PlayerEconomy null check
     // ========================================
 
     public bool TryBuy(ShopItemData data, Currency currency)
     {
         if (data == null) return false;
 
+        // ✅ CRITICAL FIX: Ensure PlayerEconomy exists before checking
         if (PlayerEconomy.Instance == null)
         {
-            Debug.LogError("[ShopManager] PlayerEconomy.Instance is null.");
-            return false;
+            Debug.LogError("[ShopManager] PlayerEconomy.Instance is null. Attempting to create...");
+            EnsurePlayerEconomy();
+
+            // Check again after ensure
+            if (PlayerEconomy.Instance == null)
+            {
+                Debug.LogError("[ShopManager] Failed to create PlayerEconomy! Cannot proceed with purchase.");
+
+                // Play fail sound
+                if (SoundManager.Instance != null)
+                {
+                    SoundManager.Instance.PlayPurchaseFail();
+                }
+
+                return false;
+            }
         }
 
         // Check if player has enough currency
@@ -174,12 +231,16 @@ public class ShopManager : MonoBehaviour
             if (!data.allowBuyWithCoins) return false;
             price = data.coinPrice;
             canAfford = PlayerEconomy.Instance.Coins >= price;
+
+            Debug.Log($"[ShopManager] TryBuy with Coins: has={PlayerEconomy.Instance.Coins}, need={price}, canAfford={canAfford}");
         }
         else if (currency == Currency.Shards)
         {
             if (!data.allowBuyWithShards) return false;
             price = data.shardPrice;
             canAfford = PlayerEconomy.Instance.Shards >= price;
+
+            Debug.Log($"[ShopManager] TryBuy with Shards: has={PlayerEconomy.Instance.Shards}, need={price}, canAfford={canAfford}");
         }
 
         if (!canAfford)
@@ -204,15 +265,6 @@ public class ShopManager : MonoBehaviour
 
         return true;
     }
-
-
-
-
-
-
-
-    // REPLACE bagian ShowPurchasePopup() sampai GetBundleItemIcon() di ShopManager.cs
-    // dengan kode ini:
 
     /// <summary>
     /// Show PopupClaimQuest dengan items yang dibeli
@@ -268,10 +320,8 @@ public class ShopManager : MonoBehaviour
         );
     }
 
-    // REPLACE method ini di ShopManager.cs (line ~247-283)
-
     /// <summary>
-    /// FIXED: Show popup untuk bundle purchase dengan HANYA items dari bundleItems
+    /// Show popup untuk bundle purchase dengan HANYA items dari bundleItems
     /// </summary>
     void ShowBundlePurchasePopup(ShopItemData data, Currency currency)
     {
@@ -318,14 +368,15 @@ public class ShopManager : MonoBehaviour
             () => CompletePurchase(data, currency)
         );
     }
+
     /// <summary>
-    /// FIXED: Get icon untuk single item (Shield, Magnet, dll)
+    /// Get icon untuk single item (Shield, Magnet, dll)
     /// </summary>
     Sprite GetItemIcon(ShopItemData data)
     {
         if (data == null) return null;
 
-        // FIXED: Prioritas: iconPreview → iconGrid
+        // Prioritas: iconPreview → iconGrid
         if (data.iconPreview != null)
         {
             Debug.Log($"[ShopManager] Using iconPreview for {data.itemId}: {data.iconPreview.name}");
@@ -353,8 +404,6 @@ public class ShopManager : MonoBehaviour
         }
     }
 
-    
-
     /// <summary>
     /// Get amount text untuk single item
     /// </summary>
@@ -378,6 +427,19 @@ public class ShopManager : MonoBehaviour
     /// </summary>
     void CompletePurchase(ShopItemData data, Currency currency)
     {
+        // ✅ Double-check PlayerEconomy exists
+        if (PlayerEconomy.Instance == null)
+        {
+            Debug.LogError("[ShopManager] PlayerEconomy.Instance is null in CompletePurchase!");
+            EnsurePlayerEconomy();
+
+            if (PlayerEconomy.Instance == null)
+            {
+                Debug.LogError("[ShopManager] Failed to create PlayerEconomy! Cannot complete purchase.");
+                return;
+            }
+        }
+
         // Deduct currency
         if (currency == Currency.Coins)
         {
@@ -413,7 +475,7 @@ public class ShopManager : MonoBehaviour
     }
 
     // ========================================
-    // Reward Granting (unchanged)
+    // Reward Granting
     // ========================================
 
     void GrantReward(ShopItemData data)
@@ -534,7 +596,7 @@ public class ShopManager : MonoBehaviour
     }
 
     // ========================================
-    // Filter Methods (unchanged)
+    // Filter Methods
     // ========================================
 
     [ContextMenu("Repopulate Shop")]

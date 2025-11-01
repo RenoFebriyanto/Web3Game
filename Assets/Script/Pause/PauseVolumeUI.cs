@@ -3,7 +3,7 @@ using UnityEngine.UI;
 
 /// <summary>
 /// Volume control untuk Pause Menu di gameplay.
-/// UPDATED: Auto-save saat Resume (langsung apply perubahan)
+/// FIXED: Proper sync + auto-save on Resume
 /// </summary>
 public class PauseVolumeUI : MonoBehaviour
 {
@@ -24,6 +24,7 @@ public class PauseVolumeUI : MonoBehaviour
 
     void OnEnable()
     {
+        SetupSliders(); // Re-setup listeners
         LoadVolumes(); // Refresh saat pause menu dibuka
     }
 
@@ -51,6 +52,9 @@ public class PauseVolumeUI : MonoBehaviour
             musicSlider.minValue = 0f;
             musicSlider.maxValue = 1f;
             musicSlider.wholeNumbers = false;
+
+            // Remove old listener dulu (prevent double-add)
+            musicSlider.onValueChanged.RemoveListener(OnMusicSliderChanged);
             musicSlider.onValueChanged.AddListener(OnMusicSliderChanged);
         }
 
@@ -59,6 +63,9 @@ public class PauseVolumeUI : MonoBehaviour
             sfxSlider.minValue = 0f;
             sfxSlider.maxValue = 1f;
             sfxSlider.wholeNumbers = false;
+
+            // Remove old listener dulu (prevent double-add)
+            sfxSlider.onValueChanged.RemoveListener(OnSFXSliderChanged);
             sfxSlider.onValueChanged.AddListener(OnSFXSliderChanged);
         }
     }
@@ -77,12 +84,13 @@ public class PauseVolumeUI : MonoBehaviour
         // Load current saved volumes (akan sync dengan perubahan dari MainMenu)
         if (musicSlider != null)
         {
-            musicSlider.value = SoundManager.Instance.MusicVolume;
+            // Use SetValueWithoutNotify untuk prevent trigger onValueChanged saat load
+            musicSlider.SetValueWithoutNotify(SoundManager.Instance.MusicVolume);
         }
 
         if (sfxSlider != null)
         {
-            sfxSlider.value = SoundManager.Instance.SFXVolume;
+            sfxSlider.SetValueWithoutNotify(SoundManager.Instance.SFXVolume);
         }
 
         Debug.Log($"[PauseVolumeUI] Loaded volumes: Music={SoundManager.Instance.MusicVolume:F2}, SFX={SoundManager.Instance.SFXVolume:F2}");
@@ -100,6 +108,8 @@ public class PauseVolumeUI : MonoBehaviour
         {
             SoundManager.Instance.musicSource.volume = value;
         }
+
+        Debug.Log($"[PauseVolumeUI] Music changed: {value:F2}");
     }
 
     /// <summary>
@@ -120,6 +130,8 @@ public class PauseVolumeUI : MonoBehaviour
         {
             SoundManager.Instance.PlayButtonClick();
         }
+
+        Debug.Log($"[PauseVolumeUI] SFX changed: {value:F2}");
     }
 
     /// <summary>
@@ -128,7 +140,11 @@ public class PauseVolumeUI : MonoBehaviour
     /// </summary>
     void SaveCurrentVolumes()
     {
-        if (SoundManager.Instance == null) return;
+        if (SoundManager.Instance == null)
+        {
+            Debug.LogWarning("[PauseVolumeUI] Cannot save - SoundManager is null!");
+            return;
+        }
 
         if (musicSlider != null)
         {
@@ -140,7 +156,7 @@ public class PauseVolumeUI : MonoBehaviour
             SoundManager.Instance.SetSFXVolume(sfxSlider.value);
         }
 
-        Debug.Log($"[PauseVolumeUI] Saved volumes: Music={musicSlider?.value:F2}, SFX={sfxSlider?.value:F2}");
+        Debug.Log($"[PauseVolumeUI] ✓ Saved volumes: Music={musicSlider?.value:F2}, SFX={sfxSlider?.value:F2}");
     }
 
     // ========================================

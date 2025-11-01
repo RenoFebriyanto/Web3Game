@@ -10,7 +10,7 @@ public class Pause : MonoBehaviour
     {
         if (pauseRootObject == null)
         {
-            Debug.LogError("Pause root object is not assigned in the inspector.");
+            Debug.LogError("[Pause] pauseRootObject is not assigned!");
         }
         else
         {
@@ -21,20 +21,34 @@ public class Pause : MonoBehaviour
     public void PauseGame()
     {
         Time.timeScale = 0;
-        pauseRootObject.SetActive(true);
+
+        if (pauseRootObject != null)
+        {
+            pauseRootObject.SetActive(true);
+        }
+
+        Debug.Log("[Pause] Game paused");
     }
 
     public void ResumeGame()
     {
         Time.timeScale = 1;
-        pauseRootObject.SetActive(false);
+
+        if (pauseRootObject != null)
+        {
+            pauseRootObject.SetActive(false);
+        }
+
+        Debug.Log("[Pause] Game resumed");
     }
 
     public void ReplayGame()
     {
         Time.timeScale = 1;
 
-        // ✅ PENTING: Pastikan DontDestroyOnLoad objects tetap ada
+        Debug.Log("[Pause] Reloading scene...");
+
+        // Reload current scene
         SceneManager.LoadScene(SceneManager.GetActiveScene().name, LoadSceneMode.Single);
     }
 
@@ -42,7 +56,9 @@ public class Pause : MonoBehaviour
     {
         Time.timeScale = 1;
 
-        // ✅ Load MainMenu tanpa destroy persistent objects
+        Debug.Log("[Pause] Loading MainMenu...");
+
+        // Load MainMenu
         SceneManager.LoadScene("MainMenu", LoadSceneMode.Single);
     }
 }

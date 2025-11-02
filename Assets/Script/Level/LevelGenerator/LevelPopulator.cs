@@ -24,7 +24,7 @@ public class LevelPopulator : MonoBehaviour
 
     [Header("Optional: Layout Manager")]
     [Tooltip("Optional: Layout manager for snake pattern (will auto-find if null)")]
-    public LevelGridLayoutManager layoutManager;
+    public LevelPathLayoutManager layoutManager;
 
     private List<GameObject> spawnedItems = new List<GameObject>();
 
@@ -33,7 +33,7 @@ public class LevelPopulator : MonoBehaviour
         // Auto-find layout manager
         if (layoutManager == null)
         {
-            layoutManager = GetComponent<LevelGridLayoutManager>();
+            layoutManager = GetComponent<LevelPathLayoutManager>();
         }
     }
 

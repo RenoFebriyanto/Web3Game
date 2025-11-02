@@ -49,21 +49,22 @@ public class LevelSelectionItem : MonoBehaviour
             return;
         }
 
-        // Update number text
-        if (numberText != null)
-        {
-            numberText.text = levelConfig.number.ToString();
-        }
-
         // Check if unlocked
         bool unlocked = LevelProgressManager.Instance != null ?
                         LevelProgressManager.Instance.IsUnlocked(levelConfig.number) :
                         (levelConfig.number == 1);
 
-        // Update locked overlay
+        // ✅ NEW: Update number text visibility based on locked state
+        if (numberText != null)
+        {
+            numberText.text = levelConfig.number.ToString();
+            numberText.gameObject.SetActive(unlocked); // Hide text when locked
+        }
+
+        // ✅ NEW: Update locked overlay visibility
         if (lockedOverlay != null)
         {
-            lockedOverlay.SetActive(!unlocked);
+            lockedOverlay.SetActive(!unlocked); // Show overlay when locked
         }
 
         // Update button interactable
@@ -75,7 +76,7 @@ public class LevelSelectionItem : MonoBehaviour
         // ✅ Refresh stars
         RefreshStars();
 
-        Debug.Log($"[LevelSelectionItem] ✓ {levelConfig.id} refreshed (unlocked: {unlocked})");
+        Debug.Log($"[LevelSelectionItem] ✓ {levelConfig.id} refreshed (unlocked: {unlocked}, text visible: {unlocked})");
     }
 
     void RefreshStars()

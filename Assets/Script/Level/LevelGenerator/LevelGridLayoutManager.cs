@@ -1,10 +1,9 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// Layout manager untuk level selection dengan snake/zig-zag pattern
-/// Attach ke parent GameObject dari level items (e.g., ContentLevel)
-/// Automatically positions level items in snake pattern
+/// FIXED: Layout manager untuk level selection dengan snake/zig-zag pattern
+/// Properly handles UI RectTransform positioning
 /// </summary>
 public class LevelGridLayoutManager : MonoBehaviour
 {
@@ -33,16 +32,37 @@ public class LevelGridLayoutManager : MonoBehaviour
     [Tooltip("Auto-arrange when children change")]
     public bool autoArrangeOnChildChange = true;
 
+    [Header("Item Size (for content size calculation)")]
+    public float itemWidth = 200f;
+    public float itemHeight = 200f;
+
     private int lastChildCount = 0;
+    private RectTransform rectTransform;
+
+    void Awake()
+    {
+        rectTransform = GetComponent<RectTransform>();
+        if (rectTransform == null)
+        {
+            Debug.LogError("[LevelGridLayout] RectTransform not found! This must be on a UI element.");
+        }
+    }
 
     void Start()
     {
         if (autoArrangeOnStart)
         {
-            ArrangeLevels();
+            // ✅ Wait 1 frame untuk semua children ready
+            StartCoroutine(ArrangeDelayed());
         }
 
         lastChildCount = transform.childCount;
+    }
+
+    System.Collections.IEnumerator ArrangeDelayed()
+    {
+        yield return null; // Wait 1 frame
+        ArrangeLevels();
     }
 
     void Update()
@@ -72,6 +92,11 @@ public class LevelGridLayoutManager : MonoBehaviour
             RectTransform rt = child.GetComponent<RectTransform>();
             if (rt != null)
             {
+                // ✅ CRITICAL: Setup RectTransform anchors untuk UI
+                rt.anchorMin = new Vector2(0, 1); // Top-left anchor
+                rt.anchorMax = new Vector2(0, 1);
+                rt.pivot = new Vector2(0.5f, 0.5f); // Center pivot
+
                 items.Add(rt);
             }
         }
@@ -100,18 +125,24 @@ public class LevelGridLayoutManager : MonoBehaviour
                 col = (columnsPerRow - 1) - col;
             }
 
-            // Calculate position
+            // ✅ FIXED: Calculate position (top-left origin, downward)
             float xPos = paddingLeft + (col * horizontalSpacing);
             float yPos = -(paddingTop + (row * verticalSpacing));
 
-            // Set position
+            // Set anchored position
             rt.anchoredPosition = new Vector2(xPos, yPos);
+
+            // ✅ Set size (optional, if prefab size not set)
+            if (rt.sizeDelta.x == 0 || rt.sizeDelta.y == 0)
+            {
+                rt.sizeDelta = new Vector2(itemWidth, itemHeight);
+            }
         }
 
         // Update content size for ScrollRect
         UpdateContentSize(items.Count);
 
-        Debug.Log($"[LevelGridLayout] Arranged {items.Count} levels in {row + 1} rows (snake: {useSnakePattern})");
+        Debug.Log($"[LevelGridLayout] ✓ Arranged {items.Count} levels in {row + 1} rows (snake: {useSnakePattern})");
     }
 
     /// <summary>
@@ -119,19 +150,23 @@ public class LevelGridLayoutManager : MonoBehaviour
     /// </summary>
     void UpdateContentSize(int itemCount)
     {
-        RectTransform contentRect = GetComponent<RectTransform>();
-        if (contentRect == null) return;
+        if (rectTransform == null)
+        {
+            rectTransform = GetComponent<RectTransform>();
+            if (rectTransform == null) return;
+        }
 
         // Calculate required rows
         int totalRows = Mathf.CeilToInt((float)itemCount / columnsPerRow);
 
-        // Calculate size
-        float totalWidth = paddingLeft * 2 + ((columnsPerRow - 1) * horizontalSpacing) + 200f; // +200 for item width
-        float totalHeight = paddingTop * 2 + ((totalRows - 1) * verticalSpacing) + 200f; // +200 for item height
+        // ✅ FIXED: Calculate size properly
+        float totalWidth = paddingLeft + ((columnsPerRow - 1) * horizontalSpacing) + itemWidth + paddingLeft;
+        float totalHeight = paddingTop + ((totalRows - 1) * verticalSpacing) + itemHeight + paddingTop;
 
-        contentRect.sizeDelta = new Vector2(totalWidth, totalHeight);
+        // Set size delta
+        rectTransform.sizeDelta = new Vector2(totalWidth, totalHeight);
 
-        Debug.Log($"[LevelGridLayout] Updated content size: {totalWidth}x{totalHeight} ({totalRows} rows)");
+        Debug.Log($"[LevelGridLayout] ✓ Content size: {totalWidth}x{totalHeight} ({totalRows} rows)");
     }
 
     /// <summary>
@@ -161,25 +196,14 @@ public class LevelGridLayoutManager : MonoBehaviour
         ArrangeLevels();
     }
 
-    // Debug visualization
-    void OnDrawGizmos()
+    // ✅ Validation untuk auto-setup
+    void OnValidate()
     {
-        if (!Application.isPlaying) return;
-
-        // Draw grid lines
-        Gizmos.color = Color.cyan;
-
-        int totalItems = transform.childCount;
-        int totalRows = Mathf.CeilToInt((float)totalItems / columnsPerRow);
-
-        for (int row = 0; row < totalRows; row++)
-        {
-            for (int col = 0; col < columnsPerRow; col++)
-            {
-                Vector2 pos = GetPositionForIndex(row * columnsPerRow + col);
-                Vector3 worldPos = transform.TransformPoint(new Vector3(pos.x, pos.y, 0));
-                Gizmos.DrawWireSphere(worldPos, 20f);
-            }
-        }
+        // Auto-clamp values
+        columnsPerRow = Mathf.Max(1, columnsPerRow);
+        horizontalSpacing = Mathf.Max(50f, horizontalSpacing);
+        verticalSpacing = Mathf.Max(50f, verticalSpacing);
+        itemWidth = Mathf.Max(50f, itemWidth);
+        itemHeight = Mathf.Max(50f, itemHeight);
     }
 }

@@ -460,7 +460,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 95d06808bb372b847af4a348e1a0f3b9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  levelConfig: {fileID: 11400000, guid: 85fc343cf7978df48b434580c92c0f6c, type: 2}
+  levelConfig: {fileID: 0}
   numberText: {fileID: 1718787919422051805}
   lockedOverlay: {fileID: 0}
   bgImage: {fileID: 3553356052132054350}

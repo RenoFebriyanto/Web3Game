@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using UnityEngine.SceneManagement;
@@ -27,27 +27,55 @@ public class LevelSelectionItem : MonoBehaviour
         btn.onClick.AddListener(OnClicked);
     }
 
-    void Start() => Refresh();
+    void Start()
+    {
+        // ✅ FIXED: Check if levelConfig assigned before refresh
+        if (levelConfig != null)
+        {
+            Refresh();
+        }
+        else
+        {
+            Debug.LogWarning($"[LevelSelectionItem] {gameObject.name}: levelConfig is NULL! Cannot refresh.");
+        }
+    }
 
     public void Refresh()
     {
+        // ✅ CRITICAL: Null check
         if (levelConfig == null)
         {
-            Debug.LogWarning("[LevelSelectionItem] levelConfig not set on " + gameObject.name);
+            Debug.LogWarning($"[LevelSelectionItem] levelConfig not set on {gameObject.name}");
             return;
         }
 
-        if (numberText != null) numberText.text = levelConfig.number.ToString();
+        // Update number text
+        if (numberText != null)
+        {
+            numberText.text = levelConfig.number.ToString();
+        }
 
+        // Check if unlocked
         bool unlocked = LevelProgressManager.Instance != null ?
                         LevelProgressManager.Instance.IsUnlocked(levelConfig.number) :
                         (levelConfig.number == 1);
 
-        if (lockedOverlay != null) lockedOverlay.SetActive(!unlocked);
-        if (btn != null) btn.interactable = unlocked;
+        // Update locked overlay
+        if (lockedOverlay != null)
+        {
+            lockedOverlay.SetActive(!unlocked);
+        }
 
-        // BARU: Refresh stars
+        // Update button interactable
+        if (btn != null)
+        {
+            btn.interactable = unlocked;
+        }
+
+        // ✅ Refresh stars
         RefreshStars();
+
+        Debug.Log($"[LevelSelectionItem] ✓ {levelConfig.id} refreshed (unlocked: {unlocked})");
     }
 
     void RefreshStars()
@@ -57,9 +85,12 @@ public class LevelSelectionItem : MonoBehaviour
         if (star2 != null) star2.SetActive(false);
         if (star3 != null) star3.SetActive(false);
 
+        // ✅ Check if levelConfig exists
+        if (levelConfig == null) return;
+
         // Get earned stars
         int earnedStars = 0;
-        if (levelConfig != null && LevelProgressManager.Instance != null)
+        if (LevelProgressManager.Instance != null)
         {
             earnedStars = LevelProgressManager.Instance.GetBestStars(levelConfig.id);
         }
@@ -68,16 +99,22 @@ public class LevelSelectionItem : MonoBehaviour
         if (earnedStars >= 1 && star1 != null) star1.SetActive(true);
         if (earnedStars >= 2 && star2 != null) star2.SetActive(true);
         if (earnedStars >= 3 && star3 != null) star3.SetActive(true);
-
-        Debug.Log($"[LevelSelectionItem] {levelConfig.id}: {earnedStars} stars");
     }
 
     void OnClicked()
     {
-        if (levelConfig == null) return;
+        // ✅ CRITICAL: Null check before load scene
+        if (levelConfig == null)
+        {
+            Debug.LogError("[LevelSelectionItem] Cannot start level: levelConfig is NULL!");
+            return;
+        }
+
         PlayerPrefs.SetString("SelectedLevelId", levelConfig.id);
         PlayerPrefs.SetInt("SelectedLevelNumber", levelConfig.number);
         PlayerPrefs.Save();
+
+        Debug.Log($"[LevelSelectionItem] Loading {levelConfig.id} ({levelConfig.displayName})");
         SceneManager.LoadScene(gameplaySceneName);
     }
 }

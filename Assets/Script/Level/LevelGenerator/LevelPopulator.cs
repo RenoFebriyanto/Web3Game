@@ -1,10 +1,10 @@
-﻿using System.Collections.Generic;
+﻿using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// Auto-populate level selection UI from LevelDatabase
-/// Attach ke ContentLevel GameObject
-/// Works with LevelGridLayoutManager for automatic positioning
+/// FIXED: Auto-populate level selection UI from LevelDatabase
+/// Properly initializes RectTransform for UI elements
 /// </summary>
 public class LevelPopulator : MonoBehaviour
 {
@@ -41,7 +41,21 @@ public class LevelPopulator : MonoBehaviour
     {
         if (autoPopulateOnStart)
         {
-            PopulateLevels();
+            // ✅ CRITICAL: Wait frames untuk UI setup
+            StartCoroutine(PopulateLevelsDelayed());
+        }
+    }
+
+    IEnumerator PopulateLevelsDelayed()
+    {
+        yield return null; // Wait 1 frame for UI setup
+        PopulateLevels();
+        yield return new WaitForEndOfFrame(); // Wait for layout
+
+        // ✅ Force refresh layout after populate
+        if (layoutManager != null)
+        {
+            layoutManager.RefreshLayout();
         }
     }
 
@@ -77,48 +91,55 @@ public class LevelPopulator : MonoBehaviour
 
         Debug.Log($"[LevelPopulator] Populating {levelDatabase.levels.Count} levels...");
 
-        // Spawn level items
+        // ✅ Spawn level items dan AUTO-ASSIGN LevelConfig
+        int successCount = 0;
         foreach (var levelConfig in levelDatabase.levels)
         {
-            if (levelConfig == null) continue;
+            if (levelConfig == null)
+            {
+                Debug.LogWarning("[LevelPopulator] Null LevelConfig found in database, skipping...");
+                continue;
+            }
 
+            // ✅ Instantiate prefab (make sure parent is set)
             GameObject levelItem = Instantiate(levelItemPrefab, transform);
             levelItem.name = $"Level_{levelConfig.number}";
 
-            // Setup LevelSelectionItem
+            // ✅ Setup RectTransform properly
+            RectTransform rt = levelItem.GetComponent<RectTransform>();
+            if (rt != null)
+            {
+                // Set anchors to top-left
+                rt.anchorMin = new Vector2(0, 1);
+                rt.anchorMax = new Vector2(0, 1);
+                rt.pivot = new Vector2(0.5f, 0.5f);
+
+                // Initial position (will be fixed by layout manager)
+                rt.anchoredPosition = Vector2.zero;
+
+                // Ensure scale is correct
+                rt.localScale = Vector3.one;
+            }
+
+            // ✅ CRITICAL: Setup LevelSelectionItem dengan LevelConfig
             LevelSelectionItem selectionItem = levelItem.GetComponent<LevelSelectionItem>();
             if (selectionItem != null)
             {
-                selectionItem.levelConfig = levelConfig;
-                selectionItem.Refresh();
+                selectionItem.levelConfig = levelConfig; // ✅ AUTO-ASSIGN
+                selectionItem.Refresh(); // ✅ Refresh UI
+                successCount++;
             }
             else
             {
-                Debug.LogWarning($"[LevelPopulator] Level item prefab missing LevelSelectionItem component!");
+                Debug.LogError($"[LevelPopulator] Level item prefab missing LevelSelectionItem component!");
+                Destroy(levelItem);
+                continue;
             }
 
             spawnedItems.Add(levelItem);
         }
 
-        Debug.Log($"[LevelPopulator] ✓ Spawned {spawnedItems.Count} level items");
-
-        // Trigger layout refresh
-        if (layoutManager != null)
-        {
-            // Wait one frame for RectTransforms to be ready
-            StartCoroutine(RefreshLayoutDelayed());
-        }
-    }
-
-    System.Collections.IEnumerator RefreshLayoutDelayed()
-    {
-        yield return new WaitForEndOfFrame();
-
-        if (layoutManager != null)
-        {
-            layoutManager.RefreshLayout();
-            Debug.Log("[LevelPopulator] Layout refreshed");
-        }
+        Debug.Log($"[LevelPopulator] ✓ Successfully spawned {successCount} level items");
     }
 
     /// <summary>
@@ -132,18 +153,30 @@ public class LevelPopulator : MonoBehaviour
         {
             if (item != null)
             {
-                Destroy(item);
+                if (Application.isPlaying)
+                    Destroy(item);
+                else
+                    DestroyImmediate(item);
             }
         }
         spawnedItems.Clear();
 
-        // Also destroy any remaining children
-        for (int i = transform.childCount - 1; i >= 0; i--)
+        // ✅ Also destroy any remaining children
+        List<GameObject> toDestroy = new List<GameObject>();
+        for (int i = 0; i < transform.childCount; i++)
         {
-            Destroy(transform.GetChild(i).gameObject);
+            toDestroy.Add(transform.GetChild(i).gameObject);
         }
 
-        Debug.Log("[LevelPopulator] Cleared all level items");
+        foreach (var obj in toDestroy)
+        {
+            if (Application.isPlaying)
+                Destroy(obj);
+            else
+                DestroyImmediate(obj);
+        }
+
+        Debug.Log("[LevelPopulator] ✓ Cleared all level items");
     }
 
     /// <summary>
@@ -162,7 +195,7 @@ public class LevelPopulator : MonoBehaviour
             }
         }
 
-        Debug.Log("[LevelPopulator] Refreshed all level items");
+        Debug.Log("[LevelPopulator] ✓ Refreshed all level items");
     }
 
     /// <summary>
@@ -187,47 +220,6 @@ public class LevelPopulator : MonoBehaviour
         return null;
     }
 
-    /// <summary>
-    /// Scroll to specific level
-    /// </summary>
-    public void ScrollToLevel(int levelNumber)
-    {
-        GameObject levelItem = GetLevelItem(levelNumber);
-        if (levelItem == null)
-        {
-            Debug.LogWarning($"[LevelPopulator] Level {levelNumber} not found");
-            return;
-        }
-
-        // Get ScrollRect from parent
-        var scrollRect = GetComponentInParent<UnityEngine.UI.ScrollRect>();
-        if (scrollRect == null)
-        {
-            Debug.LogWarning("[LevelPopulator] No ScrollRect found in parent");
-            return;
-        }
-
-        // Calculate normalized position
-        RectTransform contentRect = GetComponent<RectTransform>();
-        RectTransform itemRect = levelItem.GetComponent<RectTransform>();
-
-        if (contentRect != null && itemRect != null)
-        {
-            Canvas.ForceUpdateCanvases();
-
-            // Calculate vertical position (0 = top, 1 = bottom)
-            float contentHeight = contentRect.rect.height;
-            float viewportHeight = scrollRect.viewport.rect.height;
-            float itemY = Mathf.Abs(itemRect.anchoredPosition.y);
-
-            float normalizedPosition = Mathf.Clamp01(itemY / (contentHeight - viewportHeight));
-
-            scrollRect.verticalNormalizedPosition = 1f - normalizedPosition;
-
-            Debug.Log($"[LevelPopulator] Scrolled to level {levelNumber}");
-        }
-    }
-
     // Validation
     void OnValidate()
     {
@@ -236,8 +228,13 @@ public class LevelPopulator : MonoBehaviour
             var selectionItem = levelItemPrefab.GetComponent<LevelSelectionItem>();
             if (selectionItem == null)
             {
-                Debug.LogWarning("[LevelPopulator] Level item prefab missing LevelSelectionItem component!");
+                Debug.LogWarning("[LevelPopulator] ⚠️ Level item prefab missing LevelSelectionItem component!");
             }
+        }
+
+        if (levelDatabase == null)
+        {
+            Debug.LogWarning("[LevelPopulator] ⚠️ LevelDatabase not assigned!");
         }
     }
 }

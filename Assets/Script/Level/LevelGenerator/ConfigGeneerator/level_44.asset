@@ -1,0 +1,28 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fe44a7a2ed66ef145bfd0593dc60b043, type: 3}
+  m_Name: level_44
+  m_EditorClassIdentifier: 
+  id: level_44
+  number: 44
+  displayName: Level 44
+  requirements:
+  - type: 0
+    colorVariant: 2
+    count: 11
+  - type: 1
+    colorVariant: 1
+    count: 10
+  - type: 3
+    colorVariant: 1
+    count: 9
+  showPreviewInSelector: 1

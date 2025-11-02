@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fe44a7a2ed66ef145bfd0593dc60b043, type: 3}
+  m_Name: level_25
+  m_EditorClassIdentifier: 
+  id: level_25
+  number: 25
+  displayName: Level 25
+  requirements:
+  - type: 3
+    colorVariant: 1
+    count: 5
+  - type: 0
+    colorVariant: 1
+    count: 7
+  showPreviewInSelector: 1

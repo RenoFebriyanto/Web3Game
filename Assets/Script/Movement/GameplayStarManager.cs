@@ -1,9 +1,9 @@
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.Events;
 
 /// <summary>
+/// ✅ FIXED: GameplayStarManager - Remove direct call to KulinoCoinRewardSystem
 /// Manager untuk tracking bintang yang dikumpulkan di gameplay.
-/// Letakkan di: Assets/Script/Movement/GameplayStarManager.cs
 /// </summary>
 public class GameplayStarManager : MonoBehaviour
 {
@@ -41,6 +41,9 @@ public class GameplayStarManager : MonoBehaviour
         OnStarCollected?.Invoke(collectedStars);
     }
 
+    /// <summary>
+    /// ✅ UPDATED: CompleteLevelWithStars - KulinoCoinRewardSystem sudah auto-subscribe
+    /// </summary>
     public void CompleteLevelWithStars()
     {
         if (levelCompleted) return;
@@ -56,7 +59,14 @@ public class GameplayStarManager : MonoBehaviour
             Debug.Log($"[GameplayStarManager] Saved {collectedStars} stars for {levelId}");
         }
 
+        // ✅ Trigger event (LevelGameSession.OnLevelCompleted akan trigger)
         OnLevelComplete?.Invoke(collectedStars);
+
+        // ❌ REMOVED: KulinoCoinRewardSystem.Instance.OnLevelComplete()
+        // ✅ Sudah auto-trigger via LevelGameSession.OnLevelCompleted event subscription
+        // KulinoCoinRewardSystem subscribe di Start(), jadi tidak perlu dipanggil manual
+
+        Debug.Log($"[GameplayStarManager] ✓ Level complete with {collectedStars} stars");
     }
 
     public int GetCollectedStars() => collectedStars;

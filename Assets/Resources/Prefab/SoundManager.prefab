@@ -50,10 +50,12 @@ MonoBehaviour:
   buttonHoverSound: {fileID: 8300000, guid: 36b472d7bdb4280438e5d744f12596b8, type: 3}
   purchaseSuccessSound: {fileID: 8300000, guid: 83b4d5a8c3b360248bc8cdc890239c7f, type: 3}
   purchaseFailSound: {fileID: 0}
+  levelCompleteSound: {fileID: 8300000, guid: 06988fd9604443042a7fea125137401b, type: 3}
   coinPickup1: {fileID: 8300000, guid: 7a15d6363304469449a747b3a66d68a8, type: 3}
   coinPickup2: {fileID: 8300000, guid: 77d80fef6fc893b4ba14162760627f96, type: 3}
   coinPickup3: {fileID: 8300000, guid: 4b9db9ea2187e3c4e8facfe8e9ef7dbf, type: 3}
   coinPickup4: {fileID: 8300000, guid: 6cbee64cbf2d3c44693f7f7ea79b506d, type: 3}
+  coinPickup5: {fileID: 0}
   fragmentPickupSound: {fileID: 8300000, guid: 990bcec1f485d0c459245fa0815d66c6, type: 3}
   starPickupSound: {fileID: 8300000, guid: 60aaf0c2b34e77c448691656dbddc7ca, type: 3}
   boosterActivateSound: {fileID: 0}

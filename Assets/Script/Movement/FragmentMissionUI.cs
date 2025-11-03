@@ -6,8 +6,8 @@ using System.Linq;
 using System.Collections.Generic;
 
 /// <summary>
-/// UPDATED: Dynamic mission boxes (1-6) berdasarkan level requirements
-/// Auto-hide unused boxes untuk tampilan bersih
+/// FIXED: Properly triggers LevelGameSession.OnLevelCompleted event
+/// Dynamic mission boxes (1-6) berdasarkan level requirements
 /// </summary>
 public class FragmentMissionUI : MonoBehaviour
 {
@@ -241,7 +241,7 @@ public class FragmentMissionUI : MonoBehaviour
         string levelId = PlayerPrefs.GetString("SelectedLevelId", "");
         int levelNum = PlayerPrefs.GetInt("SelectedLevelNumber", 1);
 
-        // Save stars saat mission complete
+        // ✅ CRITICAL FIX: Save stars FIRST
         var starManager = FindFirstObjectByType<GameplayStarManager>();
         if (starManager != null)
         {
@@ -249,8 +249,19 @@ public class FragmentMissionUI : MonoBehaviour
         }
         else
         {
-            // Fallback
+            // Fallback: unlock next level
             LevelProgressManager.Instance?.UnlockNextLevel(levelNum);
+        }
+
+        // ✅ CRITICAL FIX: INVOKE LevelGameSession.OnLevelCompleted EVENT
+        if (LevelGameSession.Instance != null)
+        {
+            Debug.Log("[FragmentMissionUI] ✅ Invoking LevelGameSession.OnLevelCompleted event");
+            LevelGameSession.Instance.OnLevelCompleted?.Invoke();
+        }
+        else
+        {
+            Debug.LogError("[FragmentMissionUI] ❌ LevelGameSession.Instance is NULL! Cannot invoke OnLevelCompleted!");
         }
     }
 
@@ -315,10 +326,6 @@ public class FragmentMissionUI : MonoBehaviour
 // HELPER CLASS: Mission Box UI References
 // ========================================
 
-/// <summary>
-/// Container untuk 1 mission box UI elements
-/// Assign di Inspector untuk setiap box
-/// </summary>
 [System.Serializable]
 public class MissionBoxUI
 {

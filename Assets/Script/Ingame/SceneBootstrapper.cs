@@ -1,5 +1,9 @@
 ﻿using UnityEngine;
 
+/// <summary>
+/// FIXED: Prevents duplicate EconomyManager instantiation on scene reload
+/// Only instantiates if PlayerEconomy.Instance is truly null
+/// </summary>
 [DefaultExecutionOrder(-1000)]
 public class SceneBootstrapper : MonoBehaviour
 {
@@ -10,18 +14,18 @@ public class SceneBootstrapper : MonoBehaviour
 
     void Awake()
     {
-        // ✅ Cek apakah sudah pernah di-initialize
-        if (hasInitialized && PlayerEconomy.Instance != null)
+        // ✅ CRITICAL FIX: Check if PlayerEconomy already exists FIRST
+        if (PlayerEconomy.Instance != null)
         {
-            Debug.Log("[SceneBootstrapper] EconomyManager already initialized, skipping");
+            Debug.Log("[SceneBootstrapper] PlayerEconomy already exists, skipping instantiation");
+            hasInitialized = true;
             return;
         }
 
-        // Jika PlayerEconomy sudah ada (dari scene lain), skip
-        if (PlayerEconomy.Instance != null)
+        // ✅ Check static flag (secondary check)
+        if (hasInitialized)
         {
-            Debug.Log("[SceneBootstrapper] PlayerEconomy already exists");
-            hasInitialized = true;
+            Debug.Log("[SceneBootstrapper] Already initialized (static flag), skipping");
             return;
         }
 
@@ -40,7 +44,9 @@ public class SceneBootstrapper : MonoBehaviour
         }
     }
 
-    // ✅ Reset flag saat aplikasi quit (untuk testing di Editor)
+    // ✅ DO NOT reset flag on scene load (keep persistent)
+    // Flag hanya di-reset saat aplikasi quit (untuk testing di Editor)
+
     void OnApplicationQuit()
     {
         hasInitialized = false;

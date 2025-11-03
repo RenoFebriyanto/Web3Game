@@ -1,8 +1,7 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 /// <summary>
-/// Ensures PlayerEconomy exists in any scene.
-/// Attach to a persistent GameObject in MainMenu or as DontDestroyOnLoad.
+/// FIXED: Ensures PlayerEconomy exists in any scene without duplication
 /// </summary>
 [DefaultExecutionOrder(-999)]
 public class EconomyBootstrap : MonoBehaviour
@@ -11,9 +10,18 @@ public class EconomyBootstrap : MonoBehaviour
 
     void Awake()
     {
-        // Singleton pattern
+        // ✅ CRITICAL: Check PlayerEconomy FIRST before doing anything
+        if (PlayerEconomy.Instance != null)
+        {
+            Debug.Log("[EconomyBootstrap] PlayerEconomy already exists, destroying bootstrap");
+            Destroy(gameObject);
+            return;
+        }
+
+        // Singleton pattern for bootstrap itself
         if (instance != null && instance != this)
         {
+            Debug.Log("[EconomyBootstrap] Duplicate bootstrap detected, destroying");
             Destroy(gameObject);
             return;
         }
@@ -27,9 +35,10 @@ public class EconomyBootstrap : MonoBehaviour
 
     void EnsurePlayerEconomy()
     {
+        // ✅ Double-check before creating
         if (PlayerEconomy.Instance != null)
         {
-            Debug.Log("[EconomyBootstrap] PlayerEconomy already exists");
+            Debug.Log("[EconomyBootstrap] PlayerEconomy already exists (double-check)");
             return;
         }
 
@@ -48,6 +57,17 @@ public class EconomyBootstrap : MonoBehaviour
             go.AddComponent<PlayerEconomy>();
             DontDestroyOnLoad(go);
             Debug.Log("[EconomyBootstrap] Created PlayerEconomy fallback");
+        }
+    }
+
+    // ✅ NEW: Destroy bootstrap after ensuring economy exists
+    void Start()
+    {
+        // Setelah PlayerEconomy created, bootstrap tidak diperlukan lagi
+        if (PlayerEconomy.Instance != null)
+        {
+            Debug.Log("[EconomyBootstrap] PlayerEconomy verified, destroying bootstrap");
+            Destroy(gameObject);
         }
     }
 }

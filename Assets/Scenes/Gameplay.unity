@@ -5581,9 +5581,9 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 1590548490}
-        m_TargetAssemblyTypeName: Pause, Assembly-CSharp
-        m_MethodName: ReplayGame
+      - m_Target: {fileID: 1874771656}
+        m_TargetAssemblyTypeName: LevelCompleteUI, Assembly-CSharp
+        m_MethodName: OnContinueClicked
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -7095,9 +7095,9 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 1590548490}
-        m_TargetAssemblyTypeName: Pause, Assembly-CSharp
-        m_MethodName: ResumeGame
+      - m_Target: {fileID: 1874771656}
+        m_TargetAssemblyTypeName: LevelCompleteUI, Assembly-CSharp
+        m_MethodName: OnHomeClicked
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -8599,25 +8599,6 @@ RectTransform:
   m_AnchoredPosition: {x: -5.000061, y: 0}
   m_SizeDelta: {x: -20, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
---- !u!114 &2372607485998374293
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6768678056661620766}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 9c32eaa46d3178946a3f1ec3d61294e9, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  rootPopup: {fileID: 6768678056661620766}
-  blurEffect: {fileID: 6386972614847776506}
-  containerItems: {fileID: 3782555057663105246}
-  collectText: {fileID: 6642713352573074051}
-  deskItem: {fileID: 1346572090119268221}
-  confirmButton: {fileID: 5614913604932649831}
-  enableDebugLogs: 1
 --- !u!114 &2440613683761069652
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -9594,7 +9575,19 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 4743169532681808769}
   m_OnClick:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 1100316943}
+        m_TargetAssemblyTypeName: KulinoCoinRewardSystem, Assembly-CSharp
+        m_MethodName: OnConfirmButtonClicked
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
 --- !u!114 &5709756650303273543
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -10035,7 +10028,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 4735456223296010912}
-  - component: {fileID: 2372607485998374293}
   - component: {fileID: 1471572248869493296}
   m_Layer: 5
   m_Name: PopupClaimCoinKulino

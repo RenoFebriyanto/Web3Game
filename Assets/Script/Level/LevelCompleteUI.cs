@@ -363,7 +363,7 @@ public class LevelCompleteUI : MonoBehaviour
     /// <summary>
     /// Called ketika button Continue diklik
     /// </summary>
-    void OnContinueClicked()
+    public void OnContinueClicked()
     {
         if (isTransitioning) return;
 
@@ -381,7 +381,7 @@ public class LevelCompleteUI : MonoBehaviour
     /// <summary>
     /// Called ketika button Home diklik
     /// </summary>
-    void OnHomeClicked()
+    public void OnHomeClicked()
     {
         if (isTransitioning) return;
 

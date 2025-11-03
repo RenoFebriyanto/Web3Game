@@ -1,8 +1,9 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 /// <summary>
-/// EXTENDED: SoundManager dengan support untuk semua gameplay sounds
-/// Tambahan: Coin pickup variants, gameplay SFX, collision sounds
+/// COMPLETE FIXED VERSION - SoundManager dengan support untuk semua gameplay sounds
+/// + Level Complete sound
+/// + Fixed Coin Pickup (5 variants dengan proper logging)
 /// </summary>
 public class SoundManager : MonoBehaviour
 {
@@ -20,12 +21,15 @@ public class SoundManager : MonoBehaviour
 
     [Header("=== GAMEPLAY SOUNDS ===")]
 
+    [Header("Level Complete")]
+    public AudioClip levelCompleteSound;
+
     [Header("Coin Pickup (5 Variants - Random)")]
     public AudioClip coinPickup1;
     public AudioClip coinPickup2;
     public AudioClip coinPickup3;
     public AudioClip coinPickup4;
-    
+    public AudioClip coinPickup5;
 
     [Header("Collectibles")]
     public AudioClip fragmentPickupSound;
@@ -209,11 +213,11 @@ public class SoundManager : MonoBehaviour
     // ========================================
 
     /// <summary>
-    /// Play random coin pickup sound (5 variants)
+    /// ✅ FIXED: Play random coin pickup sound (5 variants) dengan proper logging
     /// </summary>
     public void PlayCoinPickup()
     {
-        AudioClip[] coinSounds = { coinPickup1, coinPickup2, coinPickup3, coinPickup4 };
+        AudioClip[] coinSounds = { coinPickup1, coinPickup2, coinPickup3, coinPickup4, coinPickup5 };
 
         // Filter out null clips
         var validSounds = System.Array.FindAll(coinSounds, clip => clip != null);
@@ -224,9 +228,50 @@ public class SoundManager : MonoBehaviour
             return;
         }
 
+        // Check sfxSource
+        if (sfxSource == null)
+        {
+            Debug.LogError("[SoundManager] sfxSource is NULL!");
+            return;
+        }
+
+        // Check volume
+        if (sfxVolume <= 0f)
+        {
+            Debug.LogWarning("[SoundManager] SFX volume is 0!");
+            return;
+        }
+
         // Play random variant
         AudioClip randomCoin = validSounds[Random.Range(0, validSounds.Length)];
-        PlaySFX(randomCoin);
+
+        if (randomCoin != null)
+        {
+            sfxSource.PlayOneShot(randomCoin, sfxVolume);
+            Debug.Log($"[SoundManager] ✓ Playing coin sound: {randomCoin.name}");
+        }
+        else
+        {
+            Debug.LogWarning("[SoundManager] randomCoin is NULL!");
+        }
+    }
+
+    /// <summary>
+    /// ✅ NEW: Play level complete sound
+    /// </summary>
+    public void PlayLevelComplete()
+    {
+        if (levelCompleteSound != null)
+        {
+            PlaySFX(levelCompleteSound);
+            Debug.Log("[SoundManager] ✓ Playing level complete sound");
+        }
+        else
+        {
+            Debug.LogWarning("[SoundManager] levelCompleteSound not assigned! Using fallback.");
+            // Fallback: play success sound
+            PlayPurchaseSuccess();
+        }
     }
 
     public void PlayFragmentPickup()
@@ -304,6 +349,9 @@ public class SoundManager : MonoBehaviour
     [ContextMenu("Test Coin Pickup (Random)")]
     void TestCoinPickup() => PlayCoinPickup();
 
+    [ContextMenu("Test Level Complete")]
+    void TestLevelComplete() => PlayLevelComplete();
+
     [ContextMenu("Test Shield Activate")]
     void TestShieldActivate() => PlayShieldActivate();
 
@@ -316,5 +364,30 @@ public class SoundManager : MonoBehaviour
         SetMusicVolume(defaultMusicVolume);
         SetSFXVolume(defaultSFXVolume);
         Debug.Log("[SoundManager] Volumes reset to default");
+    }
+
+    [ContextMenu("Debug: Print Audio Status")]
+    void DebugPrintStatus()
+    {
+        Debug.Log("=== SOUNDMANAGER STATUS ===");
+        Debug.Log($"Instance: {(Instance != null ? "OK" : "NULL")}");
+        Debug.Log($"musicSource: {(musicSource != null ? "OK" : "NULL")}");
+        Debug.Log($"sfxSource: {(sfxSource != null ? "OK" : "NULL")}");
+        Debug.Log($"Music Volume: {musicVolume:F2}");
+        Debug.Log($"SFX Volume: {sfxVolume:F2}");
+        Debug.Log($"Coin Sounds assigned: {CountAssignedCoinSounds()}/5");
+        Debug.Log($"Level Complete Sound: {(levelCompleteSound != null ? "OK" : "NOT ASSIGNED")}");
+        Debug.Log("===========================");
+    }
+
+    int CountAssignedCoinSounds()
+    {
+        int count = 0;
+        if (coinPickup1 != null) count++;
+        if (coinPickup2 != null) count++;
+        if (coinPickup3 != null) count++;
+        if (coinPickup4 != null) count++;
+        if (coinPickup5 != null) count++;
+        return count;
     }
 }

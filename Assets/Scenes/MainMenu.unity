@@ -8262,12 +8262,12 @@ RectTransform:
   - {fileID: 1839927780}
   - {fileID: 899492596}
   - {fileID: 1816834352}
-  - {fileID: 1908558660}
   - {fileID: 812974245}
   - {fileID: 1009823668}
   - {fileID: 1771566217}
   - {fileID: 1138665513007609294}
   - {fileID: 1244933028}
+  - {fileID: 1908558660}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
@@ -13976,6 +13976,10 @@ PrefabInstance:
     - target: {fileID: 626138940886702212, guid: 37aac24c7901f3d4e9b7941f249302ea, type: 3}
       propertyPath: m_Name
       value: GameBootstrap
+      objectReference: {fileID: 0}
+    - target: {fileID: 5184346908825144020, guid: 37aac24c7901f3d4e9b7941f249302ea, type: 3}
+      propertyPath: m_Enabled
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 6002337566033277483, guid: 37aac24c7901f3d4e9b7941f249302ea, type: 3}
       propertyPath: itemsParent

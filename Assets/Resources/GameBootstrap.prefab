@@ -16,7 +16,7 @@ GameObject:
   - component: {fileID: 7067868097344787107}
   - component: {fileID: 8040292311826353771}
   - component: {fileID: 6002337566033277483}
-  - component: {fileID: 8329373074072348770}
+  - component: {fileID: 3896699879521385599}
   m_Layer: 0
   m_Name: GameBootstrap
   m_TagString: Untagged
@@ -169,7 +169,7 @@ MonoBehaviour:
   iconCoin: {fileID: 6765926063464852416, guid: c36ed03bf5abb2e45a972295e241e11a, type: 3}
   iconShard: {fileID: -4101916017452507219, guid: 17c51150cca33ca46bb76c4c0df5bffd, type: 3}
   iconEnergy: {fileID: -7213742777133032008, guid: ecb8ef9b287f24e4fb5ce589825d2010, type: 3}
---- !u!114 &8329373074072348770
+--- !u!114 &3896699879521385599
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -178,6 +178,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 626138940886702212}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 2635f00257cfe9e46a72885b5c2f5e0e, type: 3}
+  m_Script: {fileID: 11500000, guid: 66d10aecab9d95540bee95c17296fb22, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  enableDebugLogs: 1

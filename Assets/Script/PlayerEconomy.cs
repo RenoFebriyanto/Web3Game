@@ -39,7 +39,7 @@ public class PlayerEconomy : MonoBehaviour
 
         Instance = this;
         DontDestroyOnLoad(gameObject);
-        Debug.Log("[PlayerEconomy] Awake - loading values");
+        Debug.Log("[PlayerEconomy] ✓ Awake - Instance set, loading values...");
         Load();
     }
 

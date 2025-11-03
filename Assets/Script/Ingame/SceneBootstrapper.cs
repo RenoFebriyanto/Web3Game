@@ -1,91 +1,90 @@
 ﻿using UnityEngine;
+using UnityEngine.SceneManagement;
 
 /// <summary>
-/// COMPLETE FIX: Prevents duplicate EconomyManager AND ensures re-instantiation on scene reload
-/// - Checks PlayerEconomy.Instance FIRST
-/// - Uses SceneManager callback to detect MainMenu reload
-/// - Properly handles DontDestroyOnLoad objects
+/// FIXED: Proper scene change detection + auto-reset flag
 /// </summary>
 [DefaultExecutionOrder(-1000)]
 public class SceneBootstrapper : MonoBehaviour
 {
     const string ECONOMY_PREFAB_PATH = "EconomyManager";
 
-    // ✅ Static flag untuk track initialization
+    // ✅ FIXED: Track last scene to detect changes
+    private static string lastSceneName = "";
     private static bool hasInitialized = false;
 
     void Awake()
     {
-        // ✅ CRITICAL: Always check PlayerEconomy.Instance FIRST
+        string currentScene = SceneManager.GetActiveScene().name;
+
+        // ✅ JANGAN destroy GameBootstrap!
+        if (gameObject.name.Contains("GameBootstrap"))
+        {
+            Debug.Log("[SceneBootstrapper] Skipping - this is GameBootstrap");
+            return;
+        }
+
+        // ✅ RESET flag jika scene berubah (kembali ke MainMenu)
+        if (lastSceneName != currentScene)
+        {
+            Debug.Log($"[SceneBootstrapper] Scene changed: {lastSceneName} → {currentScene}. Resetting flag.");
+            hasInitialized = false;
+            lastSceneName = currentScene;
+        }
+
+        // ✅ Check PlayerEconomy.Instance FIRST
         if (PlayerEconomy.Instance != null)
         {
-            Debug.Log("[SceneBootstrapper] PlayerEconomy already exists, destroying bootstrapper");
+            Debug.Log("[SceneBootstrapper] PlayerEconomy already exists, skipping bootstrap");
             Destroy(gameObject);
             return;
         }
 
-        // ✅ If PlayerEconomy is NULL but flag is true, reset flag
-        if (hasInitialized && PlayerEconomy.Instance == null)
-        {
-            Debug.LogWarning("[SceneBootstrapper] PlayerEconomy was destroyed! Re-initializing...");
-            hasInitialized = false;
-        }
-
-        // ✅ Check static flag (secondary check)
+        // ✅ Check static flag (secondary)
         if (hasInitialized)
         {
-            Debug.Log("[SceneBootstrapper] Already initialized, destroying bootstrapper");
+            Debug.Log("[SceneBootstrapper] Already initialized this session, skipping");
             Destroy(gameObject);
             return;
         }
 
-        // ✅ Load dan instantiate EconomyManager
+        // ✅ Load and instantiate EconomyManager
         var prefab = Resources.Load<GameObject>(ECONOMY_PREFAB_PATH);
         if (prefab != null)
         {
-            Debug.Log("[SceneBootstrapper] Instantiating EconomyManager from Resources");
+            Debug.Log("[SceneBootstrapper] Creating EconomyManager from Resources");
             var instance = Instantiate(prefab);
-            instance.name = "EconomyManager"; // Remove "(Clone)" suffix
+            instance.name = "EconomyManager"; // Remove "(Clone)"
             hasInitialized = true;
 
-            // ✅ Verify PlayerEconomy exists after instantiation
+            // Verify
             if (PlayerEconomy.Instance != null)
             {
-                Debug.Log("[SceneBootstrapper] ✓ PlayerEconomy successfully created");
+                Debug.Log("[SceneBootstrapper] ✓ PlayerEconomy created successfully");
             }
             else
             {
-                Debug.LogError("[SceneBootstrapper] ❌ PlayerEconomy is NULL after instantiation!");
+                Debug.LogError("[SceneBootstrapper] ❌ PlayerEconomy NULL after instantiation!");
             }
         }
         else
         {
-            Debug.LogError($"[SceneBootstrapper] ❌ Could not find prefab at Resources/{ECONOMY_PREFAB_PATH}");
+            Debug.LogError($"[SceneBootstrapper] ❌ Prefab not found at Resources/{ECONOMY_PREFAB_PATH}");
         }
 
-        // ✅ Destroy bootstrapper after doing its job
+        // Destroy bootstrapper
         Destroy(gameObject);
     }
 
     void OnDestroy()
     {
-        Debug.Log("[SceneBootstrapper] Bootstrapper destroyed");
-    }
-
-    // ✅ Reset flag on application quit (for Editor testing)
-    void OnApplicationQuit()
-    {
-        hasInitialized = false;
-        Debug.Log("[SceneBootstrapper] Reset hasInitialized flag");
+        Debug.Log("[SceneBootstrapper] Destroyed");
     }
 
     // ========================================
-    // STATIC UTILITY: Force re-check
+    // PUBLIC STATIC: Force re-check
     // ========================================
 
-    /// <summary>
-    /// Call this from MainMenu.Start() to ensure PlayerEconomy exists
-    /// </summary>
     public static void EnsureEconomyExists()
     {
         if (PlayerEconomy.Instance != null)
@@ -94,23 +93,32 @@ public class SceneBootstrapper : MonoBehaviour
             return;
         }
 
-        Debug.LogWarning("[SceneBootstrapper] EnsureEconomyExists: PlayerEconomy is NULL! Creating...");
+        Debug.LogWarning("[SceneBootstrapper] EnsureEconomyExists: Creating...");
 
-        // Reset flag to allow re-initialization
+        // Reset flag
         hasInitialized = false;
 
-        // Try to load from Resources
+        // Load from Resources
         var prefab = Resources.Load<GameObject>(ECONOMY_PREFAB_PATH);
         if (prefab != null)
         {
             var instance = Instantiate(prefab);
             instance.name = "EconomyManager";
             hasInitialized = true;
-            Debug.Log("[SceneBootstrapper] ✓ PlayerEconomy created via EnsureEconomyExists");
+            Debug.Log("[SceneBootstrapper] ✓ Created via EnsureEconomyExists");
         }
         else
         {
-            Debug.LogError("[SceneBootstrapper] ❌ Could not load EconomyManager prefab!");
+            Debug.LogError("[SceneBootstrapper] ❌ Cannot load prefab!");
         }
+    }
+
+    // ✅ NEW: Manual reset (for testing)
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetStaticData()
+    {
+        hasInitialized = false;
+        lastSceneName = "";
+        Debug.Log("[SceneBootstrapper] Static data reset (Domain Reload)");
     }
 }

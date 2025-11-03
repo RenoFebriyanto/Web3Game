@@ -1,10 +1,10 @@
 ﻿using UnityEngine;
+using UnityEngine.SceneManagement;
 
 /// <summary>
-/// MainMenu scene bootstrap - ensures PlayerEconomy exists
-/// Attach this to a GameObject in MainMenu scene (e.g. Canvas or _GameManager)
+/// FIXED: Ensures PlayerEconomy exists + detects missing GameBootstrap
 /// </summary>
-[DefaultExecutionOrder(-900)] // Run after SceneBootstrapper
+[DefaultExecutionOrder(-900)]
 public class MainMenuBootstrap : MonoBehaviour
 {
     [Header("Debug")]
@@ -12,36 +12,36 @@ public class MainMenuBootstrap : MonoBehaviour
 
     void Awake()
     {
-        Log("MainMenuBootstrap Awake");
+        Log("=== MAINMENU BOOTSTRAP AWAKE ===");
 
         // ✅ CRITICAL: Ensure PlayerEconomy exists
         EnsurePlayerEconomy();
-
-        // ✅ Refresh all UI
-        RefreshAllUI();
     }
 
     void Start()
     {
         Log("MainMenuBootstrap Start");
 
-        // ✅ Double-check after 1 frame
-        Invoke(nameof(LateCheck), 0.1f);
+        // ✅ Refresh UI
+        Invoke(nameof(RefreshAllUI), 0.1f);
+
+        // ✅ Check for missing GameBootstrap
+        Invoke(nameof(CheckGameBootstrap), 0.2f);
     }
 
     void EnsurePlayerEconomy()
     {
         if (PlayerEconomy.Instance == null)
         {
-            LogWarning("PlayerEconomy.Instance is NULL! Calling EnsureEconomyExists...");
+            LogWarning("PlayerEconomy.Instance is NULL! Creating...");
             SceneBootstrapper.EnsureEconomyExists();
 
-            // Wait 1 frame then check again
+            // Wait then verify
             Invoke(nameof(VerifyPlayerEconomy), 0.05f);
         }
         else
         {
-            Log("✓ PlayerEconomy exists");
+            Log($"✓ PlayerEconomy exists (Coins: {PlayerEconomy.Instance.Coins})");
         }
     }
 
@@ -49,25 +49,49 @@ public class MainMenuBootstrap : MonoBehaviour
     {
         if (PlayerEconomy.Instance == null)
         {
-            LogError("❌ CRITICAL: PlayerEconomy still NULL after EnsureEconomyExists!");
-            LogError("Check if Resources/EconomyManager.prefab exists!");
+            LogError("❌ CRITICAL: PlayerEconomy STILL NULL!");
+            LogError("Check Resources/EconomyManager.prefab!");
         }
         else
         {
-            Log("✓ PlayerEconomy verified after delay");
+            Log("✓ PlayerEconomy verified");
             RefreshAllUI();
         }
     }
 
-    void LateCheck()
+    // ✅ NEW: Check if GameBootstrap exists in hierarchy
+    void CheckGameBootstrap()
     {
-        if (PlayerEconomy.Instance == null)
+        // Check jika ada GameObject bernama "GameBootstrap" atau "EconomyManager" di scene
+        GameObject[] rootObjects = SceneManager.GetActiveScene().GetRootGameObjects();
+
+        bool foundBootstrap = false;
+        bool foundEconomy = false;
+
+        foreach (var obj in rootObjects)
         {
-            LogError("❌ PlayerEconomy is NULL in Start! Layout will be broken!");
+            if (obj.name.Contains("Bootstrap"))
+            {
+                foundBootstrap = true;
+                Log($"Found bootstrap object: {obj.name}");
+            }
+            if (obj.name.Contains("Economy"))
+            {
+                foundEconomy = true;
+                Log($"Found economy object: {obj.name}");
+            }
         }
-        else
+
+        if (!foundBootstrap)
         {
-            Log("✓ PlayerEconomy exists in Start");
+            LogWarning("⚠️ No Bootstrap GameObject found in MainMenu scene!");
+            LogWarning("This is OK if PlayerEconomy exists in DontDestroyOnLoad");
+        }
+
+        // ✅ Check DontDestroyOnLoad objects
+        if (PlayerEconomy.Instance != null)
+        {
+            Log($"✓ PlayerEconomy in DontDestroyOnLoad: {PlayerEconomy.Instance.gameObject.name}");
         }
     }
 
@@ -75,23 +99,20 @@ public class MainMenuBootstrap : MonoBehaviour
     {
         Log("Refreshing all UI...");
 
-        // Find all EconomyUIController components
         var uiControllers = FindObjectsByType<EconomyUIController>(FindObjectsSortMode.None);
 
         if (uiControllers.Length == 0)
         {
-            LogWarning("No EconomyUIController found in scene!");
+            LogWarning("No EconomyUIController found!");
         }
         else
         {
-            Log($"Found {uiControllers.Length} EconomyUIController(s), refreshing...");
+            Log($"Found {uiControllers.Length} EconomyUIController(s)");
 
-            // Manually trigger refresh
             foreach (var controller in uiControllers)
             {
                 if (controller != null)
                 {
-                    // Disable and re-enable to trigger OnEnable
                     controller.gameObject.SetActive(false);
                     controller.gameObject.SetActive(true);
                     Log($"✓ Refreshed {controller.gameObject.name}");
@@ -100,33 +121,27 @@ public class MainMenuBootstrap : MonoBehaviour
         }
     }
 
-    void Log(string message)
+    void Log(string msg)
     {
         if (enableDebugLogs)
-            Debug.Log($"[MainMenuBootstrap] {message}");
+            Debug.Log($"[MainMenuBootstrap] {msg}");
     }
 
-    void LogWarning(string message)
+    void LogWarning(string msg)
     {
-        Debug.LogWarning($"[MainMenuBootstrap] ⚠️ {message}");
+        Debug.LogWarning($"[MainMenuBootstrap] {msg}");
     }
 
-    void LogError(string message)
+    void LogError(string msg)
     {
-        Debug.LogError($"[MainMenuBootstrap] ❌ {message}");
+        Debug.LogError($"[MainMenuBootstrap] {msg}");
     }
 
     // ========================================
     // CONTEXT MENU DEBUG
     // ========================================
 
-    [ContextMenu("Force Refresh All UI")]
-    void Context_RefreshAllUI()
-    {
-        RefreshAllUI();
-    }
-
-    [ContextMenu("Check PlayerEconomy Status")]
+    [ContextMenu("🔍 Debug: Check Status")]
     void Context_CheckStatus()
     {
         Debug.Log("=== MAINMENU BOOTSTRAP STATUS ===");
@@ -134,21 +149,35 @@ public class MainMenuBootstrap : MonoBehaviour
 
         if (PlayerEconomy.Instance != null)
         {
+            Debug.Log($"  GameObject: {PlayerEconomy.Instance.gameObject.name}");
+            Debug.Log($"  Scene: {PlayerEconomy.Instance.gameObject.scene.name}");
             Debug.Log($"  Coins: {PlayerEconomy.Instance.Coins}");
-            Debug.Log($"  Shards: {PlayerEconomy.Instance.Shards}");
-            Debug.Log($"  Energy: {PlayerEconomy.Instance.Energy}/{PlayerEconomy.Instance.MaxEnergy}");
         }
 
-        var uiControllers = FindObjectsByType<EconomyUIController>(FindObjectsSortMode.None);
-        Debug.Log($"EconomyUIController count: {uiControllers.Length}");
+        // Check scene root objects
+        GameObject[] rootObjects = SceneManager.GetActiveScene().GetRootGameObjects();
+        Debug.Log($"Scene root objects: {rootObjects.Length}");
+        foreach (var obj in rootObjects)
+        {
+            if (obj.name.Contains("Bootstrap") || obj.name.Contains("Economy"))
+            {
+                Debug.Log($"  - {obj.name}");
+            }
+        }
 
         Debug.Log("================================");
     }
 
-    [ContextMenu("Force Create PlayerEconomy")]
+    [ContextMenu("🔄 Force Refresh UI")]
+    void Context_RefreshUI()
+    {
+        RefreshAllUI();
+    }
+
+    [ContextMenu("✅ Force Create Economy")]
     void Context_ForceCreate()
     {
         SceneBootstrapper.EnsureEconomyExists();
-        Invoke(nameof(RefreshAllUI), 0.1f);
+        Invoke(nameof(RefreshAllUI), 0.2f);
     }
 }

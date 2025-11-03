@@ -3471,13 +3471,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7f02faca4f7ded442b4c2d450069d2fc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  rewardChancePerLevel: 3
+  minimumLevelsPlayedForReward: 20
+  levelsForIncreasedChance: 30
+  baseRewardChance: 5
+  increasedRewardChance: 10
   guaranteedRewardEveryNLevels: 30
-  minimumLevelForReward: 1
-  popupClaimCoin: {fileID: 6768678056661620766}
+  popupClaimCoinKulino: {fileID: 6768678056661620766}
   deskItemText: {fileID: 1346572090119268221}
   coinIconImage: {fileID: 5709756650303273543}
   kulinoCoinIcon: {fileID: 259520018747022094, guid: 823d72159cbc72e4ebd082d3e75fe86c, type: 3}
+  confirmButton: {fileID: 5614913604932649831}
   enableDebugLogs: 1
 --- !u!4 &1100316944
 Transform:

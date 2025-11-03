@@ -390,4 +390,6 @@ public class SoundManager : MonoBehaviour
         if (coinPickup5 != null) count++;
         return count;
     }
+
+
 }

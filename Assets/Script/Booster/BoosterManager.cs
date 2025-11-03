@@ -262,11 +262,20 @@ public class BoosterManager : MonoBehaviour
         }
     }
 
+    // ... (keep existing code, only update TryAbsorbHit method)
+
     public bool TryAbsorbHit()
     {
         if (!shieldActive) return false;
 
         Debug.Log("[BoosterManager] Shield absorbed hit!");
+
+        // ✅ FIX: Play shield break sound
+        if (SoundManager.Instance != null)
+        {
+            SoundManager.Instance.PlayShieldBreak();
+            Debug.Log("[BoosterManager] ✓ Played shield break sound");
+        }
 
         // Shield hancur setelah 1 hit
         shieldActive = false;

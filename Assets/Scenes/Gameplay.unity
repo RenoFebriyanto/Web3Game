@@ -330,6 +330,17 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 7022742}
   m_CullTransparentMesh: 1
+--- !u!114 &39177158 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 1346572088285800957, guid: 4b4efcb264c13f349abf788ce1b75455, type: 3}
+  m_PrefabInstance: {fileID: 1924697728}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f4688fdb7df04437aeb418b961361dc5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &63046510
 GameObject:
   m_ObjectHideFlags: 0
@@ -4212,6 +4223,58 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1075476341}
   m_CullTransparentMesh: 1
+--- !u!1 &1100316942
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1100316944}
+  - component: {fileID: 1100316943}
+  m_Layer: 0
+  m_Name: KulinoCoin
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1100316943
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1100316942}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7f02faca4f7ded442b4c2d450069d2fc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  rewardChancePerLevel: 3
+  guaranteedRewardEveryNLevels: 30
+  minimumLevelForReward: 1
+  popupClaimCoin: {fileID: 0}
+  deskItemText: {fileID: 0}
+  coinIconImage: {fileID: 0}
+  kulinoCoinIcon: {fileID: 0}
+  enableDebugLogs: 1
+--- !u!4 &1100316944
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1100316942}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 1016.3332, y: 520.41595, z: -4.6192975}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &1110856033
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -4220,6 +4283,14 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 1022766360723380630, guid: 2ae3c089c9746ee43b6e2dafcf4a1af0, type: 3}
+      propertyPath: statusText
+      value: 
+      objectReference: {fileID: 39177158}
+    - target: {fileID: 1022766360723380630, guid: 2ae3c089c9746ee43b6e2dafcf4a1af0, type: 3}
+      propertyPath: claimAmount
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 1022766360723380630, guid: 2ae3c089c9746ee43b6e2dafcf4a1af0, type: 3}
       propertyPath: claimButton
       value: 
@@ -8136,6 +8207,22 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 5957337208972849179, guid: 4b4efcb264c13f349abf788ce1b75455, type: 3}
+      propertyPath: m_AnchorMax.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5957337208972849179, guid: 4b4efcb264c13f349abf788ce1b75455, type: 3}
+      propertyPath: m_AnchorMin.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5957337208972849179, guid: 4b4efcb264c13f349abf788ce1b75455, type: 3}
+      propertyPath: m_AnchoredPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5957337208972849179, guid: 4b4efcb264c13f349abf788ce1b75455, type: 3}
+      propertyPath: m_AnchoredPosition.y
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 6768678057981286046, guid: 4b4efcb264c13f349abf788ce1b75455, type: 3}
       propertyPath: m_Name
       value: PopupClaimCoinKulino
@@ -10592,6 +10679,7 @@ SceneRoots:
   - {fileID: 1337906659}
   - {fileID: 2010965209}
   - {fileID: 486920327}
+  - {fileID: 1100316944}
   - {fileID: 1110856033}
   - {fileID: 1254843960}
   - {fileID: 2139251185}

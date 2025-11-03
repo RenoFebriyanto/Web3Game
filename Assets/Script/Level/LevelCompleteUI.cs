@@ -5,45 +5,52 @@ using UnityEngine.SceneManagement;
 using TMPro;
 
 /// <summary>
-/// Manager untuk UI Level Complete dengan animasi fade dan sound
-/// Attach ke Canvas di Gameplay scene
+/// COMPLETE FIXED VERSION - Level Complete UI Manager
+/// Handles UI display, fade transition, sound, dan navigation
 /// </summary>
 public class LevelCompleteUI : MonoBehaviour
 {
     public static LevelCompleteUI Instance { get; private set; }
 
-    [Header("UI References")]
-    [Tooltip("Panel Level Complete (aktifkan saat level selesai)")]
+    [Header("UI References - DRAG FROM HIERARCHY")]
+    [Tooltip("Panel Level Complete GameObject dari hierarchy Anda")]
     public GameObject levelCompletePanel;
 
-    [Tooltip("Button Continue")]
+    [Tooltip("Button Continue Level dari hierarchy")]
     public Button continueButton;
+
+    [Tooltip("Button Home dari hierarchy")]
+    public Button homeButton;
 
     [Tooltip("Text untuk display stars (opsional)")]
     public TMP_Text starsText;
 
-    [Tooltip("Star icons untuk visual")]
+    [Tooltip("Star icons untuk visual (3 stars)")]
     public GameObject[] starIcons;
 
-    [Header("Fade Overlay")]
-    [Tooltip("Image untuk fade (warna hitam, alpha 0-1)")]
+    [Header("Fade Settings")]
+    [Tooltip("Image untuk fade overlay (hitam, alpha 0-1)")]
     public Image fadeImage;
 
-    [Tooltip("Durasi fade out (detik)")]
+    [Tooltip("Durasi fade out saat transition (detik)")]
     public float fadeOutDuration = 1f;
 
-    [Tooltip("Durasi fade in (detik)")]
+    [Tooltip("Durasi fade in saat scene start (detik)")]
     public float fadeInDuration = 0.5f;
 
     [Header("Scene Settings")]
-    [Tooltip("Nama scene untuk kembali ke main menu")]
+    [Tooltip("Nama scene Main Menu")]
     public string mainMenuSceneName = "MainMenu";
+
+    [Tooltip("Nama scene Gameplay")]
+    public string gameplaySceneName = "Gameplay";
 
     [Header("Debug")]
     public bool enableDebugLogs = true;
 
     private bool isTransitioning = false;
     private int earnedStars = 0;
+    private int currentLevelNumber = 0;
 
     void Awake()
     {
@@ -72,11 +79,17 @@ public class LevelCompleteUI : MonoBehaviour
             fadeImage.gameObject.SetActive(false);
         }
 
-        // Setup button
+        // Setup buttons
         if (continueButton != null)
         {
             continueButton.onClick.RemoveAllListeners();
             continueButton.onClick.AddListener(OnContinueClicked);
+        }
+
+        if (homeButton != null)
+        {
+            homeButton.onClick.RemoveAllListeners();
+            homeButton.onClick.AddListener(OnHomeClicked);
         }
 
         // Subscribe to level complete event
@@ -99,7 +112,7 @@ public class LevelCompleteUI : MonoBehaviour
     }
 
     /// <summary>
-    /// Called ketika level complete
+    /// Called ketika level complete (via LevelGameSession event)
     /// </summary>
     void OnLevelComplete()
     {
@@ -107,10 +120,10 @@ public class LevelCompleteUI : MonoBehaviour
 
         Log("Level Complete triggered!");
 
-        // Stop spawner
+        // ✅ CRITICAL: Stop spawner
         StopAllSpawners();
 
-        // Play level complete sound
+        // ✅ Play level complete sound
         if (SoundManager.Instance != null)
         {
             SoundManager.Instance.PlayLevelComplete();
@@ -122,7 +135,10 @@ public class LevelCompleteUI : MonoBehaviour
             earnedStars = GameplayStarManager.Instance.GetCollectedStars();
         }
 
-        // Show UI
+        // Get current level number
+        currentLevelNumber = PlayerPrefs.GetInt("SelectedLevelNumber", 1);
+
+        // Show UI dengan delay
         StartCoroutine(ShowLevelCompleteUI());
     }
 
@@ -131,15 +147,22 @@ public class LevelCompleteUI : MonoBehaviour
     /// </summary>
     void StopAllSpawners()
     {
-        // Stop FixedGameplaySpawner
+        // Method 1: Via SpawnerController
+        if (SpawnerController.Instance != null)
+        {
+            SpawnerController.Instance.StopSpawner();
+            Log("✓ Stopped spawner via SpawnerController");
+        }
+
+        // Method 2: Direct disable FixedGameplaySpawner
         var spawner = FindFirstObjectByType<FixedGameplaySpawner>();
         if (spawner != null)
         {
             spawner.enabled = false;
-            Log("✓ Stopped spawner");
+            Log("✓ Disabled FixedGameplaySpawner");
         }
 
-        // Stop semua coroutine yang berhubungan dengan spawn
+        // Method 3: Stop all coroutines (safety measure)
         StopAllCoroutines();
     }
 
@@ -160,8 +183,7 @@ public class LevelCompleteUI : MonoBehaviour
         // Update stars display
         UpdateStarsDisplay();
 
-        // Pause game (optional)
-        // Time.timeScale = 0f; // Jangan pause jika ada animasi
+        Log("✓ Level complete UI shown");
     }
 
     /// <summary>
@@ -209,6 +231,24 @@ public class LevelCompleteUI : MonoBehaviour
     }
 
     /// <summary>
+    /// Called ketika button Home diklik
+    /// </summary>
+    void OnHomeClicked()
+    {
+        if (isTransitioning) return;
+
+        Log("Home button clicked");
+
+        // Play click sound
+        if (SoundManager.Instance != null)
+        {
+            SoundManager.Instance.PlayButtonClick();
+        }
+
+        StartCoroutine(TransitionToMainMenu());
+    }
+
+    /// <summary>
     /// Transition ke level berikutnya dengan fade
     /// </summary>
     IEnumerator TransitionToNextLevel()
@@ -221,38 +261,46 @@ public class LevelCompleteUI : MonoBehaviour
         // Fade out
         yield return StartCoroutine(FadeOut());
 
-        // Get current level number
-        int currentLevel = PlayerPrefs.GetInt("SelectedLevelNumber", 1);
-        int nextLevel = currentLevel + 1;
+        int nextLevel = currentLevelNumber + 1;
 
-        // Check if next level exists
-        LevelConfig nextLevelConfig = null;
-        if (FindFirstObjectByType<LevelPopulator>() != null)
-        {
-            var database = FindFirstObjectByType<LevelPopulator>().levelDatabase;
-            if (database != null)
-            {
-                nextLevelConfig = database.GetByNumber(nextLevel);
-            }
-        }
-
-        if (nextLevelConfig != null)
+        // ✅ Check if next level exists (max 100 levels)
+        if (nextLevel <= 100)
         {
             // Load next level
             Log($"Loading next level: {nextLevel}");
-            PlayerPrefs.SetString("SelectedLevelId", nextLevelConfig.id);
-            PlayerPrefs.SetInt("SelectedLevelNumber", nextLevelConfig.number);
+
+            // Set selected level
+            PlayerPrefs.SetString("SelectedLevelId", $"level_{nextLevel}");
+            PlayerPrefs.SetInt("SelectedLevelNumber", nextLevel);
             PlayerPrefs.Save();
 
             // Reload gameplay scene
-            SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+            SceneManager.LoadScene(gameplaySceneName);
         }
         else
         {
             // No more levels, back to main menu
-            Log("No more levels, returning to main menu");
+            Log("No more levels (reached level 100), returning to main menu");
             SceneManager.LoadScene(mainMenuSceneName);
         }
+    }
+
+    /// <summary>
+    /// Transition ke main menu dengan fade
+    /// </summary>
+    IEnumerator TransitionToMainMenu()
+    {
+        isTransitioning = true;
+
+        // Resume time jika di-pause
+        Time.timeScale = 1f;
+
+        // Fade out
+        yield return StartCoroutine(FadeOut());
+
+        // Load main menu
+        Log("Loading main menu");
+        SceneManager.LoadScene(mainMenuSceneName);
     }
 
     /// <summary>
@@ -260,7 +308,11 @@ public class LevelCompleteUI : MonoBehaviour
     /// </summary>
     IEnumerator FadeOut()
     {
-        if (fadeImage == null) yield break;
+        if (fadeImage == null)
+        {
+            LogWarning("Fade image not assigned! Skipping fade out.");
+            yield break;
+        }
 
         fadeImage.gameObject.SetActive(true);
         float elapsed = 0f;
@@ -269,6 +321,8 @@ public class LevelCompleteUI : MonoBehaviour
         startColor.a = 0f;
         Color endColor = startColor;
         endColor.a = 1f;
+
+        fadeImage.color = startColor;
 
         while (elapsed < fadeOutDuration)
         {
@@ -279,14 +333,19 @@ public class LevelCompleteUI : MonoBehaviour
         }
 
         fadeImage.color = endColor;
+        Log("✓ Fade out complete");
     }
 
     /// <summary>
-    /// Fade in (transparan)
+    /// Fade in (transparan) - called on scene start
     /// </summary>
     IEnumerator FadeIn()
     {
-        if (fadeImage == null) yield break;
+        if (fadeImage == null)
+        {
+            LogWarning("Fade image not assigned! Skipping fade in.");
+            yield break;
+        }
 
         fadeImage.gameObject.SetActive(true);
         float elapsed = 0f;
@@ -308,6 +367,7 @@ public class LevelCompleteUI : MonoBehaviour
 
         fadeImage.color = endColor;
         fadeImage.gameObject.SetActive(false);
+        Log("✓ Fade in complete");
     }
 
     void Log(string message)
@@ -316,8 +376,13 @@ public class LevelCompleteUI : MonoBehaviour
             Debug.Log($"[LevelCompleteUI] {message}");
     }
 
+    void LogWarning(string message)
+    {
+        Debug.LogWarning($"[LevelCompleteUI] {message}");
+    }
+
     // ========================================
-    // PUBLIC API
+    // PUBLIC API - FOR TESTING
     // ========================================
 
     /// <summary>
@@ -327,5 +392,17 @@ public class LevelCompleteUI : MonoBehaviour
     public void TestLevelComplete()
     {
         OnLevelComplete();
+    }
+
+    [ContextMenu("Test: Fade Out")]
+    public void TestFadeOut()
+    {
+        StartCoroutine(FadeOut());
+    }
+
+    [ContextMenu("Test: Fade In")]
+    public void TestFadeIn()
+    {
+        StartCoroutine(FadeIn());
     }
 }

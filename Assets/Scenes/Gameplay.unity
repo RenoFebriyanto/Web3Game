@@ -7187,12 +7187,17 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   levelCompletePanel: {fileID: 1231665111}
   continueButton: {fileID: 1428435714}
+  homeButton: {fileID: 1860476538}
   starsText: {fileID: 0}
-  starIcons: []
-  fadeImage: {fileID: 0}
+  starIcons:
+  - {fileID: 1580323964}
+  - {fileID: 1286242713}
+  - {fileID: 1165155590}
+  fadeImage: {fileID: 445387232}
   fadeOutDuration: 1
   fadeInDuration: 0.5
   mainMenuSceneName: MainMenu
+  gameplaySceneName: Gameplay
   enableDebugLogs: 1
 --- !u!4 &1874771657
 Transform:

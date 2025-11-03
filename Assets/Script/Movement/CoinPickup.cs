@@ -1,7 +1,7 @@
 ﻿using UnityEngine;
 
 /// <summary>
-/// UPDATED: Coin pickup dengan random sound (5 variants)
+/// FIXED: Coin pickup dengan proper sound call
 /// </summary>
 public class CoinPickup : MonoBehaviour
 {
@@ -22,10 +22,15 @@ public class CoinPickup : MonoBehaviour
 
             PlayerEconomy.Instance.AddCoins(finalValue);
 
-            // ✅ NEW: Play random coin pickup sound
+            // ✅ FIXED: Play coin pickup sound - check SoundManager exists
             if (SoundManager.Instance != null)
             {
+                Debug.Log("[CoinPickup] Playing coin pickup sound...");
                 SoundManager.Instance.PlayCoinPickup();
+            }
+            else
+            {
+                Debug.LogWarning("[CoinPickup] SoundManager.Instance is NULL!");
             }
 
             if (finalValue != value)

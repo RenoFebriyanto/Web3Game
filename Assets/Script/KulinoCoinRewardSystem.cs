@@ -3,7 +3,7 @@ using UnityEngine.UI;
 using TMPro;
 
 /// <summary>
-/// ✅ FIXED: Kulino Coin Reward System dengan Chance-based rewards
+/// Kulino Coin Reward System dengan Chance-based rewards
 /// Menentukan kapan player bisa claim Kulino Coin setelah level complete
 /// </summary>
 public class KulinoCoinRewardSystem : MonoBehaviour
@@ -32,6 +32,9 @@ public class KulinoCoinRewardSystem : MonoBehaviour
 
     [Header("Debug")]
     public bool enableDebugLogs = true;
+
+    // Save keys
+    const string PREF_CLAIMED_LEVELS = "Kulino_ClaimedLevels_v1"; // CSV string: "1,5,12,..."
 
     // Runtime tracking
     private int currentLevel = 0;
@@ -104,6 +107,13 @@ public class KulinoCoinRewardSystem : MonoBehaviour
 
         Log($"Level {levelNum} complete! Checking reward eligibility...");
 
+        // Check if already claimed this level
+        if (HasClaimedLevel(levelNum))
+        {
+            Log($"Level {levelNum} reward already claimed. Skipping.");
+            return;
+        }
+
         // Check if player eligible untuk reward
         if (ShouldGiveReward(levelNum))
         {
@@ -146,6 +156,48 @@ public class KulinoCoinRewardSystem : MonoBehaviour
     }
 
     /// <summary>
+    /// Check apakah level sudah pernah di-claim
+    /// </summary>
+    bool HasClaimedLevel(int levelNumber)
+    {
+        string claimed = PlayerPrefs.GetString(PREF_CLAIMED_LEVELS, "");
+        if (string.IsNullOrEmpty(claimed)) return false;
+
+        string[] levels = claimed.Split(',');
+        foreach (string lvl in levels)
+        {
+            if (int.TryParse(lvl, out int num) && num == levelNumber)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Mark level as claimed
+    /// </summary>
+    void MarkLevelClaimed(int levelNumber)
+    {
+        string claimed = PlayerPrefs.GetString(PREF_CLAIMED_LEVELS, "");
+
+        if (string.IsNullOrEmpty(claimed))
+        {
+            claimed = levelNumber.ToString();
+        }
+        else
+        {
+            claimed += "," + levelNumber.ToString();
+        }
+
+        PlayerPrefs.SetString(PREF_CLAIMED_LEVELS, claimed);
+        PlayerPrefs.Save();
+
+        Log($"✓ Marked level {levelNumber} as claimed");
+    }
+
+    /// <summary>
     /// Show popup claim coin
     /// </summary>
     void ShowRewardPopup()
@@ -168,33 +220,41 @@ public class KulinoCoinRewardSystem : MonoBehaviour
     }
 
     /// <summary>
-    /// ✅ Called dari Confirm button di popup
-    /// Triggers GameManager.OnClaimButtonClick()
+    /// Called dari Confirm button di popup
+    /// Triggers GameManager.OnClaimButtonClick() untuk start transaksi
     /// </summary>
     public void OnConfirmButtonClicked()
     {
         Log("Confirm button clicked!");
 
-        // ✅ FIX: Gunakan GameManager.Instance (sekarang sudah ada)
-        if (GameManager.Instance == null)
-        {
-            LogError("GameManager.Instance is null!");
-            return;
-        }
+        // Mark level as claimed BEFORE starting transaction
+        MarkLevelClaimed(currentLevel);
 
-        // Trigger claim process
-        GameManager.Instance.OnClaimButtonClick();
+        // Trigger GameManager claim transaction
+        var gameManager = FindFirstObjectByType<GameManager>();
+        if (gameManager != null)
+        {
+            gameManager.OnClaimButtonClick();
+        }
+        else
+        {
+            LogError("GameManager not found!");
+        }
 
         // Hide popup setelah trigger claim
         HidePopup();
     }
 
     /// <summary>
-    /// ✅ Called dari Close button (X) di popup
+    /// Called dari Close button (X) di popup
     /// </summary>
     public void OnCloseButtonClicked()
     {
         Log("Close button clicked - skipping reward");
+
+        // Mark level as claimed even if skipped (agar tidak muncul lagi)
+        MarkLevelClaimed(currentLevel);
+
         HidePopup();
     }
 
@@ -233,6 +293,21 @@ public class KulinoCoinRewardSystem : MonoBehaviour
         OnLevelComplete();
     }
 
+    [ContextMenu("Debug: Clear Claimed Levels")]
+    void Context_ClearClaimed()
+    {
+        PlayerPrefs.DeleteKey(PREF_CLAIMED_LEVELS);
+        PlayerPrefs.Save();
+        Debug.Log("[KulinoCoinReward] Cleared claimed levels");
+    }
+
+    [ContextMenu("Debug: Print Claimed Levels")]
+    void Context_PrintClaimed()
+    {
+        string claimed = PlayerPrefs.GetString(PREF_CLAIMED_LEVELS, "");
+        Debug.Log($"[KulinoCoinReward] Claimed levels: {(string.IsNullOrEmpty(claimed) ? "NONE" : claimed)}");
+    }
+
     [ContextMenu("Debug: Print Reward Stats")]
     void Context_PrintStats()
     {
@@ -245,19 +320,19 @@ public class KulinoCoinRewardSystem : MonoBehaviour
         Debug.Log("================================");
     }
 
-    void Log(string msg)
+    void Log(string message)
     {
         if (enableDebugLogs)
-            Debug.Log($"[KulinoCoinReward] {msg}");
+            Debug.Log($"[KulinoCoinReward] {message}");
     }
 
-    void LogWarning(string msg)
+    void LogWarning(string message)
     {
-        Debug.LogWarning($"[KulinoCoinReward] {msg}");
+        Debug.LogWarning($"[KulinoCoinReward] {message}");
     }
 
-    void LogError(string msg)
+    void LogError(string message)
     {
-        Debug.LogError($"[KulinoCoinReward] {msg}");
+        Debug.LogError($"[KulinoCoinReward] {message}");
     }
 }

@@ -6,8 +6,8 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// ✅ UPDATED: Handle level complete
-/// Sekarang terintegrasi dengan KulinoCoinRewardSystem
+/// Handle level complete - terintegrasi dengan KulinoCoinRewardSystem
+/// KulinoCoinRewardSystem akan handle popup display otomatis
 /// </summary>
 public class LevelCompleteHandler : MonoBehaviour
 {
@@ -47,8 +47,8 @@ public class LevelCompleteHandler : MonoBehaviour
     }
 
     /// <summary>
-    /// ✅ Called ketika level complete
-    /// KulinoCoinRewardSystem akan handle popup display
+    /// Called ketika level complete
+    /// KulinoCoinRewardSystem akan handle popup display otomatis
     /// </summary>
     void OnLevelComplete()
     {
@@ -68,9 +68,8 @@ public class LevelCompleteHandler : MonoBehaviour
             starManager.CompleteLevelWithStars();
         }
 
-        // ✅ KulinoCoinRewardSystem akan handle popup secara otomatis
+        // KulinoCoinRewardSystem akan handle popup secara otomatis
         // (sudah subscribe ke LevelGameSession.OnLevelCompleted)
-
         Debug.Log("[LevelCompleteHandler] Reward check delegated to KulinoCoinRewardSystem");
     }
 

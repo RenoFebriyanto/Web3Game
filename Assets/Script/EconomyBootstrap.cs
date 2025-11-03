@@ -1,7 +1,8 @@
 ﻿using UnityEngine;
 
 /// <summary>
-/// FIXED: Ensures PlayerEconomy exists in any scene without duplication
+/// UPDATED: Ensures PlayerEconomy exists in any scene without duplication
+/// Works together with SceneBootstrapper for redundancy
 /// </summary>
 [DefaultExecutionOrder(-999)]
 public class EconomyBootstrap : MonoBehaviour
@@ -10,7 +11,7 @@ public class EconomyBootstrap : MonoBehaviour
 
     void Awake()
     {
-        // ✅ CRITICAL: Check PlayerEconomy FIRST before doing anything
+        // ✅ CRITICAL: Check PlayerEconomy FIRST
         if (PlayerEconomy.Instance != null)
         {
             Debug.Log("[EconomyBootstrap] PlayerEconomy already exists, destroying bootstrap");
@@ -27,10 +28,15 @@ public class EconomyBootstrap : MonoBehaviour
         }
 
         instance = this;
-        DontDestroyOnLoad(gameObject);
+
+        // ✅ DO NOT use DontDestroyOnLoad for bootstrap
+        // Let it die after creating PlayerEconomy
 
         // Ensure PlayerEconomy exists
         EnsurePlayerEconomy();
+
+        // ✅ Destroy bootstrap after creation
+        Destroy(gameObject);
     }
 
     void EnsurePlayerEconomy()
@@ -46,9 +52,9 @@ public class EconomyBootstrap : MonoBehaviour
         var prefab = Resources.Load<GameObject>("EconomyManager");
         if (prefab != null)
         {
-            var instance = Instantiate(prefab);
-            instance.name = "EconomyManager";
-            Debug.Log("[EconomyBootstrap] Created EconomyManager from Resources");
+            var obj = Instantiate(prefab);
+            obj.name = "EconomyManager";
+            Debug.Log("[EconomyBootstrap] ✓ Created EconomyManager from Resources");
         }
         else
         {
@@ -56,18 +62,12 @@ public class EconomyBootstrap : MonoBehaviour
             var go = new GameObject("PlayerEconomy");
             go.AddComponent<PlayerEconomy>();
             DontDestroyOnLoad(go);
-            Debug.Log("[EconomyBootstrap] Created PlayerEconomy fallback");
+            Debug.Log("[EconomyBootstrap] ✓ Created PlayerEconomy fallback");
         }
     }
 
-    // ✅ NEW: Destroy bootstrap after ensuring economy exists
-    void Start()
+    void OnDestroy()
     {
-        // Setelah PlayerEconomy created, bootstrap tidak diperlukan lagi
-        if (PlayerEconomy.Instance != null)
-        {
-            Debug.Log("[EconomyBootstrap] PlayerEconomy verified, destroying bootstrap");
-            Destroy(gameObject);
-        }
+        Debug.Log("[EconomyBootstrap] Bootstrap destroyed");
     }
 }

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using UnityEngine;
 
 public class PlayerEconomy : MonoBehaviour
@@ -25,14 +25,18 @@ public class PlayerEconomy : MonoBehaviour
     [SerializeField] int defaultMaxEnergy = 100;    // <-- inspector-editable max
 
 
+    // ... (keep existing code, only update Awake method)
+
     void Awake()
     {
+        // ✅ CRITICAL FIX: Proper singleton with destroy duplicate
         if (Instance != null && Instance != this)
         {
-            Debug.Log("[PlayerEconomy] Duplicate instance found - destroying this.");
+            Debug.LogWarning($"[PlayerEconomy] Duplicate instance found on '{gameObject.name}' - destroying");
             Destroy(gameObject);
             return;
         }
+
         Instance = this;
         DontDestroyOnLoad(gameObject);
         Debug.Log("[PlayerEconomy] Awake - loading values");

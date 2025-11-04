@@ -19,13 +19,7 @@ public class SceneBootstrapper : MonoBehaviour
     {
         string currentScene = SceneManager.GetActiveScene().name;
 
-        // ✅ CRITICAL: NEVER destroy GameBootstrap!
-        if (gameObject.name.Contains("GameBootstrap") || gameObject.GetComponent<GameBootstrap>() != null)
-        {
-            Debug.Log("[SceneBootstrapper] Skipping - this is GameBootstrap (should persist)");
-            Destroy(this); // Only destroy THIS script, not the GameObject!
-            return;
-        }
+        
 
         // ✅ RESET flag jika scene berubah (kembali ke MainMenu)
         if (lastSceneName != currentScene)

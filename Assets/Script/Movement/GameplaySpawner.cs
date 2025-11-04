@@ -8,6 +8,7 @@ using UnityEngine;
 /// ✅ Planet variations (1 or 2 lanes simultaneously)
 /// ✅ Fixed overlap & delay issues
 /// ✅ Time freeze integration (planets stop, collectibles continue)
+/// ✅ Reduced fragment spawn frequency
 /// </summary>
 public class FixedGameplaySpawner : MonoBehaviour
 {
@@ -53,6 +54,11 @@ public class FixedGameplaySpawner : MonoBehaviour
     [Tooltip("Chance untuk spawn 2 planets sekaligus (0-100%)")]
     [Range(0f, 100f)]
     public float doublePlanetChance = 40f;
+
+    [Header("📉 FRAGMENT CONTROL")]
+    [Tooltip("Reduce fragment spawn chance (0-100%)")]
+    [Range(0f, 100f)]
+    public float fragmentSpawnChanceMultiplier = 30f;
 
     [Header("🎯 DEBUG")]
     public bool enableDebugLogs = false;
@@ -437,11 +443,11 @@ public class FixedGameplaySpawner : MonoBehaviour
     {
         float roll = Random.Range(0f, 100f);
 
-        // Star control - DISABLED in pattern (handled by StarSpawnLoop)
-        // Stars now spawn via dedicated system
+        // ✅ REDUCED FRAGMENT CHANCE - Apply multiplier
+        float adjustedFragmentChance = pattern.fragmentSubstituteChance * (fragmentSpawnChanceMultiplier / 100f);
 
-        // Fragment
-        if (roll < pattern.fragmentSubstituteChance)
+        // Fragment (with reduced chance)
+        if (roll < adjustedFragmentChance)
         {
             GameObject fragmentPrefab = GetRequiredFragmentPrefab();
             if (fragmentPrefab != null)
@@ -453,7 +459,7 @@ public class FixedGameplaySpawner : MonoBehaviour
     }
 
     // ========================================
-    // ✅ NEW: SMART STAR SPAWN SYSTEM
+    // ✅ SMART STAR SPAWN SYSTEM
     // ========================================
 
     IEnumerator StarSpawnLoop()

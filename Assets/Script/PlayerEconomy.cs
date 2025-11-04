@@ -1,6 +1,9 @@
 ﻿using System;
 using UnityEngine;
 
+/// <summary>
+/// FIXED: Proper singleton pattern dengan cleanup
+/// </summary>
 public class PlayerEconomy : MonoBehaviour
 {
     public static PlayerEconomy Instance { get; private set; }
@@ -8,8 +11,6 @@ public class PlayerEconomy : MonoBehaviour
     const string KEY_COINS = "Kulino_Coins_v1";
     const string KEY_SHARDS = "Kulino_Shards_v1";
     const string KEY_ENERGY = "Kulino_Energy_v1";
-    // (OPTIONAL) you can add KEY_MAXENERGY if you want to persist
-    // const string KEY_MAXENERGY = "Kulino_MaxEnergy_v1";
 
     public long Coins { get; private set; }
     public int Shards { get; private set; }
@@ -18,45 +19,51 @@ public class PlayerEconomy : MonoBehaviour
 
     public event Action OnEconomyChanged;
 
-    [Header("Default starting values (set in Inspector)")]
-    [SerializeField] int defaultEnergy = 100;       // <-- default 100
-    [SerializeField] long defaultCoins = 5000;      // <-- default 5000
-    [SerializeField] int defaultShards = 0;         // <-- default 0
-    [SerializeField] int defaultMaxEnergy = 100;    // <-- inspector-editable max
-
-
-    // ... (keep existing code, only update Awake method)
+    [Header("Default starting values")]
+    [SerializeField] int defaultEnergy = 100;
+    [SerializeField] long defaultCoins = 5000;
+    [SerializeField] int defaultShards = 0;
+    [SerializeField] int defaultMaxEnergy = 100;
 
     void Awake()
     {
-        // ✅ CRITICAL FIX: Proper singleton with destroy duplicate
-        if (Instance != null && Instance != this)
+        // ✅ FIX 1: Check if instance exists AND is not destroyed
+        if (Instance != null)
         {
-            Debug.LogWarning($"[PlayerEconomy] Duplicate instance found on '{gameObject.name}' - destroying");
-            Destroy(gameObject);
-            return;
+            if (Instance != this)
+            {
+                Debug.LogWarning($"[PlayerEconomy] Duplicate found on '{gameObject.name}' - destroying");
+                Destroy(gameObject);
+                return;
+            }
         }
 
         Instance = this;
         DontDestroyOnLoad(gameObject);
-        Debug.Log("[PlayerEconomy] ✓ Awake - Instance set, loading values...");
+
+        Debug.Log("[PlayerEconomy] ✓ Initialized successfully");
         Load();
+    }
+
+    void OnDestroy()
+    {
+        // ✅ FIX 2: Clear instance reference when destroyed
+        if (Instance == this)
+        {
+            Debug.Log("[PlayerEconomy] Instance destroyed, clearing reference");
+            Instance = null;
+        }
     }
 
     void Load()
     {
-        // load coins as string then parse to support big numbers
         string sCoins = PlayerPrefs.GetString(KEY_COINS, defaultCoins.ToString());
         if (!long.TryParse(sCoins, out var c)) c = defaultCoins;
 
         Coins = c;
         Shards = PlayerPrefs.GetInt(KEY_SHARDS, defaultShards);
         Energy = PlayerPrefs.GetInt(KEY_ENERGY, defaultEnergy);
-
-        // set MaxEnergy from inspector default if not persisting
         MaxEnergy = defaultMaxEnergy;
-
-        // clamp energy to max
         Energy = Mathf.Clamp(Energy, 0, MaxEnergy);
 
         Debug.Log($"[PlayerEconomy] Loaded -> Coins={Coins}, Shards={Shards}, Energy={Energy}/{MaxEnergy}");
@@ -74,9 +81,9 @@ public class PlayerEconomy : MonoBehaviour
 
     public void AddCoins(long amount)
     {
-        Debug.Log($"[PlayerEconomy] AddCoins({amount}) called");
         if (amount == 0) return;
         Coins = Math.Max(0, Coins + amount);
+        Debug.Log($"[PlayerEconomy] AddCoins({amount}) -> Total: {Coins}");
         Save();
         OnEconomyChanged?.Invoke();
     }
@@ -84,8 +91,13 @@ public class PlayerEconomy : MonoBehaviour
     public bool SpendCoins(long amount)
     {
         if (amount <= 0) return false;
-        if (Coins < amount) return false;
+        if (Coins < amount)
+        {
+            Debug.LogWarning($"[PlayerEconomy] Cannot spend {amount} coins (have: {Coins})");
+            return false;
+        }
         Coins -= amount;
+        Debug.Log($"[PlayerEconomy] SpendCoins({amount}) -> Remaining: {Coins}");
         Save();
         OnEconomyChanged?.Invoke();
         return true;
@@ -93,9 +105,9 @@ public class PlayerEconomy : MonoBehaviour
 
     public void AddShards(int amount)
     {
-        Debug.Log($"[PlayerEconomy] AddShards({amount}) called");
         if (amount == 0) return;
         Shards = Math.Max(0, Shards + amount);
+        Debug.Log($"[PlayerEconomy] AddShards({amount}) -> Total: {Shards}");
         Save();
         OnEconomyChanged?.Invoke();
     }
@@ -103,8 +115,13 @@ public class PlayerEconomy : MonoBehaviour
     public bool SpendShards(int amount)
     {
         if (amount <= 0) return false;
-        if (Shards < amount) return false;
+        if (Shards < amount)
+        {
+            Debug.LogWarning($"[PlayerEconomy] Cannot spend {amount} shards (have: {Shards})");
+            return false;
+        }
         Shards -= amount;
+        Debug.Log($"[PlayerEconomy] SpendShards({amount}) -> Remaining: {Shards}");
         Save();
         OnEconomyChanged?.Invoke();
         return true;
@@ -112,9 +129,9 @@ public class PlayerEconomy : MonoBehaviour
 
     public void AddEnergy(int amount)
     {
-        Debug.Log($"[PlayerEconomy] AddEnergy({amount}) called");
         if (amount == 0) return;
         Energy = Mathf.Clamp(Energy + amount, 0, MaxEnergy);
+        Debug.Log($"[PlayerEconomy] AddEnergy({amount}) -> Total: {Energy}/{MaxEnergy}");
         Save();
         OnEconomyChanged?.Invoke();
     }
@@ -122,8 +139,13 @@ public class PlayerEconomy : MonoBehaviour
     public bool ConsumeEnergy(int amount)
     {
         if (amount <= 0) return false;
-        if (Energy < amount) return false;
+        if (Energy < amount)
+        {
+            Debug.LogWarning($"[PlayerEconomy] Cannot consume {amount} energy (have: {Energy})");
+            return false;
+        }
         Energy = Mathf.Max(0, Energy - amount);
+        Debug.Log($"[PlayerEconomy] ConsumeEnergy({amount}) -> Remaining: {Energy}/{MaxEnergy}");
         Save();
         OnEconomyChanged?.Invoke();
         return true;
@@ -132,23 +154,34 @@ public class PlayerEconomy : MonoBehaviour
     [ContextMenu("Reset Economy")]
     public void ResetEconomy()
     {
-        Debug.Log("[PlayerEconomy] ResetEconomy called");
         Coins = defaultCoins;
         Shards = defaultShards;
         MaxEnergy = defaultMaxEnergy;
         Energy = defaultEnergy;
         Save();
         OnEconomyChanged?.Invoke();
+        Debug.Log("[PlayerEconomy] Economy reset to defaults");
     }
 
-    // helper to wipe persistent saved data (call from code if needed)
     public void ClearSavedData()
     {
         PlayerPrefs.DeleteKey(KEY_COINS);
         PlayerPrefs.DeleteKey(KEY_SHARDS);
         PlayerPrefs.DeleteKey(KEY_ENERGY);
         PlayerPrefs.Save();
-        Debug.Log("[PlayerEconomy] ClearSavedData called - PlayerPrefs keys removed");
+        Debug.Log("[PlayerEconomy] Saved data cleared");
         Load();
+    }
+
+    [ContextMenu("Debug: Print Status")]
+    void Debug_PrintStatus()
+    {
+        Debug.Log("=== PLAYER ECONOMY STATUS ===");
+        Debug.Log($"Instance: {(Instance != null ? "OK" : "NULL")}");
+        Debug.Log($"GameObject: {gameObject.name}");
+        Debug.Log($"Coins: {Coins:N0}");
+        Debug.Log($"Shards: {Shards}");
+        Debug.Log($"Energy: {Energy}/{MaxEnergy}");
+        Debug.Log("============================");
     }
 }

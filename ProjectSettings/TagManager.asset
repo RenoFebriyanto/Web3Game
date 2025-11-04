@@ -7,7 +7,6 @@ TagManager:
   - Planet
   - Collectible
   - Coin
-  - PersistentBoostrap
   layers:
   - Default
   - TransparentFX

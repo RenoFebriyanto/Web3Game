@@ -543,7 +543,7 @@ public class FixedGameplaySpawner : MonoBehaviour
             yield return new WaitForSeconds(0.5f);
         }
 
-        LogError($"Failed to spawn star {starIndex + 1} after {maxAttempts} attempts");
+        LogError($"❌ Failed to spawn star {starIndex + 1} after {maxAttempts} attempts");
     }
 
     float GetFragmentCollectionProgress()
@@ -701,7 +701,7 @@ public class FixedGameplaySpawner : MonoBehaviour
 
     void LogError(string msg)
     {
-        Debug.LogError($"[Spawner] ❌ {msg}");
+        Debug.LogError($"[Spawner] {msg}");
     }
 
     void OnDrawGizmos()

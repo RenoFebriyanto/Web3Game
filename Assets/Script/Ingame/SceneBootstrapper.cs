@@ -3,6 +3,8 @@ using UnityEngine.SceneManagement;
 
 /// <summary>
 /// FIXED: Proper scene change detection + auto-reset flag
+/// ✅ Destroy self after ensuring economy exists
+/// ✅ Never destroy GameBootstrap
 /// </summary>
 [DefaultExecutionOrder(-1000)]
 public class SceneBootstrapper : MonoBehaviour
@@ -17,10 +19,11 @@ public class SceneBootstrapper : MonoBehaviour
     {
         string currentScene = SceneManager.GetActiveScene().name;
 
-        // ✅ JANGAN destroy GameBootstrap!
-        if (gameObject.name.Contains("GameBootstrap"))
+        // ✅ CRITICAL: NEVER destroy GameBootstrap!
+        if (gameObject.name.Contains("GameBootstrap") || gameObject.GetComponent<GameBootstrap>() != null)
         {
-            Debug.Log("[SceneBootstrapper] Skipping - this is GameBootstrap");
+            Debug.Log("[SceneBootstrapper] Skipping - this is GameBootstrap (should persist)");
+            Destroy(this); // Only destroy THIS script, not the GameObject!
             return;
         }
 
@@ -49,10 +52,11 @@ public class SceneBootstrapper : MonoBehaviour
         }
 
         // ✅ Load and instantiate EconomyManager
+        Debug.Log("[SceneBootstrapper] Creating EconomyManager from Resources");
+
         var prefab = Resources.Load<GameObject>(ECONOMY_PREFAB_PATH);
         if (prefab != null)
         {
-            Debug.Log("[SceneBootstrapper] Creating EconomyManager from Resources");
             var instance = Instantiate(prefab);
             instance.name = "EconomyManager"; // Remove "(Clone)"
             hasInitialized = true;
@@ -113,7 +117,7 @@ public class SceneBootstrapper : MonoBehaviour
         }
     }
 
-    // ✅ NEW: Manual reset (for testing)
+    // ✅ Manual reset (for testing)
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     static void ResetStaticData()
     {

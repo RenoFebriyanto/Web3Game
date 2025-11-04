@@ -402,23 +402,32 @@ public class LevelCompleteUI : MonoBehaviour
     IEnumerator TransitionToNextLevel()
     {
         isTransitioning = true;
+
+        // Resume time jika di-pause
         Time.timeScale = 1f;
 
-        // ✅ Fade out (already implemented)
+        // Fade out
         yield return StartCoroutine(FadeOut());
 
         int nextLevel = currentLevelNumber + 1;
 
+        // ✅ Check if next level exists (max 100 levels)
         if (nextLevel <= 100)
         {
+            Log($"Loading next level: {nextLevel}");
+
+            // Set selected level
             PlayerPrefs.SetString("SelectedLevelId", $"level_{nextLevel}");
             PlayerPrefs.SetInt("SelectedLevelNumber", nextLevel);
             PlayerPrefs.Save();
 
+            // Reload gameplay scene
             SceneManager.LoadScene(gameplaySceneName);
         }
         else
         {
+            // No more levels, back to main menu
+            Log("No more levels (reached level 100), returning to main menu");
             SceneManager.LoadScene(mainMenuSceneName);
         }
     }

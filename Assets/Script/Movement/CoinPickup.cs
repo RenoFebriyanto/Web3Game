@@ -1,7 +1,7 @@
 ﻿using UnityEngine;
 
 /// <summary>
-/// FIXED: Play sound BEFORE destroy to prevent audio cut-off
+/// FIXED: Coin pickup dengan proper sound call
 /// </summary>
 public class CoinPickup : MonoBehaviour
 {
@@ -11,18 +11,6 @@ public class CoinPickup : MonoBehaviour
     {
         if (!other.CompareTag("Player")) return;
 
-        // ✅ CRITICAL FIX: Play sound FIRST (before any destroy logic)
-        if (SoundManager.Instance != null)
-        {
-            SoundManager.Instance.PlayCoinPickup();
-            Debug.Log("[CoinPickup] ✓ Played coin pickup sound");
-        }
-        else
-        {
-            Debug.LogWarning("[CoinPickup] SoundManager.Instance is NULL!");
-        }
-
-        // Grant coins after sound
         if (PlayerEconomy.Instance != null)
         {
             long finalValue = value;
@@ -34,13 +22,23 @@ public class CoinPickup : MonoBehaviour
 
             PlayerEconomy.Instance.AddCoins(finalValue);
 
+            // ✅ FIXED: Play coin pickup sound - check SoundManager exists
+            if (SoundManager.Instance != null)
+            {
+                Debug.Log("[CoinPickup] Playing coin pickup sound...");
+                SoundManager.Instance.PlayCoinPickup();
+            }
+            else
+            {
+                Debug.LogWarning("[CoinPickup] SoundManager.Instance is NULL!");
+            }
+
             if (finalValue != value)
             {
                 Debug.Log($"[CoinPickup] Collected {finalValue} coins (base: {value}, multiplier active!)");
             }
         }
 
-        // Destroy LAST (after sound & coin grant)
         Destroy(gameObject);
     }
 }

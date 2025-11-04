@@ -7859,6 +7859,10 @@ PrefabInstance:
       value: SoundManager
       objectReference: {fileID: 0}
     - target: {fileID: 4541020294602020398, guid: c8e43d1d9a9cf0347b24f0575edef9ae, type: 3}
+      propertyPath: defaultMusicVolume
+      value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 4541020294602020398, guid: c8e43d1d9a9cf0347b24f0575edef9ae, type: 3}
       propertyPath: planetDestroySound
       value: 
       objectReference: {fileID: 8300000, guid: da238a742c7991f449d27c43aa6304a8, type: 3}
@@ -13616,7 +13620,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 6825200583898109547}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: cdf73e6788291254e9c379aa4d3fe075, type: 3}
   m_Name: 

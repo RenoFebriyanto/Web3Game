@@ -3471,7 +3471,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7f02faca4f7ded442b4c2d450069d2fc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  rewardChancePerLevel: 3
+  rewardChancePerLevel: 0.1
   guaranteedRewardEveryNLevels: 30
   minimumLevelForReward: 1
   popupClaimCoin: {fileID: 6768678056661620766}
@@ -3945,9 +3945,9 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 608775302}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 491.66663, y: -50}
   m_SizeDelta: {x: 100, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1165155592
@@ -4139,7 +4139,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &1231665112
 RectTransform:
   m_ObjectHideFlags: 0
@@ -4698,9 +4698,9 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 608775302}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 350, y: -50}
   m_SizeDelta: {x: 150, y: 150}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1286242715
@@ -5513,9 +5513,9 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 1492807976}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 487.5, y: -50}
   m_SizeDelta: {x: 150, y: 80}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1428435713
@@ -5978,9 +5978,9 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 608775302}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 208.33333, y: -50}
   m_SizeDelta: {x: 100, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1580323966
@@ -6947,8 +6947,11 @@ MonoBehaviour:
   planetInterval: 2
   itemSpawnDelay: 0.15
   minSpawnDistance: 3
-  maxStarsPerLevel: 3
-  lastStarProgressThreshold: 0.7
+  minDistanceBetweenTypes: 3
+  star1SpawnTimeRange: {x: 5, y: 15}
+  star2ProgressRange: {x: 0.3, y: 0.6}
+  star3ProgressRange: {x: 0.85, y: 0.95}
+  doublePlanetChance: 40
   enableDebugLogs: 1
   showGizmos: 1
   isInitialized: 1
@@ -7027,9 +7030,9 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 1492807976}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 212.5, y: -50}
   m_SizeDelta: {x: 150, y: 80}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1860476537
@@ -9632,9 +9635,9 @@ RectTransform:
   - {fileID: 4016966564011195210}
   m_Father: {fileID: 3782555057663105246}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 960, y: -115}
   m_SizeDelta: {x: 248, y: 248}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &5980435072372329969
@@ -10032,7 +10035,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!1 &6974471775723977003
 GameObject:
   m_ObjectHideFlags: 0

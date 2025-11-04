@@ -3,12 +3,14 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// COMPLETE FIXED VERSION - GameplaySpawner
-/// ✅ Smart star spawning (3 stars per level, synced with fragment progress)
-/// ✅ Planet variations (1 or 2 lanes simultaneously)
-/// ✅ Fixed overlap & delay issues
-/// ✅ Time freeze integration (planets stop, collectibles continue)
-/// ✅ Reduced fragment spawn frequency
+/// ✅ COMPLETE FIXED VERSION - GameplaySpawner
+/// FIXES:
+/// - Planet spawn consistency (no more delays/gaps)
+/// - Proper lane blocking system
+/// - Time freeze integration
+/// - Smart star spawning (3 per level, synced with fragment progress)
+/// - Planet variations (1 or 2 lanes simultaneously)
+/// - Improved distance checking (no overlap)
 /// </summary>
 public class FixedGameplaySpawner : MonoBehaviour
 {
@@ -33,12 +35,15 @@ public class FixedGameplaySpawner : MonoBehaviour
     public float spawnY = 10f;
     public float coinVerticalSpacing = 2f;
 
-    [Tooltip("Planet spawn interval")]
-    public float planetInterval = 1.2f;
+    [Tooltip("Planet spawn interval (detik)")]
+    public float planetInterval = 2.5f;
+
+    [Tooltip("Planet spawn interval ketika double spawn")]
+    public float doublePlanetInterval = 4f;
 
     public float itemSpawnDelay = 0.15f;
-    public float minSpawnDistance = 2.5f;
-    public float minDistanceBetweenTypes = 3f; // Distance antara planet dan collectibles
+    public float minPlanetDistance = 4f; // Distance minimum antar planet
+    public float minSafeZone = 2f; // Safe zone antara planet dan collectibles
 
     [Header("⭐ STAR CONTROL")]
     [Tooltip("Star 1 spawn delay range (detik)")]
@@ -60,6 +65,13 @@ public class FixedGameplaySpawner : MonoBehaviour
     [Range(0f, 100f)]
     public float fragmentSpawnChanceMultiplier = 30f;
 
+    [Header("🔧 ADVANCED TUNING")]
+    [Tooltip("Planet spawn cooldown per lane (detik)")]
+    public float planetLaneCooldown = 1.5f;
+
+    [Tooltip("Collectible spawn cooldown per lane (detik)")]
+    public float collectibleLaneCooldown = 1f;
+
     [Header("🎯 DEBUG")]
     public bool enableDebugLogs = false;
     public bool showGizmos = true;
@@ -77,8 +89,10 @@ public class FixedGameplaySpawner : MonoBehaviour
     private float laneOffset = 2.5f;
     private float[] laneBlockedUntil;
     private float[] lastSpawnYInLane;
+    private float[] lastPlanetSpawnTime; // Track waktu spawn planet per lane
     private Dictionary<int, float> lastPlanetSpawnY = new Dictionary<int, float>();
     private Dictionary<int, float> lastCollectibleSpawnY = new Dictionary<int, float>();
+    private float lastAnyPlanetSpawnTime = 0f; // Track waktu spawn planet (any lane)
 
     private FragmentRequirement[] levelRequirements;
     private int totalPatternWeight = 0;
@@ -106,11 +120,13 @@ public class FixedGameplaySpawner : MonoBehaviour
 
         laneBlockedUntil = new float[laneCount];
         lastSpawnYInLane = new float[laneCount];
+        lastPlanetSpawnTime = new float[laneCount];
 
         for (int i = 0; i < laneCount; i++)
         {
             laneBlockedUntil[i] = 0f;
-            lastSpawnYInLane[i] = spawnY - minSpawnDistance - 5f;
+            lastSpawnYInLane[i] = spawnY - 10f;
+            lastPlanetSpawnTime[i] = -10f; // Start with old time
             lastPlanetSpawnY[i] = spawnY - 10f;
             lastCollectibleSpawnY[i] = spawnY - 10f;
         }
@@ -210,47 +226,55 @@ public class FixedGameplaySpawner : MonoBehaviour
     }
 
     // ========================================
-    // ✅ PLANET SPAWNER - WITH VARIATIONS & TIME FREEZE
+    // ✅ PLANET SPAWNER - FIXED CONSISTENT SPAWN
     // ========================================
 
     IEnumerator PlanetSpawnLoop()
     {
         Log("Planet spawn loop started");
-        yield return new WaitForSeconds(0.5f);
+        yield return new WaitForSeconds(0.2f); // Shorter initial delay
 
         while (true)
         {
-            yield return new WaitForSeconds(planetInterval);
-
-            // ✅ TIME FREEZE CHECK - Skip planet spawn
+            // ✅ TIME FREEZE CHECK
             if (BoosterManager.Instance != null &&
                 (BoosterManager.Instance.timeFreezeActive || !BoosterManager.Instance.CanSpawn()))
             {
+                yield return new WaitForSeconds(0.2f);
                 continue;
             }
 
-            List<int> availableLanes = GetAvailableLanes();
+            // ✅ FIXED: Check if enough time passed since last spawn
+            float timeSinceLastSpawn = Time.time - lastAnyPlanetSpawnTime;
+            if (timeSinceLastSpawn < planetInterval)
+            {
+                yield return new WaitForSeconds(0.1f);
+                continue;
+            }
+
+            List<int> availableLanes = GetAvailableLanesForPlanet();
 
             if (availableLanes.Count == 0)
+            {
+                yield return new WaitForSeconds(0.2f);
                 continue;
+            }
 
             // ✅ PLANET VARIATIONS
             float roll = Random.Range(0f, 100f);
 
             if (roll < doublePlanetChance && availableLanes.Count >= 2)
             {
-                // Spawn 2 planets di 2 lanes berbeda
+                // Spawn 2 planets
                 SpawnDoublePlanets(availableLanes);
+                yield return new WaitForSeconds(doublePlanetInterval);
             }
             else
             {
                 // Spawn 1 planet
                 int lane = availableLanes[Random.Range(0, availableLanes.Count)];
-
-                if (CanSpawnPlanetInLane(lane))
-                {
-                    SpawnPlanet(lane);
-                }
+                SpawnPlanet(lane);
+                yield return new WaitForSeconds(planetInterval);
             }
         }
     }
@@ -259,51 +283,52 @@ public class FixedGameplaySpawner : MonoBehaviour
     {
         if (availableLanes.Count < 2) return;
 
-        // Pilih 2 lanes berbeda secara random
-        List<int> selectedLanes = new List<int>();
+        // Pilih 2 lanes berbeda
         List<int> tempLanes = new List<int>(availableLanes);
 
-        // Lane 1
         int lane1 = tempLanes[Random.Range(0, tempLanes.Count)];
-        if (!CanSpawnPlanetInLane(lane1)) return;
-
-        selectedLanes.Add(lane1);
         tempLanes.Remove(lane1);
 
-        // Lane 2 (different from lane 1)
         if (tempLanes.Count == 0) return;
         int lane2 = tempLanes[Random.Range(0, tempLanes.Count)];
-        if (!CanSpawnPlanetInLane(lane2)) return;
 
-        selectedLanes.Add(lane2);
+        // Spawn both
+        SpawnPlanet(lane1);
+        SpawnPlanet(lane2);
 
-        // Spawn both planets
-        foreach (int lane in selectedLanes)
+        Log($"✓ Double planets spawned: lane {lane1}, {lane2}");
+    }
+
+    /// <summary>
+    /// ✅ FIXED: Simplified planet lane availability check
+    /// </summary>
+    List<int> GetAvailableLanesForPlanet()
+    {
+        List<int> available = new List<int>();
+        float currentTime = Time.time;
+
+        for (int i = 0; i < laneCount; i++)
         {
-            SpawnPlanet(lane);
+            // Check cooldown per lane
+            if (currentTime - lastPlanetSpawnTime[i] < planetLaneCooldown)
+                continue;
+
+            // Check distance from last collectible
+            float lastCollectY = lastCollectibleSpawnY.ContainsKey(i) ? lastCollectibleSpawnY[i] : spawnY - 10f;
+            float distFromCollect = spawnY - lastCollectY;
+
+            if (distFromCollect < minSafeZone)
+                continue;
+
+            available.Add(i);
         }
 
-        Log($"Spawned double planets in lanes: {lane1}, {lane2}");
+        return available;
     }
 
-    bool CanSpawnPlanetInLane(int lane)
-    {
-        // Check distance from last planet spawn
-        float lastPlanetY = lastPlanetSpawnY.ContainsKey(lane) ? lastPlanetSpawnY[lane] : spawnY - 10f;
-        float distanceFromLastPlanet = spawnY - lastPlanetY;
-
-        if (distanceFromLastPlanet < minSpawnDistance)
-            return false;
-
-        // Check distance from last collectible (coin/fragment/star)
-        float lastCollectibleY = lastCollectibleSpawnY.ContainsKey(lane) ? lastCollectibleSpawnY[lane] : spawnY - 10f;
-        float distanceFromCollectible = spawnY - lastCollectibleY;
-
-        if (distanceFromCollectible < minDistanceBetweenTypes)
-            return false;
-
-        return true;
-    }
+    /// <summary>
+    /// ✅ REMOVED: Overly complex checking - simplified in GetAvailableLanesForPlanet
+    /// </summary>
 
     void SpawnPlanet(int lane)
     {
@@ -316,22 +341,26 @@ public class FixedGameplaySpawner : MonoBehaviour
         float currentSpeed = GetCurrentSpeed();
         SetupMover(planet, currentSpeed);
 
+        // ✅ FIXED: Update tracking variables
         lastSpawnYInLane[lane] = spawnY;
         lastPlanetSpawnY[lane] = spawnY;
-        laneBlockedUntil[lane] = Time.time + 1.5f;
+        lastPlanetSpawnTime[lane] = Time.time;
+        lastAnyPlanetSpawnTime = Time.time;
 
         planetSpawned++;
         totalSpawned++;
+
+        Log($"✓ Planet spawned: lane {lane}, total: {planetSpawned}");
     }
 
     // ========================================
-    // ✅ PATTERN SPAWNER - FIXED OVERLAP ISSUES
+    // ✅ PATTERN SPAWNER - FIXED TIMING
     // ========================================
 
     IEnumerator PatternSpawnLoop()
     {
         Log("Pattern spawn loop started");
-        yield return new WaitForSeconds(1.5f);
+        yield return new WaitForSeconds(1f);
 
         while (true)
         {
@@ -342,10 +371,10 @@ public class FixedGameplaySpawner : MonoBehaviour
                 continue;
             }
 
-            List<int> availableLanes = GetAvailableLanes();
+            List<int> availableLanes = GetAvailableLanesForCollectibles();
             if (availableLanes.Count == 0)
             {
-                yield return new WaitForSeconds(0.3f);
+                yield return new WaitForSeconds(0.2f);
                 continue;
             }
 
@@ -358,28 +387,12 @@ public class FixedGameplaySpawner : MonoBehaviour
                 continue;
             }
 
-            // ✅ CHECK: Ensure safe distance from planets
-            if (!IsLaneSafeForCollectibles(baseLane))
-            {
-                yield return new WaitForSeconds(0.3f);
-                continue;
-            }
-
-            HashSet<int> usedLanes = new HashSet<int>();
-            usedLanes.Add(baseLane);
-
+            // Calculate lanes used by pattern
+            HashSet<int> usedLanes = new HashSet<int> { baseLane };
             foreach (var point in pattern.spawnPoints)
             {
                 int targetLane = Mathf.Clamp(baseLane + Mathf.RoundToInt(point.x), 0, laneCount - 1);
                 usedLanes.Add(targetLane);
-            }
-
-            float patternDuration = CalculatePatternDuration(pattern);
-            float blockUntil = Time.time + patternDuration + 0.5f;
-
-            foreach (int lane in usedLanes)
-            {
-                laneBlockedUntil[lane] = blockUntil;
             }
 
             yield return StartCoroutine(SpawnPattern(pattern, baseLane));
@@ -389,13 +402,31 @@ public class FixedGameplaySpawner : MonoBehaviour
         }
     }
 
-    bool IsLaneSafeForCollectibles(int lane)
+    /// <summary>
+    /// ✅ NEW: Get available lanes for collectibles (coins/fragments)
+    /// </summary>
+    List<int> GetAvailableLanesForCollectibles()
     {
-        // Check distance from last planet
-        float lastPlanetY = lastPlanetSpawnY.ContainsKey(lane) ? lastPlanetSpawnY[lane] : spawnY - 10f;
-        float distanceFromPlanet = spawnY - lastPlanetY;
+        List<int> available = new List<int>();
+        float currentTime = Time.time;
 
-        return distanceFromPlanet >= minDistanceBetweenTypes;
+        for (int i = 0; i < laneCount; i++)
+        {
+            // Skip if blocked
+            if (currentTime < laneBlockedUntil[i])
+                continue;
+
+            // Check distance from last planet
+            float lastPlanetY = lastPlanetSpawnY.ContainsKey(i) ? lastPlanetSpawnY[i] : spawnY - 10f;
+            float distFromPlanet = spawnY - lastPlanetY;
+
+            if (distFromPlanet < minSafeZone)
+                continue;
+
+            available.Add(i);
+        }
+
+        return available;
     }
 
     IEnumerator SpawnPattern(CoinSpawnPattern pattern, int baseLane)
@@ -426,7 +457,10 @@ public class FixedGameplaySpawner : MonoBehaviour
                 SetupCollectibleComponent(spawned, prefabToSpawn);
 
                 lastSpawnYInLane[targetLane] = currentY;
-                lastCollectibleSpawnY[targetLane] = currentY; // Track collectible position
+                lastCollectibleSpawnY[targetLane] = currentY;
+
+                // ✅ Block lane temporarily
+                laneBlockedUntil[targetLane] = Time.time + collectibleLaneCooldown;
 
                 if (prefabToSpawn == coinPrefab) coinSpawned++;
                 else if (prefabToSpawn == starPrefab) starSpawned++;
@@ -513,14 +547,17 @@ public class FixedGameplaySpawner : MonoBehaviour
 
         while (attempts < maxAttempts)
         {
-            List<int> availableLanes = GetAvailableLanes();
+            List<int> availableLanes = GetAvailableLanesForCollectibles();
 
             if (availableLanes.Count > 0)
             {
                 int lane = availableLanes[Random.Range(0, availableLanes.Count)];
 
-                // Check safe distance
-                if (IsLaneSafeForCollectibles(lane))
+                // Check safe distance from planets
+                float lastPlanetY = lastPlanetSpawnY.ContainsKey(lane) ? lastPlanetSpawnY[lane] : spawnY - 10f;
+                float distFromPlanet = spawnY - lastPlanetY;
+
+                if (distFromPlanet >= minSafeZone)
                 {
                     Vector3 pos = new Vector3(GetLaneWorldX(lane), spawnY, 0f);
                     GameObject star = Instantiate(starPrefab, pos, Quaternion.identity, spawnParent);
@@ -529,7 +566,7 @@ public class FixedGameplaySpawner : MonoBehaviour
                     SetupMover(star, currentSpeed);
 
                     lastCollectibleSpawnY[lane] = spawnY;
-                    laneBlockedUntil[lane] = Time.time + 2f;
+                    laneBlockedUntil[lane] = Time.time + collectibleLaneCooldown;
 
                     starSpawned++;
                     totalSpawned++;
@@ -648,14 +685,6 @@ public class FixedGameplaySpawner : MonoBehaviour
         return available;
     }
 
-    float GetLaneWorldX(int laneIndex)
-    {
-        float center = (laneCount - 1) / 2f;
-        float centerX = lanesManager != null ? lanesManager.transform.position.x : 0f;
-        float offset = lanesManager != null ? lanesManager.laneOffset : laneOffset;
-        return centerX + (laneIndex - center) * offset;
-    }
-
     CoinSpawnPattern SelectRandomPattern()
     {
         if (coinPatterns == null || coinPatterns.Count == 0) return null;
@@ -673,6 +702,14 @@ public class FixedGameplaySpawner : MonoBehaviour
         }
 
         return coinPatterns[0];
+    }
+
+    float GetLaneWorldX(int laneIndex)
+    {
+        float center = (laneCount - 1) / 2f;
+        float centerX = lanesManager != null ? lanesManager.transform.position.x : 0f;
+        float offset = lanesManager != null ? lanesManager.laneOffset : laneOffset;
+        return centerX + (laneIndex - center) * offset;
     }
 
     float CalculatePatternDuration(CoinSpawnPattern pattern)
@@ -730,7 +767,7 @@ public class FixedGameplaySpawner : MonoBehaviour
 
         UnityEditor.Handles.Label(
             new Vector3(0, spawnY + 1, 0),
-            $"Spawner: {totalSpawned}\n{starStatus}\nProgress: {progress:P0}",
+            $"Spawner: {totalSpawned}\n{starStatus}\nProgress: {progress:P0}\nPlanets: {planetSpawned}",
             new GUIStyle() { normal = new GUIStyleState() { textColor = Color.white } }
         );
 #endif
@@ -746,6 +783,8 @@ public class FixedGameplaySpawner : MonoBehaviour
         Debug.Log($"Stars: {starSpawned}/3 [S1:{starSpawned_Flags[0]} S2:{starSpawned_Flags[1]} S3:{starSpawned_Flags[2]}]");
         Debug.Log($"Fragment Progress: {GetFragmentCollectionProgress():P0}");
         Debug.Log($"Time Freeze Active: {(BoosterManager.Instance != null ? BoosterManager.Instance.timeFreezeActive : false)}");
+        Debug.Log($"Last Planet Spawn: {Time.time - lastAnyPlanetSpawnTime:F2}s ago");
+        Debug.Log($"Planet Interval: {planetInterval}s");
         Debug.Log("========================================");
     }
 

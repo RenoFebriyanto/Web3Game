@@ -12,8 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 20f7cb6a08990104ba74ca0580d03930, type: 3}
   m_Name: Shard100
   m_EditorClassIdentifier: 
-  itemId: 
-  displayName: 
+  itemId: shard_100
+  displayName: Shard
   iconGrid: {fileID: 0}
   iconPreview: {fileID: 0}
   coinPrice: 0

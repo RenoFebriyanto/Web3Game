@@ -3,69 +3,77 @@ using UnityEngine.UI;
 using TMPro;
 
 /// <summary>
-/// UI controller untuk Daily Reward button di LevelP
-/// Attach ke GameObject "RewardQuest"
+/// ✅✅✅ DUAL BUTTON VERSION: Energy Button + Shard Button terpisah
+/// - 2 button terpisah dengan popup masing-masing
+/// - Random amount di-roll saat reward available (bukan saat claim)
+/// - Real-time daily reset (offline support)
+/// - Full integration dengan DailyRewardSystem
 /// </summary>
 public class DailyRewardUI : MonoBehaviour
 {
-    [Header("=== BUTTON COMPONENT ===")]
-    [Tooltip("Button component (akan auto-find jika null)")]
-    public Button claimButton;
+    [Header("=== ENERGY BUTTON ===")]
+    [Tooltip("Button untuk claim Energy")]
+    public Button energyButton;
 
-    [Header("=== VISUAL STATES ===")]
-    [Tooltip("Sprite saat reward available (bisa diklik)")]
-    public Sprite buttonSpriteAvailable;
+    [Tooltip("Sprite saat energy reward available")]
+    public Sprite energyButtonAvailable;
 
-    [Tooltip("Sprite saat reward locked/claimed (gray)")]
-    public Sprite buttonSpriteLocked;
+    [Tooltip("Sprite saat energy locked/claimed")]
+    public Sprite energyButtonLocked;
+
+    [Header("=== SHARD BUTTON ===")]
+    [Tooltip("Button untuk claim Shard")]
+    public Button shardButton;
+
+    [Tooltip("Sprite saat shard reward available")]
+    public Sprite shardButtonAvailable;
+
+    [Tooltip("Sprite saat shard locked/claimed")]
+    public Sprite shardButtonLocked;
 
     [Header("=== OPTIONAL: TEXT DISPLAYS ===")]
-    [Tooltip("Text untuk display info (optional)")]
-    public TMP_Text infoText;
+    [Tooltip("Text untuk energy amount (optional)")]
+    public TMP_Text energyAmountText;
 
-    [Header("=== OPTIONAL: ICON DISPLAYS ===")]
-    [Tooltip("Icon shard (optional)")]
-    public Image shardIcon;
+    [Tooltip("Text untuk shard amount (optional)")]
+    public TMP_Text shardAmountText;
 
-    [Tooltip("Icon energy (optional)")]
-    public Image energyIcon;
+    [Header("=== ICONS (untuk popup) ===")]
+    [Tooltip("Icon energy (untuk popup)")]
+    public Sprite iconEnergy;
+
+    [Tooltip("Icon shard (untuk popup)")]
+    public Sprite iconShard;
 
     [Header("=== DEBUG ===")]
     public bool enableDebugLogs = true;
 
-    private Image buttonImage;
+    // Button images
+    private Image energyButtonImage;
+    private Image shardButtonImage;
+
+    // Claim tracking (per-button)
+    private bool energyClaimedThisSession = false;
+    private bool shardClaimedThisSession = false;
 
     void Awake()
     {
-        // Auto-find components
-        if (claimButton == null)
+        // Get button images
+        if (energyButton != null)
         {
-            claimButton = GetComponent<Button>();
-
-            if (claimButton == null)
-            {
-                claimButton = GetComponentInChildren<Button>();
-            }
+            energyButtonImage = energyButton.GetComponent<Image>();
         }
 
-        if (claimButton != null)
+        if (shardButton != null)
         {
-            buttonImage = claimButton.GetComponent<Image>();
+            shardButtonImage = shardButton.GetComponent<Image>();
         }
     }
 
     void Start()
     {
-        // Setup button callback
-        if (claimButton != null)
-        {
-            claimButton.onClick.RemoveAllListeners();
-            claimButton.onClick.AddListener(OnClaimButtonClicked);
-        }
-        else
-        {
-            LogError("claimButton is NULL! Cannot setup callback.");
-        }
+        // Setup button callbacks
+        SetupButtons();
 
         // Subscribe to DailyRewardSystem events
         SubscribeToEvents();
@@ -73,12 +81,41 @@ public class DailyRewardUI : MonoBehaviour
         // Initial refresh
         RefreshUI();
 
-        Log("✓ DailyRewardUI initialized");
+        Log("✓ DailyRewardUI (Dual Button) initialized");
     }
 
     void OnDestroy()
     {
         UnsubscribeFromEvents();
+    }
+
+    // ========================================
+    // BUTTON SETUP
+    // ========================================
+
+    void SetupButtons()
+    {
+        if (energyButton != null)
+        {
+            energyButton.onClick.RemoveAllListeners();
+            energyButton.onClick.AddListener(OnEnergyButtonClicked);
+            Log("✓ Energy button setup");
+        }
+        else
+        {
+            LogError("energyButton is NULL!");
+        }
+
+        if (shardButton != null)
+        {
+            shardButton.onClick.RemoveAllListeners();
+            shardButton.onClick.AddListener(OnShardButtonClicked);
+            Log("✓ Shard button setup");
+        }
+        else
+        {
+            LogError("shardButton is NULL!");
+        }
     }
 
     // ========================================
@@ -89,7 +126,7 @@ public class DailyRewardUI : MonoBehaviour
     {
         if (DailyRewardSystem.Instance == null)
         {
-            LogWarning("DailyRewardSystem.Instance is null! Cannot subscribe to events.");
+            LogWarning("DailyRewardSystem.Instance is null!");
             return;
         }
 
@@ -117,6 +154,8 @@ public class DailyRewardUI : MonoBehaviour
     void OnRewardAvailable()
     {
         Log("✓ Reward available event received");
+        energyClaimedThisSession = false;
+        shardClaimedThisSession = false;
         RefreshUI();
     }
 
@@ -129,6 +168,8 @@ public class DailyRewardUI : MonoBehaviour
     void OnRewardReset()
     {
         Log("✓ Reward reset event received");
+        energyClaimedThisSession = false;
+        shardClaimedThisSession = false;
         RefreshUI();
     }
 
@@ -136,15 +177,12 @@ public class DailyRewardUI : MonoBehaviour
     // UI REFRESH
     // ========================================
 
-    /// <summary>
-    /// Update UI berdasarkan state reward
-    /// </summary>
     public void RefreshUI()
     {
         if (DailyRewardSystem.Instance == null)
         {
             LogError("DailyRewardSystem.Instance is null!");
-            SetLockedState();
+            SetAllButtonsLocked();
             return;
         }
 
@@ -153,114 +191,149 @@ public class DailyRewardUI : MonoBehaviour
 
         Log($"RefreshUI: available={isAvailable}, claimed={isClaimed}");
 
-        if (isAvailable)
+        // Get rolled amounts
+        int energyAmount = DailyRewardSystem.Instance.GetRolledEnergyAmount();
+        int shardAmount = DailyRewardSystem.Instance.GetRolledShardAmount();
+
+        Log($"Amounts: Energy={energyAmount}, Shard={shardAmount}");
+
+        // ✅ ENERGY BUTTON
+        if (isClaimed || energyClaimedThisSession)
         {
-            SetAvailableState();
-        }
-        else
-        {
-            SetLockedState();
-        }
-
-        // Update info text (optional)
-        UpdateInfoText(isAvailable, isClaimed);
-    }
-
-    /// <summary>
-    /// Set button ke state AVAILABLE (bisa diklik)
-    /// </summary>
-    void SetAvailableState()
-    {
-        if (claimButton != null)
-        {
-            claimButton.interactable = true;
-        }
-
-        if (buttonImage != null && buttonSpriteAvailable != null)
-        {
-            buttonImage.sprite = buttonSpriteAvailable;
-        }
-
-        // Optional: Set color
-        if (buttonImage != null)
-        {
-            buttonImage.color = Color.white;
-        }
-
-        // Show icons
-        if (shardIcon != null) shardIcon.gameObject.SetActive(true);
-        if (energyIcon != null) energyIcon.gameObject.SetActive(true);
-
-        Log("UI set to AVAILABLE state");
-    }
-
-    /// <summary>
-    /// Set button ke state LOCKED (tidak bisa diklik)
-    /// </summary>
-    void SetLockedState()
-    {
-        if (claimButton != null)
-        {
-            claimButton.interactable = false;
-        }
-
-        if (buttonImage != null && buttonSpriteLocked != null)
-        {
-            buttonImage.sprite = buttonSpriteLocked;
-        }
-
-        // Optional: Set gray color
-        if (buttonImage != null)
-        {
-            buttonImage.color = new Color(0.7f, 0.7f, 0.7f, 1f);
-        }
-
-        // Hide icons
-        if (shardIcon != null) shardIcon.gameObject.SetActive(false);
-        if (energyIcon != null) energyIcon.gameObject.SetActive(false);
-
-        Log("UI set to LOCKED state");
-    }
-
-    /// <summary>
-    /// Update info text (optional)
-    /// </summary>
-    void UpdateInfoText(bool isAvailable, bool isClaimed)
-    {
-        if (infoText == null) return;
-
-        if (isClaimed)
-        {
-            infoText.text = "Claimed!";
+            SetEnergyButtonLocked();
         }
         else if (isAvailable)
         {
-            int shards = DailyRewardSystem.Instance.GetRolledShardAmount();
-            int energy = DailyRewardSystem.Instance.GetRolledEnergyAmount();
-
-            if (shards > 0)
-            {
-                infoText.text = $"Claim: {shards} Shards + {energy} Energy";
-            }
-            else
-            {
-                infoText.text = $"Claim: {energy} Energy";
-            }
+            SetEnergyButtonAvailable(energyAmount);
         }
         else
         {
-            infoText.text = "Complete all Daily Quests";
+            SetEnergyButtonLocked();
+        }
+
+        // ✅ SHARD BUTTON
+        if (isClaimed || shardClaimedThisSession)
+        {
+            SetShardButtonLocked();
+        }
+        else if (isAvailable && shardAmount > 0)
+        {
+            SetShardButtonAvailable(shardAmount);
+        }
+        else
+        {
+            SetShardButtonLocked();
         }
     }
 
     // ========================================
-    // BUTTON CALLBACK
+    // ENERGY BUTTON STATE
+    // ========================================
+
+    void SetEnergyButtonAvailable(int amount)
+    {
+        if (energyButton != null)
+        {
+            energyButton.interactable = true;
+        }
+
+        if (energyButtonImage != null && energyButtonAvailable != null)
+        {
+            energyButtonImage.sprite = energyButtonAvailable;
+            energyButtonImage.color = Color.white;
+        }
+
+        if (energyAmountText != null)
+        {
+            energyAmountText.text = amount.ToString();
+            energyAmountText.gameObject.SetActive(true);
+        }
+
+        Log($"Energy button: AVAILABLE ({amount})");
+    }
+
+    void SetEnergyButtonLocked()
+    {
+        if (energyButton != null)
+        {
+            energyButton.interactable = false;
+        }
+
+        if (energyButtonImage != null && energyButtonLocked != null)
+        {
+            energyButtonImage.sprite = energyButtonLocked;
+            energyButtonImage.color = new Color(0.7f, 0.7f, 0.7f, 1f);
+        }
+
+        if (energyAmountText != null)
+        {
+            energyAmountText.gameObject.SetActive(false);
+        }
+
+        Log("Energy button: LOCKED");
+    }
+
+    // ========================================
+    // SHARD BUTTON STATE
+    // ========================================
+
+    void SetShardButtonAvailable(int amount)
+    {
+        if (shardButton != null)
+        {
+            shardButton.interactable = true;
+        }
+
+        if (shardButtonImage != null && shardButtonAvailable != null)
+        {
+            shardButtonImage.sprite = shardButtonAvailable;
+            shardButtonImage.color = Color.white;
+        }
+
+        if (shardAmountText != null)
+        {
+            shardAmountText.text = amount.ToString();
+            shardAmountText.gameObject.SetActive(true);
+        }
+
+        Log($"Shard button: AVAILABLE ({amount})");
+    }
+
+    void SetShardButtonLocked()
+    {
+        if (shardButton != null)
+        {
+            shardButton.interactable = false;
+        }
+
+        if (shardButtonImage != null && shardButtonLocked != null)
+        {
+            shardButtonImage.sprite = shardButtonLocked;
+            shardButtonImage.color = new Color(0.7f, 0.7f, 0.7f, 1f);
+        }
+
+        if (shardAmountText != null)
+        {
+            shardAmountText.gameObject.SetActive(false);
+        }
+
+        Log("Shard button: LOCKED");
+    }
+
+    void SetAllButtonsLocked()
+    {
+        SetEnergyButtonLocked();
+        SetShardButtonLocked();
+    }
+
+    // ========================================
+    // BUTTON CALLBACKS
     // ========================================
 
     /// <summary>
-    /// Called when claim button clicked
+    /// ✅ Called when Energy button clicked
     /// </summary>
-    void OnClaimButtonClicked()
+    void OnEnergyButtonClicked()
     {
         if (DailyRewardSystem.Instance == null)
         {
@@ -274,107 +347,231 @@ public class DailyRewardUI : MonoBehaviour
             return;
         }
 
-        Log("✓ Claim button clicked!");
+        if (energyClaimedThisSession)
+        {
+            LogWarning("Energy already claimed this session!");
+            return;
+        }
 
-        // Get reward amounts untuk popup
-        int shardAmount = DailyRewardSystem.Instance.GetRolledShardAmount();
         int energyAmount = DailyRewardSystem.Instance.GetRolledEnergyAmount();
 
-        // Show popup dengan bundle items
-        ShowClaimPopup(shardAmount, energyAmount);
+        Log($"✅ Energy button clicked! Amount: {energyAmount}");
+
+        // Show popup
+        ShowEnergyClaimPopup(energyAmount);
     }
 
     /// <summary>
-    /// Show popup untuk claim reward
+    /// ✅ Called when Shard button clicked
     /// </summary>
-    void ShowClaimPopup(int shardAmount, int energyAmount)
+    void OnShardButtonClicked()
+    {
+        if (DailyRewardSystem.Instance == null)
+        {
+            LogError("DailyRewardSystem.Instance is null!");
+            return;
+        }
+
+        if (!DailyRewardSystem.Instance.IsRewardAvailable())
+        {
+            LogWarning("Reward not available!");
+            return;
+        }
+
+        if (shardClaimedThisSession)
+        {
+            LogWarning("Shard already claimed this session!");
+            return;
+        }
+
+        int shardAmount = DailyRewardSystem.Instance.GetRolledShardAmount();
+
+        if (shardAmount <= 0)
+        {
+            LogWarning("No shard reward this time!");
+            return;
+        }
+
+        Log($"✅ Shard button clicked! Amount: {shardAmount}");
+
+        // Show popup
+        ShowShardClaimPopup(shardAmount);
+    }
+
+    // ========================================
+    // POPUP DISPLAY
+    // ========================================
+
+    void ShowEnergyClaimPopup(int amount)
     {
         if (PopupClaimQuest.Instance == null)
         {
             LogError("PopupClaimQuest.Instance is null! Claiming directly.");
-            DailyRewardSystem.Instance.ClaimReward();
+            ClaimEnergy(amount);
             return;
         }
 
-        // Build bundle items list
-        var bundleItems = new System.Collections.Generic.List<BundleItemData>();
-
-        // Add shard (if any)
-        if (shardAmount > 0)
+        Sprite icon = GetEnergyIcon();
+        if (icon == null)
         {
-            Sprite shardSprite = GetShardIcon();
-            if (shardSprite != null)
-            {
-                bundleItems.Add(new BundleItemData(shardSprite, shardAmount, "Blue Shard"));
-            }
+            LogWarning("Energy icon not found!");
         }
 
-        // Add energy
-        Sprite energySprite = GetEnergyIcon();
-        if (energySprite != null)
-        {
-            bundleItems.Add(new BundleItemData(energySprite, energyAmount, "Energy"));
-        }
+        Log($"Opening popup: Energy x{amount}");
 
-        string title = "Daily Quest Reward";
-        string description = "Congratulations! You completed all daily quests!";
-
-        Log($"Opening popup: {bundleItems.Count} items (Shard: {shardAmount}, Energy: {energyAmount})");
-
-        // Open popup
-        PopupClaimQuest.Instance.OpenBundle(
-            bundleItems,
-            title,
-            description,
+        PopupClaimQuest.Instance.Open(
+            icon,
+            amount.ToString(),
+            "Energy",
             () => {
-                // Callback saat confirm
-                Log("Popup confirmed! Claiming reward...");
-                DailyRewardSystem.Instance.ClaimReward();
+                Log("✅ Popup confirmed! Claiming energy...");
+                ClaimEnergy(amount);
             }
         );
     }
 
-    /// <summary>
-    /// Get shard icon sprite
-    /// </summary>
-    Sprite GetShardIcon()
+    void ShowShardClaimPopup(int amount)
     {
-        // Try get from ShopManager
-        var shopManager = FindFirstObjectByType<ShopManager>();
-        if (shopManager != null && shopManager.iconShard != null)
+        if (PopupClaimQuest.Instance == null)
         {
-            return shopManager.iconShard;
+            LogError("PopupClaimQuest.Instance is null! Claiming directly.");
+            ClaimShard(amount);
+            return;
         }
 
-        // Try get from assigned icon
-        if (shardIcon != null && shardIcon.sprite != null)
+        Sprite icon = GetShardIcon();
+        if (icon == null)
         {
-            return shardIcon.sprite;
+            LogWarning("Shard icon not found!");
         }
 
-        LogWarning("Shard icon not found!");
-        return null;
+        Log($"Opening popup: Shard x{amount}");
+
+        PopupClaimQuest.Instance.Open(
+            icon,
+            amount.ToString(),
+            "Blue Shard",
+            () => {
+                Log("✅ Popup confirmed! Claiming shard...");
+                ClaimShard(amount);
+            }
+        );
+    }
+
+    // ========================================
+    // CLAIM LOGIC
+    // ========================================
+
+    void ClaimEnergy(int amount)
+    {
+        if (PlayerEconomy.Instance != null)
+        {
+            PlayerEconomy.Instance.AddEnergy(amount);
+            Log($"✓ Granted {amount} Energy");
+        }
+        else
+        {
+            LogError("PlayerEconomy.Instance is null!");
+        }
+
+        // Mark as claimed
+        energyClaimedThisSession = true;
+
+        // Play sound
+        if (SoundManager.Instance != null)
+        {
+            SoundManager.Instance.PlayPurchaseSuccess();
+        }
+
+        // Check if both claimed -> mark reward as fully claimed
+        CheckFullyClaimed();
+
+        // Refresh UI
+        RefreshUI();
+    }
+
+    void ClaimShard(int amount)
+    {
+        if (PlayerEconomy.Instance != null)
+        {
+            PlayerEconomy.Instance.AddShards(amount);
+            Log($"✓ Granted {amount} Shards");
+        }
+        else
+        {
+            LogError("PlayerEconomy.Instance is null!");
+        }
+
+        // Mark as claimed
+        shardClaimedThisSession = true;
+
+        // Play sound
+        if (SoundManager.Instance != null)
+        {
+            SoundManager.Instance.PlayPurchaseSuccess();
+        }
+
+        // Check if both claimed -> mark reward as fully claimed
+        CheckFullyClaimed();
+
+        // Refresh UI
+        RefreshUI();
     }
 
     /// <summary>
-    /// Get energy icon sprite
+    /// ✅ Check if both rewards claimed -> mark as fully claimed
     /// </summary>
+    void CheckFullyClaimed()
+    {
+        if (DailyRewardSystem.Instance == null) return;
+
+        int shardAmount = DailyRewardSystem.Instance.GetRolledShardAmount();
+
+        // If shard = 0, only need energy claimed
+        bool needShard = shardAmount > 0;
+
+        bool fullyClaimed = energyClaimedThisSession && (!needShard || shardClaimedThisSession);
+
+        if (fullyClaimed)
+        {
+            Log("✅✅✅ ALL REWARDS CLAIMED! Marking as fully claimed.");
+            DailyRewardSystem.Instance.ClaimReward();
+        }
+    }
+
+    // ========================================
+    // ICON HELPERS
+    // ========================================
+
     Sprite GetEnergyIcon()
     {
-        // Try get from ShopManager
+        // Priority 1: Assigned icon
+        if (iconEnergy != null) return iconEnergy;
+
+        // Priority 2: From ShopManager
         var shopManager = FindFirstObjectByType<ShopManager>();
         if (shopManager != null && shopManager.iconEnergy != null)
         {
             return shopManager.iconEnergy;
         }
 
-        // Try get from assigned icon
-        if (energyIcon != null && energyIcon.sprite != null)
+        LogWarning("Energy icon not found!");
+        return null;
+    }
+
+    Sprite GetShardIcon()
+    {
+        // Priority 1: Assigned icon
+        if (iconShard != null) return iconShard;
+
+        // Priority 2: From ShopManager
+        var shopManager = FindFirstObjectByType<ShopManager>();
+        if (shopManager != null && shopManager.iconShard != null)
         {
-            return energyIcon.sprite;
+            return shopManager.iconShard;
         }
 
-        LogWarning("Energy icon not found!");
+        LogWarning("Shard icon not found!");
         return null;
     }
 
@@ -417,31 +614,22 @@ public class DailyRewardUI : MonoBehaviour
         RefreshUI();
     }
 
-    [ContextMenu("Debug: Test Claim Button")]
-    void Context_TestClaimButton()
-    {
-        OnClaimButtonClicked();
-    }
-
     [ContextMenu("Debug: Print Status")]
     void Context_PrintStatus()
     {
         Debug.Log("=== DAILY REWARD UI STATUS ===");
-        Debug.Log($"claimButton: {(claimButton != null ? "OK" : "NULL")}");
-        Debug.Log($"buttonImage: {(buttonImage != null ? "OK" : "NULL")}");
-        Debug.Log($"buttonSpriteAvailable: {(buttonSpriteAvailable != null ? buttonSpriteAvailable.name : "NULL")}");
-        Debug.Log($"buttonSpriteLocked: {(buttonSpriteLocked != null ? buttonSpriteLocked.name : "NULL")}");
-        Debug.Log($"infoText: {(infoText != null ? "OK" : "NULL")}");
-        Debug.Log($"shardIcon: {(shardIcon != null ? "OK" : "NULL")}");
-        Debug.Log($"energyIcon: {(energyIcon != null ? "OK" : "NULL")}");
+        Debug.Log($"energyButton: {(energyButton != null ? "OK" : "NULL")}");
+        Debug.Log($"shardButton: {(shardButton != null ? "OK" : "NULL")}");
+        Debug.Log($"energyClaimedThisSession: {energyClaimedThisSession}");
+        Debug.Log($"shardClaimedThisSession: {shardClaimedThisSession}");
 
         if (DailyRewardSystem.Instance != null)
         {
             Debug.Log($"\nReward Status:");
             Debug.Log($"  Available: {DailyRewardSystem.Instance.IsRewardAvailable()}");
             Debug.Log($"  Claimed: {DailyRewardSystem.Instance.IsRewardClaimed()}");
-            Debug.Log($"  Shard Amount: {DailyRewardSystem.Instance.GetRolledShardAmount()}");
             Debug.Log($"  Energy Amount: {DailyRewardSystem.Instance.GetRolledEnergyAmount()}");
+            Debug.Log($"  Shard Amount: {DailyRewardSystem.Instance.GetRolledShardAmount()}");
         }
         Debug.Log("==============================");
     }

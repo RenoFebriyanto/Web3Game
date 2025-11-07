@@ -6,121 +6,87 @@ using UnityEngine.SceneManagement;
 using TMPro;
 
 /// <summary>
-/// UPDATED: Level Complete UI Manager dengan:
-/// - Character Lino (Happy/Sad based on stars)
-/// - Random Rewards (Coin/Energy)
-/// - LEVEL COMPLETE popup animation
+/// UPDATED: Level Complete UI dengan reward 1x per level & improved reward system
 /// </summary>
 public class LevelCompleteUI : MonoBehaviour
 {
     public static LevelCompleteUI Instance { get; private set; }
 
-    [Header("UI References - DRAG FROM HIERARCHY")]
-    [Tooltip("Panel Level Complete GameObject dari hierarchy ContentPanel")]
+    [Header("UI References")]
     public GameObject levelCompletePanel;
-
-    [Tooltip("Button Continue Level dari hierarchy")]
     public Button continueButton;
-
-    [Tooltip("Button Home dari hierarchy")]
     public Button homeButton;
 
     [Header("🎭 Character Lino")]
-    [Tooltip("GameObject/Image untuk Lino Happy (ditampilkan saat dapat 1-3 bintang)")]
     public GameObject linoHappy;
-
-    [Tooltip("GameObject/Image untuk Lino Sad (ditampilkan saat dapat 0 bintang)")]
     public GameObject linoSad;
 
     [Header("Stars Display")]
-    [Tooltip("Star GameObjects (3 stars) - Stars (1), Stars (2), Stars (3)")]
     public GameObject[] starObjects;
-
-    [Tooltip("Star Images untuk ganti sprite")]
     public Image[] starImages;
-
-    [Tooltip("Star sprite - filled (kuning)")]
     public Sprite starFilled;
-
-    [Tooltip("Star sprite - empty (abu-abu/outline)")]
     public Sprite starEmpty;
 
     [Header("🎉 LEVEL COMPLETE Popup")]
-    [Tooltip("GameObject popup 'LEVEL COMPLETE' (parent of background + text)")]
     public GameObject lvlPopup;
-
-    [Tooltip("RectTransform background yang akan scale horizontal")]
     public RectTransform lvlPopupBackground;
-
-    [Tooltip("Text 'LEVEL COMPLETE'")]
     public TMP_Text lvlPopupText;
-
-    [Tooltip("Durasi animasi background expand (detik)")]
     public float lvlPopupExpandDuration = 0.4f;
-
-    [Tooltip("Durasi popup ditampilkan sebelum hilang (detik)")]
     public float lvlPopupDisplayDuration = 0.8f;
 
     [Header("🎁 Random Rewards")]
-    [Tooltip("Container untuk display rewards (parent of reward items)")]
     public GameObject rewardsContainer;
-
-    [Tooltip("Prefab untuk reward item (harus ada Image icon + TMP_Text amount)")]
     public GameObject rewardItemPrefab;
-
-    [Tooltip("Sprite icon Coin")]
     public Sprite coinIcon;
-
-    [Tooltip("Sprite icon Energy")]
     public Sprite energyIcon;
 
-    [Header("Reward Settings")]
-    [Tooltip("Minimum rewards yang bisa didapat (1 atau 2)")]
-    public int minRewards = 1;
+    [Header("✨ NEW: Already Completed Text")]
+    [Tooltip("Text yang akan muncul jika level sudah pernah diselesaikan")]
+    public TMP_Text alreadyCompletedText;
+    [Tooltip("Text yang akan ditampilkan (default: 'Level Already Completed')")]
+    public string alreadyCompletedMessage = "Level Already Completed";
 
-    [Tooltip("Maximum rewards yang bisa didapat (1 atau 2)")]
-    public int maxRewards = 2;
+    [Header("⚙️ NEW: Improved Reward Settings")]
+    [Tooltip("Chance untuk mendapat reward (1 reward, biasanya Coin)")]
+    [Range(0, 100)]
+    public float singleRewardChance = 80f;
 
-    [Tooltip("Range coin reward (min-max)")]
-    public Vector2Int coinRewardRange = new Vector2Int(100, 10000);
+    [Tooltip("Chance untuk mendapat 2 rewards (Coin + Energy) - RARE")]
+    [Range(0, 100)]
+    public float doubleRewardChance = 20f;
 
-    [Tooltip("Range energy reward (min-max)")]
-    public Vector2Int energyRewardRange = new Vector2Int(10, 100);
+    [Tooltip("Range coin reward")]
+    public Vector2Int coinRewardRange = new Vector2Int(500, 3000);
+
+    [Tooltip("Range energy reward (dikecilkan)")]
+    public Vector2Int energyRewardRange = new Vector2Int(5, 20);
 
     [Header("Fade Settings")]
-    [Tooltip("Image untuk fade overlay (hitam, alpha 0-1) - di root Canvas")]
     public Image fadeImage;
-
-    [Tooltip("Durasi fade out saat transition (detik)")]
     public float fadeOutDuration = 1f;
-
-    [Tooltip("Durasi fade in saat scene start (detik)")]
     public float fadeInDuration = 0.5f;
 
     [Header("Animation Settings")]
-    [Tooltip("Delay per star untuk animasi sequence")]
     public float starAnimationDelay = 0.3f;
-
-    [Tooltip("Scale animation untuk stars")]
     public float starScalePunch = 1.3f;
-
-    [Tooltip("Animation duration")]
     public float starAnimationDuration = 0.3f;
 
     [Header("Scene Settings")]
-    [Tooltip("Nama scene Main Menu")]
     public string mainMenuSceneName = "MainMenu";
-
-    [Tooltip("Nama scene Gameplay")]
     public string gameplaySceneName = "Gameplay";
 
     [Header("Debug")]
     public bool enableDebugLogs = true;
 
+    // Save key untuk track level yang sudah dapat reward
+    private const string PREF_REWARDED_LEVELS = "Kulino_RewardedLevels_v1";
+
     private bool isTransitioning = false;
     private int earnedStars = 0;
     private int currentLevelNumber = 0;
+    private string currentLevelId = "";
     private List<RewardData> generatedRewards = new List<RewardData>();
+    private bool isFirstCompletion = false; // ✅ Track first completion
 
     void Awake()
     {
@@ -134,25 +100,19 @@ public class LevelCompleteUI : MonoBehaviour
 
     void Start()
     {
-        // Hide panel initially
         if (levelCompletePanel != null)
-        {
             levelCompletePanel.SetActive(false);
-        }
 
-        // Hide LVLPOPUP initially
         if (lvlPopup != null)
-        {
             lvlPopup.SetActive(false);
-        }
 
-        // Hide rewards container initially
         if (rewardsContainer != null)
-        {
             rewardsContainer.SetActive(false);
-        }
 
-        // Setup fade image (transparent initially)
+        // ✅ Hide already completed text initially
+        if (alreadyCompletedText != null)
+            alreadyCompletedText.gameObject.SetActive(false);
+
         if (fadeImage != null)
         {
             Color c = fadeImage.color;
@@ -161,22 +121,20 @@ public class LevelCompleteUI : MonoBehaviour
             fadeImage.gameObject.SetActive(false);
         }
 
-        // Setup buttons
         if (continueButton != null)
         {
             continueButton.onClick.RemoveAllListeners();
             continueButton.onClick.AddListener(OnContinueClicked);
-            continueButton.interactable = false; // Disable until animations complete
+            continueButton.interactable = false;
         }
 
         if (homeButton != null)
         {
             homeButton.onClick.RemoveAllListeners();
             homeButton.onClick.AddListener(OnHomeClicked);
-            homeButton.interactable = false; // Disable until animations complete
+            homeButton.interactable = false;
         }
 
-        // Auto-find star images if not assigned
         if (starImages == null || starImages.Length == 0)
         {
             starImages = new Image[3];
@@ -185,14 +143,11 @@ public class LevelCompleteUI : MonoBehaviour
                 for (int i = 0; i < starObjects.Length && i < 3; i++)
                 {
                     if (starObjects[i] != null)
-                    {
                         starImages[i] = starObjects[i].GetComponent<Image>();
-                    }
                 }
             }
         }
 
-        // Subscribe to level complete event
         if (LevelGameSession.Instance != null)
         {
             LevelGameSession.Instance.OnLevelCompleted.AddListener(OnLevelComplete);
@@ -204,7 +159,6 @@ public class LevelCompleteUI : MonoBehaviour
             StartCoroutine(LateSubscribe());
         }
 
-        // Fade in saat scene mulai
         StartCoroutine(FadeIn());
     }
 
@@ -231,26 +185,20 @@ public class LevelCompleteUI : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Called ketika level complete (via LevelGameSession event)
-    /// </summary>
     public void OnLevelComplete()
     {
         if (isTransitioning) return;
 
         Log("🎉 Level Complete triggered!");
 
-        // Stop spawner
         StopAllSpawners();
 
-        // Play level complete sound
         if (SoundManager.Instance != null)
         {
             SoundManager.Instance.PlayLevelComplete();
             Log("✓ Playing level complete sound");
         }
 
-        // Get earned stars
         if (GameplayStarManager.Instance != null)
         {
             earnedStars = GameplayStarManager.Instance.GetCollectedStars();
@@ -262,20 +210,28 @@ public class LevelCompleteUI : MonoBehaviour
             LogWarning("GameplayStarManager not found!");
         }
 
-        // Get current level number
+        currentLevelId = PlayerPrefs.GetString("SelectedLevelId", "level_1");
         currentLevelNumber = PlayerPrefs.GetInt("SelectedLevelNumber", 1);
-        Log($"Current level: {currentLevelNumber}");
+        Log($"Current level: {currentLevelId} (#{currentLevelNumber})");
 
-        // Generate random rewards
-        GenerateRandomRewards();
+        // ✅ Check if this is first completion
+        isFirstCompletion = !HasReceivedReward(currentLevelId);
 
-        // Show UI dengan delay
+        // ✅ Generate rewards ONLY if first completion
+        if (isFirstCompletion)
+        {
+            GenerateImprovedRewards();
+            Log("✓ First completion - rewards generated");
+        }
+        else
+        {
+            generatedRewards.Clear();
+            Log("⚠️ Level already completed - no rewards");
+        }
+
         StartCoroutine(ShowLevelCompleteUI());
     }
 
-    /// <summary>
-    /// Stop semua spawner di scene
-    /// </summary>
     void StopAllSpawners()
     {
         Log("Stopping all spawners...");
@@ -307,57 +263,62 @@ public class LevelCompleteUI : MonoBehaviour
     }
 
     /// <summary>
-    /// 🎁 Generate random rewards (1-2 rewards dengan random amount)
+    /// ✅ IMPROVED: Better reward generation system
+    /// - Higher chance untuk single reward (Coin only)
+    /// - Lower chance untuk double reward (Coin + Energy)
+    /// - Energy amount dikecilkan
     /// </summary>
-    void GenerateRandomRewards()
+    void GenerateImprovedRewards()
     {
         generatedRewards.Clear();
 
-        // Random number of rewards (1 or 2)
-        int rewardCount = Random.Range(minRewards, maxRewards + 1);
-        Log($"Generating {rewardCount} reward(s)...");
+        float roll = Random.Range(0f, 100f);
 
-        // Available reward types
-        List<RewardType> availableTypes = new List<RewardType> { RewardType.Coin, RewardType.Energy };
-
-        for (int i = 0; i < rewardCount; i++)
+        // ✅ 80% chance: Single reward (Coin only)
+        if (roll < singleRewardChance)
         {
-            if (availableTypes.Count == 0) break;
-
-            // Pick random reward type
-            int typeIndex = Random.Range(0, availableTypes.Count);
-            RewardType type = availableTypes[typeIndex];
-
-            // Remove from available (no duplicate types)
-            availableTypes.RemoveAt(typeIndex);
-
-            // Generate random amount based on type
-            int amount = 0;
-            switch (type)
+            int coinAmount = Random.Range(coinRewardRange.x, coinRewardRange.y + 1);
+            generatedRewards.Add(new RewardData
             {
-                case RewardType.Coin:
-                    amount = Random.Range(coinRewardRange.x, coinRewardRange.y + 1);
-                    break;
-                case RewardType.Energy:
-                    amount = Random.Range(energyRewardRange.x, energyRewardRange.y + 1);
-                    break;
-            }
-
-            // Add to rewards list
-            RewardData reward = new RewardData
+                type = RewardType.Coin,
+                amount = coinAmount
+            });
+            Log($"✓ Generated single reward: Coin x{coinAmount}");
+        }
+        // ✅ 20% chance: Double reward (Coin + Energy)
+        else if (roll < singleRewardChance + doubleRewardChance)
+        {
+            // Coin
+            int coinAmount = Random.Range(coinRewardRange.x, coinRewardRange.y + 1);
+            generatedRewards.Add(new RewardData
             {
-                type = type,
-                amount = amount
-            };
-            generatedRewards.Add(reward);
+                type = RewardType.Coin,
+                amount = coinAmount
+            });
 
-            Log($"✓ Generated reward: {type} x{amount}");
+            // Energy (smaller amount)
+            int energyAmount = Random.Range(energyRewardRange.x, energyRewardRange.y + 1);
+            generatedRewards.Add(new RewardData
+            {
+                type = RewardType.Energy,
+                amount = energyAmount
+            });
+
+            Log($"✓ Generated double reward: Coin x{coinAmount} + Energy x{energyAmount}");
+        }
+        else
+        {
+            // Fallback: single coin (shouldn't happen with 80+20=100%)
+            int coinAmount = Random.Range(coinRewardRange.x, coinRewardRange.y + 1);
+            generatedRewards.Add(new RewardData
+            {
+                type = RewardType.Coin,
+                amount = coinAmount
+            });
+            Log($"✓ Generated fallback reward: Coin x{coinAmount}");
         }
     }
 
-    /// <summary>
-    /// Apply rewards to PlayerEconomy
-    /// </summary>
     void ApplyRewards()
     {
         if (PlayerEconomy.Instance == null)
@@ -381,17 +342,19 @@ public class LevelCompleteUI : MonoBehaviour
                     break;
             }
         }
+
+        // ✅ Mark level as rewarded (first completion)
+        if (isFirstCompletion)
+        {
+            MarkLevelRewarded(currentLevelId);
+            Log($"✓ Marked {currentLevelId} as rewarded");
+        }
     }
 
-    /// <summary>
-    /// Show level complete UI dengan animasi lengkap
-    /// </summary>
     IEnumerator ShowLevelCompleteUI()
     {
-        // Wait sedikit untuk efek dramatis
         yield return new WaitForSeconds(0.5f);
 
-        // Show panel
         if (levelCompletePanel != null)
         {
             levelCompletePanel.SetActive(true);
@@ -403,30 +366,52 @@ public class LevelCompleteUI : MonoBehaviour
             yield break;
         }
 
-        // Reset all stars to empty first
         ResetStars();
 
-        // ✅ NEW: Animate LEVEL COMPLETE popup FIRST
         yield return StartCoroutine(AnimateLevelCompletePopup());
 
-        // ✅ NEW: Set Lino character based on stars
         SetLinoCharacter();
 
-        // ✅ Existing: Animate stars dengan sequence
         yield return StartCoroutine(AnimateStars());
 
-        // ✅ NEW: Show rewards
-        yield return StartCoroutine(ShowRewards());
+        // ✅ Show rewards OR "already completed" message
+        if (isFirstCompletion && generatedRewards.Count > 0)
+        {
+            yield return StartCoroutine(ShowRewards());
+        }
+        else
+        {
+            ShowAlreadyCompletedMessage();
+        }
 
-        // ✅ Enable buttons after all animations
         EnableButtons();
 
         Log("✓ Level complete UI fully shown");
     }
 
     /// <summary>
-    /// 🎉 Animate LEVEL COMPLETE popup (background expand + text)
+    /// ✅ NEW: Show "Level Already Completed" message
     /// </summary>
+    void ShowAlreadyCompletedMessage()
+    {
+        if (alreadyCompletedText != null)
+        {
+            alreadyCompletedText.text = alreadyCompletedMessage;
+            alreadyCompletedText.gameObject.SetActive(true);
+            Log("✓ Showing already completed message");
+        }
+        else
+        {
+            LogWarning("alreadyCompletedText not assigned!");
+        }
+
+        // Hide rewards container
+        if (rewardsContainer != null)
+        {
+            rewardsContainer.SetActive(false);
+        }
+    }
+
     IEnumerator AnimateLevelCompletePopup()
     {
         if (lvlPopup == null)
@@ -437,23 +422,19 @@ public class LevelCompleteUI : MonoBehaviour
 
         Log("Animating LEVEL COMPLETE popup...");
 
-        // Show popup
         lvlPopup.SetActive(true);
 
-        // Setup initial state
         if (lvlPopupBackground != null)
         {
-            // Start with zero width
             Vector2 originalSize = lvlPopupBackground.sizeDelta;
             lvlPopupBackground.sizeDelta = new Vector2(0, originalSize.y);
 
-            // Animate expand (horizontal scale)
             float elapsed = 0f;
             while (elapsed < lvlPopupExpandDuration)
             {
                 elapsed += Time.deltaTime;
                 float t = elapsed / lvlPopupExpandDuration;
-                float easedT = EaseOutBack(t); // Smooth easing
+                float easedT = EaseOutBack(t);
 
                 lvlPopupBackground.sizeDelta = new Vector2(
                     Mathf.Lerp(0, originalSize.x, easedT),
@@ -466,18 +447,13 @@ public class LevelCompleteUI : MonoBehaviour
             lvlPopupBackground.sizeDelta = originalSize;
         }
 
-        // Display for duration
         yield return new WaitForSeconds(lvlPopupDisplayDuration);
 
-        // Hide popup
         lvlPopup.SetActive(false);
 
         Log("✓ LEVEL COMPLETE popup animation complete");
     }
 
-    /// <summary>
-    /// Easing function for smooth animation
-    /// </summary>
     float EaseOutBack(float t)
     {
         float c1 = 1.70158f;
@@ -485,9 +461,6 @@ public class LevelCompleteUI : MonoBehaviour
         return 1f + c3 * Mathf.Pow(t - 1f, 3f) + c1 * Mathf.Pow(t - 1f, 2f);
     }
 
-    /// <summary>
-    /// 🎭 Set Lino character based on earned stars
-    /// </summary>
     void SetLinoCharacter()
     {
         if (linoHappy == null || linoSad == null)
@@ -498,23 +471,18 @@ public class LevelCompleteUI : MonoBehaviour
 
         if (earnedStars == 0)
         {
-            // Sad Lino (no stars)
             linoHappy.SetActive(false);
             linoSad.SetActive(true);
             Log("✓ Showing Sad Lino (0 stars)");
         }
         else
         {
-            // Happy Lino (1-3 stars)
             linoHappy.SetActive(true);
             linoSad.SetActive(false);
             Log($"✓ Showing Happy Lino ({earnedStars} stars)");
         }
     }
 
-    /// <summary>
-    /// Reset semua stars ke empty sprite
-    /// </summary>
     void ResetStars()
     {
         if (starImages == null || starEmpty == null) return;
@@ -536,9 +504,6 @@ public class LevelCompleteUI : MonoBehaviour
         Log("✓ Stars reset to empty");
     }
 
-    /// <summary>
-    /// Animate stars dengan sequence (satu per satu) - EXISTING LOGIC
-    /// </summary>
     IEnumerator AnimateStars()
     {
         if (starImages == null || starFilled == null)
@@ -551,16 +516,12 @@ public class LevelCompleteUI : MonoBehaviour
         {
             if (starImages[i] == null) continue;
 
-            // Wait before showing next star
             yield return new WaitForSeconds(starAnimationDelay);
 
-            // Change sprite to filled (kuning)
             starImages[i].sprite = starFilled;
 
-            // Punch scale animation
             StartCoroutine(PunchScale(starImages[i].transform));
 
-            // Play star pickup sound
             if (SoundManager.Instance != null)
             {
                 SoundManager.Instance.PlayStarPickup();
@@ -572,16 +533,12 @@ public class LevelCompleteUI : MonoBehaviour
         Log($"✓ All {earnedStars} stars animated");
     }
 
-    /// <summary>
-    /// Punch scale animation untuk star - EXISTING LOGIC
-    /// </summary>
     IEnumerator PunchScale(Transform target)
     {
         Vector3 originalScale = target.localScale;
         float elapsed = 0f;
         float halfDuration = starAnimationDuration / 2f;
 
-        // Scale up
         while (elapsed < halfDuration)
         {
             elapsed += Time.deltaTime;
@@ -592,7 +549,6 @@ public class LevelCompleteUI : MonoBehaviour
 
         elapsed = 0f;
 
-        // Scale down
         while (elapsed < halfDuration)
         {
             elapsed += Time.deltaTime;
@@ -604,9 +560,6 @@ public class LevelCompleteUI : MonoBehaviour
         target.localScale = originalScale;
     }
 
-    /// <summary>
-    /// 🎁 Show rewards dengan animasi
-    /// </summary>
     IEnumerator ShowRewards()
     {
         if (rewardsContainer == null || rewardItemPrefab == null)
@@ -623,37 +576,34 @@ public class LevelCompleteUI : MonoBehaviour
 
         Log($"Showing {generatedRewards.Count} reward(s)...");
 
-        // Clear existing reward items
         foreach (Transform child in rewardsContainer.transform)
         {
             Destroy(child.gameObject);
         }
 
-        // Show container
         rewardsContainer.SetActive(true);
 
-        // Apply rewards to economy
+        // ✅ Hide already completed text
+        if (alreadyCompletedText != null)
+        {
+            alreadyCompletedText.gameObject.SetActive(false);
+        }
+
         ApplyRewards();
 
-        // Wait sedikit sebelum spawn reward items
         yield return new WaitForSeconds(0.3f);
 
-        // Spawn reward items dengan animasi
         foreach (var reward in generatedRewards)
         {
-            // Instantiate reward item
             GameObject rewardItem = Instantiate(rewardItemPrefab, rewardsContainer.transform);
 
-            // Setup reward item (icon + amount text)
             SetupRewardItem(rewardItem, reward);
 
-            // Animate reward item (scale punch)
             StartCoroutine(PunchScale(rewardItem.transform));
 
-            // Play sound
             if (SoundManager.Instance != null)
             {
-                SoundManager.Instance.PlayCoinPickup(); // Reuse coin sound
+                SoundManager.Instance.PlayCoinPickup();
             }
 
             yield return new WaitForSeconds(0.2f);
@@ -662,13 +612,8 @@ public class LevelCompleteUI : MonoBehaviour
         Log("✓ All rewards shown");
     }
 
-    /// <summary>
-    /// Setup reward item UI (icon + amount)
-    /// ✅ FIXED: Hanya ganti sprite di IconItemsRW, tidak touch border box
-    /// </summary>
     void SetupRewardItem(GameObject item, RewardData reward)
     {
-        // ✅ Find IconItemsRW specifically (by name)
         Transform iconTransform = item.transform.Find("IconItemsRW");
 
         if (iconTransform != null)
@@ -702,31 +647,9 @@ public class LevelCompleteUI : MonoBehaviour
         }
         else
         {
-            LogWarning($"IconItemsRW not found in {item.name}! Make sure prefab has child named 'IconItemsRW'");
-
-            // Fallback: Search for any Image with specific name pattern
-            Image[] allImages = item.GetComponentsInChildren<Image>(true);
-            foreach (var img in allImages)
-            {
-                if (img.gameObject.name.Contains("Icon") || img.gameObject.name.Contains("RW"))
-                {
-                    Log($"Found potential icon: {img.gameObject.name}, using this as fallback");
-
-                    switch (reward.type)
-                    {
-                        case RewardType.Coin:
-                            if (coinIcon != null) img.sprite = coinIcon;
-                            break;
-                        case RewardType.Energy:
-                            if (energyIcon != null) img.sprite = energyIcon;
-                            break;
-                    }
-                    break;
-                }
-            }
+            LogWarning($"IconItemsRW not found in {item.name}!");
         }
 
-        // Find TMP_Text component for amount
         TMP_Text amountText = item.GetComponentInChildren<TMP_Text>();
         if (amountText != null)
         {
@@ -740,9 +663,6 @@ public class LevelCompleteUI : MonoBehaviour
         Log($"✓ Setup reward item: {reward.type} x{reward.amount}");
     }
 
-    /// <summary>
-    /// Enable buttons setelah semua animasi selesai
-    /// </summary>
     void EnableButtons()
     {
         if (continueButton != null)
@@ -758,9 +678,6 @@ public class LevelCompleteUI : MonoBehaviour
         Log("✓ Buttons enabled");
     }
 
-    /// <summary>
-    /// Called ketika button Continue diklik
-    /// </summary>
     public void OnContinueClicked()
     {
         if (isTransitioning) return;
@@ -775,9 +692,6 @@ public class LevelCompleteUI : MonoBehaviour
         StartCoroutine(TransitionToNextLevel());
     }
 
-    /// <summary>
-    /// Called ketika button Home diklik
-    /// </summary>
     public void OnHomeClicked()
     {
         if (isTransitioning) return;
@@ -792,9 +706,6 @@ public class LevelCompleteUI : MonoBehaviour
         StartCoroutine(TransitionToMainMenu());
     }
 
-    /// <summary>
-    /// Transition ke level berikutnya dengan fade
-    /// </summary>
     IEnumerator TransitionToNextLevel()
     {
         isTransitioning = true;
@@ -822,9 +733,6 @@ public class LevelCompleteUI : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Transition ke main menu dengan fade
-    /// </summary>
     IEnumerator TransitionToMainMenu()
     {
         isTransitioning = true;
@@ -837,9 +745,6 @@ public class LevelCompleteUI : MonoBehaviour
         SceneManager.LoadScene(mainMenuSceneName);
     }
 
-    /// <summary>
-    /// Fade out (hitam)
-    /// </summary>
     IEnumerator FadeOut()
     {
         if (fadeImage == null)
@@ -870,9 +775,6 @@ public class LevelCompleteUI : MonoBehaviour
         Log("✓ Fade out complete");
     }
 
-    /// <summary>
-    /// Fade in (transparan) - called on scene start
-    /// </summary>
     IEnumerator FadeIn()
     {
         if (fadeImage == null)
@@ -904,6 +806,50 @@ public class LevelCompleteUI : MonoBehaviour
         Log("✓ Fade in complete");
     }
 
+    // ========================================
+    // ✅ NEW: Reward Tracking System
+    // ========================================
+
+    bool HasReceivedReward(string levelId)
+    {
+        string rewarded = PlayerPrefs.GetString(PREF_REWARDED_LEVELS, "");
+        if (string.IsNullOrEmpty(rewarded)) return false;
+
+        string[] levels = rewarded.Split(',');
+        foreach (string lvl in levels)
+        {
+            if (lvl.Trim() == levelId)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    void MarkLevelRewarded(string levelId)
+    {
+        string rewarded = PlayerPrefs.GetString(PREF_REWARDED_LEVELS, "");
+
+        if (string.IsNullOrEmpty(rewarded))
+        {
+            rewarded = levelId;
+        }
+        else
+        {
+            // Check if already in list
+            if (!HasReceivedReward(levelId))
+            {
+                rewarded += "," + levelId;
+            }
+        }
+
+        PlayerPrefs.SetString(PREF_REWARDED_LEVELS, rewarded);
+        PlayerPrefs.Save();
+
+        Log($"✓ Marked {levelId} as rewarded");
+    }
+
     void Log(string message)
     {
         if (enableDebugLogs)
@@ -919,35 +865,49 @@ public class LevelCompleteUI : MonoBehaviour
     // TESTING METHODS
     // ========================================
 
-    [ContextMenu("Test: Trigger Level Complete (0 stars)")]
-    public void TestLevelComplete0Stars()
-    {
-        earnedStars = 0;
-        currentLevelNumber = 1;
-        GenerateRandomRewards();
-        StartCoroutine(ShowLevelCompleteUI());
-    }
-
-    [ContextMenu("Test: Trigger Level Complete (3 stars)")]
-    public void TestLevelComplete3Stars()
+    [ContextMenu("Test: Level Complete (First Time)")]
+    public void TestLevelCompleteFirstTime()
     {
         earnedStars = 3;
         currentLevelNumber = 1;
-        GenerateRandomRewards();
+        currentLevelId = "level_1";
+
+        // Clear reward history for testing
+        PlayerPrefs.DeleteKey(PREF_REWARDED_LEVELS);
+
+        isFirstCompletion = true;
+        GenerateImprovedRewards();
         StartCoroutine(ShowLevelCompleteUI());
     }
 
-    [ContextMenu("Test: Animate LEVEL COMPLETE Popup")]
-    public void TestPopupAnimation()
+    [ContextMenu("Test: Level Complete (Replay)")]
+    public void TestLevelCompleteReplay()
     {
-        StartCoroutine(AnimateLevelCompletePopup());
+        earnedStars = 2;
+        currentLevelNumber = 1;
+        currentLevelId = "level_1";
+
+        // Mark as already rewarded
+        MarkLevelRewarded(currentLevelId);
+
+        isFirstCompletion = false;
+        generatedRewards.Clear();
+        StartCoroutine(ShowLevelCompleteUI());
     }
 
-    [ContextMenu("Test: Show Rewards")]
-    public void TestShowRewards()
+    [ContextMenu("Debug: Clear Reward History")]
+    public void ClearRewardHistory()
     {
-        GenerateRandomRewards();
-        StartCoroutine(ShowRewards());
+        PlayerPrefs.DeleteKey(PREF_REWARDED_LEVELS);
+        PlayerPrefs.Save();
+        Debug.Log("[LevelCompleteUI] Reward history cleared");
+    }
+
+    [ContextMenu("Debug: Print Rewarded Levels")]
+    public void PrintRewardedLevels()
+    {
+        string rewarded = PlayerPrefs.GetString(PREF_REWARDED_LEVELS, "");
+        Debug.Log($"[LevelCompleteUI] Rewarded levels: {(string.IsNullOrEmpty(rewarded) ? "NONE" : rewarded)}");
     }
 }
 
@@ -955,18 +915,12 @@ public class LevelCompleteUI : MonoBehaviour
 // HELPER CLASSES
 // ========================================
 
-/// <summary>
-/// Reward type enum
-/// </summary>
 public enum RewardType
 {
     Coin,
     Energy
 }
 
-/// <summary>
-/// Reward data structure
-/// </summary>
 [System.Serializable]
 public class RewardData
 {

@@ -6,7 +6,11 @@ using UnityEngine.SceneManagement;
 using TMPro;
 
 /// <summary>
-/// UPDATED: Level Complete UI dengan reward 1x per level & improved reward system
+/// FIXED: Level Complete UI dengan reward 1x per level & improved reward system
+/// - Single reward (90%): HANYA Coin
+/// - Double reward (10%): SELALU Coin + Energy (NEVER duplicate)
+/// - Energy dikecilkan: 3-10 (dari 5-20)
+/// - Text "Already Complete" dijamin muncul saat replay
 /// </summary>
 public class LevelCompleteUI : MonoBehaviour
 {
@@ -40,26 +44,26 @@ public class LevelCompleteUI : MonoBehaviour
     public Sprite coinIcon;
     public Sprite energyIcon;
 
-    [Header("✨ NEW: Already Completed Text")]
+    [Header("✨ Already Completed Text")]
     [Tooltip("Text yang akan muncul jika level sudah pernah diselesaikan")]
     public TMP_Text alreadyCompletedText;
-    [Tooltip("Text yang akan ditampilkan (default: 'Level Already Completed')")]
+    [Tooltip("Text yang akan ditampilkan")]
     public string alreadyCompletedMessage = "Level Already Completed";
 
-    [Header("⚙️ NEW: Improved Reward Settings")]
-    [Tooltip("Chance untuk mendapat reward (1 reward, biasanya Coin)")]
+    [Header("⚙️ Improved Reward Settings")]
+    [Tooltip("Chance untuk 1 reward (Coin saja) - 90%")]
     [Range(0, 100)]
-    public float singleRewardChance = 80f;
+    public float singleRewardChance = 90f;
 
-    [Tooltip("Chance untuk mendapat 2 rewards (Coin + Energy) - RARE")]
+    [Tooltip("Chance untuk 2 rewards (Coin + Energy) - 10% VERY RARE")]
     [Range(0, 100)]
-    public float doubleRewardChance = 20f;
+    public float doubleRewardChance = 10f;
 
     [Tooltip("Range coin reward")]
     public Vector2Int coinRewardRange = new Vector2Int(500, 3000);
 
-    [Tooltip("Range energy reward (dikecilkan)")]
-    public Vector2Int energyRewardRange = new Vector2Int(5, 20);
+    [Tooltip("Range energy reward (DIKECILKAN: 3-10)")]
+    public Vector2Int energyRewardRange = new Vector2Int(3, 10);
 
     [Header("Fade Settings")]
     public Image fadeImage;
@@ -78,7 +82,6 @@ public class LevelCompleteUI : MonoBehaviour
     [Header("Debug")]
     public bool enableDebugLogs = true;
 
-    // Save key untuk track level yang sudah dapat reward
     private const string PREF_REWARDED_LEVELS = "Kulino_RewardedLevels_v1";
 
     private bool isTransitioning = false;
@@ -86,7 +89,7 @@ public class LevelCompleteUI : MonoBehaviour
     private int currentLevelNumber = 0;
     private string currentLevelId = "";
     private List<RewardData> generatedRewards = new List<RewardData>();
-    private bool isFirstCompletion = false; // ✅ Track first completion
+    private bool isFirstCompletion = false;
 
     void Awake()
     {
@@ -109,7 +112,6 @@ public class LevelCompleteUI : MonoBehaviour
         if (rewardsContainer != null)
             rewardsContainer.SetActive(false);
 
-        // ✅ Hide already completed text initially
         if (alreadyCompletedText != null)
             alreadyCompletedText.gameObject.SetActive(false);
 
@@ -214,10 +216,8 @@ public class LevelCompleteUI : MonoBehaviour
         currentLevelNumber = PlayerPrefs.GetInt("SelectedLevelNumber", 1);
         Log($"Current level: {currentLevelId} (#{currentLevelNumber})");
 
-        // ✅ Check if this is first completion
         isFirstCompletion = !HasReceivedReward(currentLevelId);
 
-        // ✅ Generate rewards ONLY if first completion
         if (isFirstCompletion)
         {
             GenerateImprovedRewards();
@@ -263,10 +263,9 @@ public class LevelCompleteUI : MonoBehaviour
     }
 
     /// <summary>
-    /// ✅ IMPROVED: Better reward generation system
-    /// - Higher chance untuk single reward (Coin only)
-    /// - Lower chance untuk double reward (Coin + Energy)
-    /// - Energy amount dikecilkan
+    /// FIXED: Reward generation
+    /// - 90% chance: 1 reward (Coin saja)
+    /// - 10% chance: 2 rewards (SELALU Coin + Energy, NEVER duplicate)
     /// </summary>
     void GenerateImprovedRewards()
     {
@@ -274,7 +273,7 @@ public class LevelCompleteUI : MonoBehaviour
 
         float roll = Random.Range(0f, 100f);
 
-        // ✅ 80% chance: Single reward (Coin only)
+        // 90% chance: Single reward (Coin only)
         if (roll < singleRewardChance)
         {
             int coinAmount = Random.Range(coinRewardRange.x, coinRewardRange.y + 1);
@@ -283,12 +282,12 @@ public class LevelCompleteUI : MonoBehaviour
                 type = RewardType.Coin,
                 amount = coinAmount
             });
-            Log($"✓ Generated single reward: Coin x{coinAmount}");
+            Log($"✓ Single reward: Coin x{coinAmount}");
         }
-        // ✅ 20% chance: Double reward (Coin + Energy)
-        else if (roll < singleRewardChance + doubleRewardChance)
+        // 10% chance: Double reward (ALWAYS Coin + Energy)
+        else
         {
-            // Coin
+            // First: Coin
             int coinAmount = Random.Range(coinRewardRange.x, coinRewardRange.y + 1);
             generatedRewards.Add(new RewardData
             {
@@ -296,7 +295,7 @@ public class LevelCompleteUI : MonoBehaviour
                 amount = coinAmount
             });
 
-            // Energy (smaller amount)
+            // Second: Energy (NEVER duplicate Coin)
             int energyAmount = Random.Range(energyRewardRange.x, energyRewardRange.y + 1);
             generatedRewards.Add(new RewardData
             {
@@ -304,18 +303,7 @@ public class LevelCompleteUI : MonoBehaviour
                 amount = energyAmount
             });
 
-            Log($"✓ Generated double reward: Coin x{coinAmount} + Energy x{energyAmount}");
-        }
-        else
-        {
-            // Fallback: single coin (shouldn't happen with 80+20=100%)
-            int coinAmount = Random.Range(coinRewardRange.x, coinRewardRange.y + 1);
-            generatedRewards.Add(new RewardData
-            {
-                type = RewardType.Coin,
-                amount = coinAmount
-            });
-            Log($"✓ Generated fallback reward: Coin x{coinAmount}");
+            Log($"✓ Double reward: Coin x{coinAmount} + Energy x{energyAmount}");
         }
     }
 
@@ -343,7 +331,6 @@ public class LevelCompleteUI : MonoBehaviour
             }
         }
 
-        // ✅ Mark level as rewarded (first completion)
         if (isFirstCompletion)
         {
             MarkLevelRewarded(currentLevelId);
@@ -374,7 +361,7 @@ public class LevelCompleteUI : MonoBehaviour
 
         yield return StartCoroutine(AnimateStars());
 
-        // ✅ Show rewards OR "already completed" message
+        // Show rewards OR "already completed" message
         if (isFirstCompletion && generatedRewards.Count > 0)
         {
             yield return StartCoroutine(ShowRewards());
@@ -387,29 +374,6 @@ public class LevelCompleteUI : MonoBehaviour
         EnableButtons();
 
         Log("✓ Level complete UI fully shown");
-    }
-
-    /// <summary>
-    /// ✅ NEW: Show "Level Already Completed" message
-    /// </summary>
-    void ShowAlreadyCompletedMessage()
-    {
-        if (alreadyCompletedText != null)
-        {
-            alreadyCompletedText.text = alreadyCompletedMessage;
-            alreadyCompletedText.gameObject.SetActive(true);
-            Log("✓ Showing already completed message");
-        }
-        else
-        {
-            LogWarning("alreadyCompletedText not assigned!");
-        }
-
-        // Hide rewards container
-        if (rewardsContainer != null)
-        {
-            rewardsContainer.SetActive(false);
-        }
     }
 
     IEnumerator AnimateLevelCompletePopup()
@@ -565,12 +529,14 @@ public class LevelCompleteUI : MonoBehaviour
         if (rewardsContainer == null || rewardItemPrefab == null)
         {
             LogWarning("Rewards container or prefab not assigned!");
+            ShowAlreadyCompletedMessage();
             yield break;
         }
 
         if (generatedRewards.Count == 0)
         {
-            LogWarning("No rewards to show!");
+            LogWarning("No rewards! Showing already completed message.");
+            ShowAlreadyCompletedMessage();
             yield break;
         }
 
@@ -583,7 +549,6 @@ public class LevelCompleteUI : MonoBehaviour
 
         rewardsContainer.SetActive(true);
 
-        // ✅ Hide already completed text
         if (alreadyCompletedText != null)
         {
             alreadyCompletedText.gameObject.SetActive(false);
@@ -612,6 +577,27 @@ public class LevelCompleteUI : MonoBehaviour
         Log("✓ All rewards shown");
     }
 
+    void ShowAlreadyCompletedMessage()
+    {
+        Log("Showing 'Already Completed' message");
+
+        if (alreadyCompletedText != null)
+        {
+            alreadyCompletedText.text = alreadyCompletedMessage;
+            alreadyCompletedText.gameObject.SetActive(true);
+            Log("✓ Already completed text shown");
+        }
+        else
+        {
+            LogWarning("alreadyCompletedText not assigned!");
+        }
+
+        if (rewardsContainer != null)
+        {
+            rewardsContainer.SetActive(false);
+        }
+    }
+
     void SetupRewardItem(GameObject item, RewardData reward)
     {
         Transform iconTransform = item.transform.Find("IconItemsRW");
@@ -628,26 +614,18 @@ public class LevelCompleteUI : MonoBehaviour
                         if (coinIcon != null)
                         {
                             iconImage.sprite = coinIcon;
-                            Log($"✓ Set coin icon on {iconTransform.name}");
+                            Log($"✓ Set coin icon");
                         }
                         break;
                     case RewardType.Energy:
                         if (energyIcon != null)
                         {
                             iconImage.sprite = energyIcon;
-                            Log($"✓ Set energy icon on {iconTransform.name}");
+                            Log($"✓ Set energy icon");
                         }
                         break;
                 }
             }
-            else
-            {
-                LogWarning($"IconItemsRW found but missing Image component!");
-            }
-        }
-        else
-        {
-            LogWarning($"IconItemsRW not found in {item.name}!");
         }
 
         TMP_Text amountText = item.GetComponentInChildren<TMP_Text>();
@@ -655,12 +633,8 @@ public class LevelCompleteUI : MonoBehaviour
         {
             amountText.text = $"+{reward.amount}";
         }
-        else
-        {
-            LogWarning($"TMP_Text not found in {item.name} for amount display!");
-        }
 
-        Log($"✓ Setup reward item: {reward.type} x{reward.amount}");
+        Log($"✓ Setup reward: {reward.type} x{reward.amount}");
     }
 
     void EnableButtons()
@@ -728,7 +702,7 @@ public class LevelCompleteUI : MonoBehaviour
         }
         else
         {
-            Log("No more levels (reached level 100), returning to main menu");
+            Log("No more levels, returning to main menu");
             SceneManager.LoadScene(mainMenuSceneName);
         }
     }
@@ -806,10 +780,6 @@ public class LevelCompleteUI : MonoBehaviour
         Log("✓ Fade in complete");
     }
 
-    // ========================================
-    // ✅ NEW: Reward Tracking System
-    // ========================================
-
     bool HasReceivedReward(string levelId)
     {
         string rewarded = PlayerPrefs.GetString(PREF_REWARDED_LEVELS, "");
@@ -837,7 +807,6 @@ public class LevelCompleteUI : MonoBehaviour
         }
         else
         {
-            // Check if already in list
             if (!HasReceivedReward(levelId))
             {
                 rewarded += "," + levelId;
@@ -861,40 +830,6 @@ public class LevelCompleteUI : MonoBehaviour
         Debug.LogWarning($"[LevelCompleteUI] {message}");
     }
 
-    // ========================================
-    // TESTING METHODS
-    // ========================================
-
-    [ContextMenu("Test: Level Complete (First Time)")]
-    public void TestLevelCompleteFirstTime()
-    {
-        earnedStars = 3;
-        currentLevelNumber = 1;
-        currentLevelId = "level_1";
-
-        // Clear reward history for testing
-        PlayerPrefs.DeleteKey(PREF_REWARDED_LEVELS);
-
-        isFirstCompletion = true;
-        GenerateImprovedRewards();
-        StartCoroutine(ShowLevelCompleteUI());
-    }
-
-    [ContextMenu("Test: Level Complete (Replay)")]
-    public void TestLevelCompleteReplay()
-    {
-        earnedStars = 2;
-        currentLevelNumber = 1;
-        currentLevelId = "level_1";
-
-        // Mark as already rewarded
-        MarkLevelRewarded(currentLevelId);
-
-        isFirstCompletion = false;
-        generatedRewards.Clear();
-        StartCoroutine(ShowLevelCompleteUI());
-    }
-
     [ContextMenu("Debug: Clear Reward History")]
     public void ClearRewardHistory()
     {
@@ -902,18 +837,7 @@ public class LevelCompleteUI : MonoBehaviour
         PlayerPrefs.Save();
         Debug.Log("[LevelCompleteUI] Reward history cleared");
     }
-
-    [ContextMenu("Debug: Print Rewarded Levels")]
-    public void PrintRewardedLevels()
-    {
-        string rewarded = PlayerPrefs.GetString(PREF_REWARDED_LEVELS, "");
-        Debug.Log($"[LevelCompleteUI] Rewarded levels: {(string.IsNullOrEmpty(rewarded) ? "NONE" : rewarded)}");
-    }
 }
-
-// ========================================
-// HELPER CLASSES
-// ========================================
 
 public enum RewardType
 {

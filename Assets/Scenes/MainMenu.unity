@@ -579,11 +579,10 @@ MonoBehaviour:
   questItemCompactPrefab: {fileID: 7609643420665963605, guid: 792376be4942e8b4493278fefb32556a, type: 3}
   contentDaily: {fileID: 1913864218}
   headerText: {fileID: 1368289535}
-  maxVisibleQuests: 3
-  autoRefreshInterval: 1
-  itemSpacing: 10
-  contentPaddingTop: 10
-  contentPaddingBottom: 10
+  maxVisibleQuests: 5
+  itemSpacing: 0
+  contentPaddingTop: 0
+  contentPaddingBottom: 0
   enableDebugLogs: 0
 --- !u!1 &120612898
 GameObject:
@@ -806,19 +805,19 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2137663574352486386, guid: 792376be4942e8b4493278fefb32556a, type: 3}
       propertyPath: m_AnchorMax.x
-      value: 0.5
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 2137663574352486386, guid: 792376be4942e8b4493278fefb32556a, type: 3}
       propertyPath: m_AnchorMax.y
-      value: 0.5
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 2137663574352486386, guid: 792376be4942e8b4493278fefb32556a, type: 3}
       propertyPath: m_AnchorMin.x
-      value: 0.5
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 2137663574352486386, guid: 792376be4942e8b4493278fefb32556a, type: 3}
       propertyPath: m_AnchorMin.y
-      value: 0.5
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 2137663574352486386, guid: 792376be4942e8b4493278fefb32556a, type: 3}
       propertyPath: m_SizeDelta.x
@@ -858,11 +857,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2137663574352486386, guid: 792376be4942e8b4493278fefb32556a, type: 3}
       propertyPath: m_AnchoredPosition.x
-      value: 0
+      value: 210
       objectReference: {fileID: 0}
     - target: {fileID: 2137663574352486386, guid: 792376be4942e8b4493278fefb32556a, type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: 0
+      value: -65
       objectReference: {fileID: 0}
     - target: {fileID: 2137663574352486386, guid: 792376be4942e8b4493278fefb32556a, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x

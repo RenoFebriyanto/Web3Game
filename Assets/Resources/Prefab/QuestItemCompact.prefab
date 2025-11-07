@@ -1128,6 +1128,7 @@ MonoBehaviour:
   progessBar: {fileID: 321214081144366657}
   claimButton: {fileID: 5790943182970010621}
   claimedOverlay: {fileID: 0}
+  amountText: {fileID: 827559643218200534}
   claimButtonDisabled: {fileID: -8058495721422687109, guid: 80f27de5104a59846a2c47b5ba373b90, type: 3}
   claimButtonReady: {fileID: -994830075764059341, guid: 12f05e51c55a25645b5d9bf555750fc8, type: 3}
   claimButtonClaimed: {fileID: -3748701598928558014, guid: c8f692d27aff24149b2c038fabf35be6, type: 3}

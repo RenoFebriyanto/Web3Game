@@ -98,22 +98,48 @@ public class QuestItemCompact : MonoBehaviour
             Log($"✓ Progress bar setup: 0/{data.requiredAmount}");
         }
 
-        // ✅ Setup button callback
-        if (claimButton != null)
-        {
-            claimButton.onClick.RemoveAllListeners();
-            claimButton.onClick.AddListener(OnClaimClicked);
-            Log("✓ Claim button callback setup");
-        }
-        else
-        {
-            LogError("claimButton is NULL!");
-        }
+        // ✅✅✅ CRITICAL FIX: Setup button callback dengan FORCE
+        SetupClaimButton();
 
         // ✅ Initial refresh
         Refresh(progressModel);
 
         Log($"=== SETUP COMPLETE: {data.questId} ===");
+    }
+
+    /// <summary>
+    /// ✅ NEW: Setup claim button dengan validation lengkap
+    /// </summary>
+    void SetupClaimButton()
+    {
+        if (claimButton == null)
+        {
+            LogError("❌ claimButton is NULL! Cannot setup callback!");
+
+            // Try auto-find
+            claimButton = GetComponentInChildren<Button>();
+            if (claimButton != null)
+            {
+                Log("✓ Auto-found claim button");
+            }
+            else
+            {
+                LogError("❌ Still cannot find claim button!");
+                return;
+            }
+        }
+
+        // Remove all listeners first
+        claimButton.onClick.RemoveAllListeners();
+
+        // Add listener
+        claimButton.onClick.AddListener(OnClaimClicked);
+
+        Log($"✓ Claim button callback setup for {questData?.questId}");
+
+        // Debug: Check button state
+        Log($"  Button interactable: {claimButton.interactable}");
+        Log($"  Button gameObject active: {claimButton.gameObject.activeSelf}");
     }
 
     /// <summary>

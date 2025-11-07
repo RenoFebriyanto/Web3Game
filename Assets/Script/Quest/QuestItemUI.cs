@@ -194,11 +194,9 @@ public class QuestItemUI : MonoBehaviour
 
     void NotifyLevelDisplay()
     {
-        var levelDisplay = FindFirstObjectByType<DailyQuestDisplayLevel>();
-        if (levelDisplay != null)
-        {
-            levelDisplay.OnQuestClaimed();
-        }
+        // ✅ Event system sudah handle sinkronisasi otomatis
+        // Tidak perlu manual notify lagi
+        Debug.Log($"[QuestItemUI] Quest claimed - auto-synced via events");
     }
 
     // ========================================

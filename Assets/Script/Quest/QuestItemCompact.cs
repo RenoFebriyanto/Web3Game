@@ -3,14 +3,10 @@ using UnityEngine.UI;
 using TMPro;
 
 /// <summary>
-/// FIXED: QuestItemCompact dengan struktur sesuai hierarchy
-/// - Desk (Text) untuk title
-/// - IconImage untuk icon quest
-/// - ProgessBar (Slider) untuk progress
-/// - ClaimButton untuk tombol claim
-/// - ClaimedOverlay untuk overlay ketika sudah diclaim
-/// 
-/// Full sinkronisasi dengan QuestP (QuestItemUI)
+/// ✅ FIXED: QuestItemCompact dengan popup claim & full sinkronisasi
+/// - Menampilkan popup saat claim (sama seperti QuestItemUI)
+/// - Auto-sync dengan QuestP via event system
+/// - Structure sesuai hierarchy: Desk, IconImage, ProgessBar, ClaimButton, ClaimedOverlay
 /// </summary>
 public class QuestItemCompact : MonoBehaviour
 {
@@ -228,8 +224,8 @@ public class QuestItemCompact : MonoBehaviour
     }
 
     /// <summary>
-    /// ✅✅✅ CRITICAL: Called when claim button clicked
-    /// Shows popup dan handle sinkronisasi dengan QuestP
+    /// ✅✅✅ FIXED: Called when claim button clicked
+    /// Menampilkan popup SAMA seperti QuestItemUI di QuestP
     /// </summary>
     void OnClaimClicked()
     {
@@ -254,9 +250,9 @@ public class QuestItemCompact : MonoBehaviour
         Log($"✓ Claim button clicked for quest: {questData.questId}");
 
         // ✅ Get reward info untuk popup
-        string rewardDisplayName = GetRewardDisplayName();
         Sprite rewardIcon = GetRewardIcon();
         string amountText = GetRewardAmountText();
+        string displayName = GetRewardDisplayName();
 
         // ✅ Validate icon
         if (rewardIcon == null)
@@ -264,24 +260,24 @@ public class QuestItemCompact : MonoBehaviour
             LogError($"Reward icon is NULL for quest {questData.questId}!");
         }
 
-        // ✅ Show popup
+        // ✅✅✅ Show popup (SAMA seperti QuestItemUI)
         if (PopupClaimQuest.Instance != null)
         {
-            Log($"Opening popup: icon={rewardIcon?.name}, amount={amountText}, name={rewardDisplayName}");
+            Log($"Opening popup: icon={rewardIcon?.name}, amount={amountText}, name={displayName}");
 
             PopupClaimQuest.Instance.Open(
                 rewardIcon,
                 amountText,
-                rewardDisplayName,
+                displayName,
                 () => {
-                    // ✅✅✅ Callback saat player confirm di popup
+                    // ✅ Callback saat player confirm di popup
                     Log($"Popup confirmed! Claiming quest: {questData.questId}");
 
                     // ✅ Claim quest via QuestManager (ini akan trigger event)
                     if (manager != null)
                     {
                         manager.ClaimQuest(questData.questId);
-                        Log($"✓✓✓ Quest claimed via QuestManager");
+                        Log($"✓✓✓ Quest claimed via QuestManager - Event broadcast!");
                     }
                     else
                     {
@@ -297,7 +293,7 @@ public class QuestItemCompact : MonoBehaviour
                     // ✅ Force refresh untuk update UI immediately
                     RefreshFromManager();
 
-                    Log($"✓✓✓ Quest claim complete! Should sync to QuestP automatically via events.");
+                    Log($"✓✓✓ Claim complete! Auto-synced to QuestP via events.");
                 }
             );
         }
@@ -305,7 +301,7 @@ public class QuestItemCompact : MonoBehaviour
         {
             LogError("PopupClaimQuest.Instance is NULL! Claiming directly without popup.");
 
-            // ✅ Fallback: claim directly
+            // ✅ Fallback: claim directly (tanpa popup)
             if (manager != null)
             {
                 manager.ClaimQuest(questData.questId);
@@ -316,8 +312,32 @@ public class QuestItemCompact : MonoBehaviour
     }
 
     // ========================================
-    // REWARD DISPLAY HELPERS
+    // ✅ REWARD DISPLAY HELPERS (Sama seperti QuestItemUI)
     // ========================================
+
+    Sprite GetRewardIcon()
+    {
+        // ✅ Gunakan icon dari questData
+        if (questData != null && questData.icon != null)
+        {
+            return questData.icon;
+        }
+
+        LogWarning($"Quest {questData?.questId} has no icon!");
+        return null;
+    }
+
+    string GetRewardAmountText()
+    {
+        if (questData.rewardAmount <= 0) return "";
+
+        if (questData.rewardType == QuestRewardType.Booster)
+        {
+            return $"x{questData.rewardAmount}";
+        }
+
+        return questData.rewardAmount.ToString("N0");
+    }
 
     string GetRewardDisplayName()
     {
@@ -356,29 +376,6 @@ public class QuestItemCompact : MonoBehaviour
                     return char.ToUpper(id[0]) + id.Substring(1) + " Booster";
                 return "Booster";
         }
-    }
-
-    string GetRewardAmountText()
-    {
-        if (questData.rewardAmount <= 0) return "";
-
-        if (questData.rewardType == QuestRewardType.Booster)
-        {
-            return $"x{questData.rewardAmount}";
-        }
-
-        return questData.rewardAmount.ToString("N0");
-    }
-
-    Sprite GetRewardIcon()
-    {
-        if (questData != null && questData.icon != null)
-        {
-            return questData.icon;
-        }
-
-        LogWarning($"Quest {questData?.questId} has no icon!");
-        return null;
     }
 
     // ========================================

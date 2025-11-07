@@ -1123,16 +1123,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 926b6f5ee4ee0d642bc317aea691061f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  titleText: {fileID: 8094639758903190295}
+  deskText: {fileID: 8094639758903190295}
   iconImage: {fileID: 6805905025866322854}
-  progressFillImage: {fileID: 6902029924463463549}
-  progressText: {fileID: 0}
+  progessBar: {fileID: 321214081144366657}
   claimButton: {fileID: 5790943182970010621}
   claimedOverlay: {fileID: 0}
-  claimButtonReady: {fileID: -994830075764059341, guid: 12f05e51c55a25645b5d9bf555750fc8, type: 3}
   claimButtonDisabled: {fileID: -8058495721422687109, guid: 80f27de5104a59846a2c47b5ba373b90, type: 3}
+  claimButtonReady: {fileID: -994830075764059341, guid: 12f05e51c55a25645b5d9bf555750fc8, type: 3}
   claimButtonClaimed: {fileID: -3748701598928558014, guid: c8f692d27aff24149b2c038fabf35be6, type: 3}
   autoRefreshInterval: 0.5
+  enableDebugLogs: 0
   questData: {fileID: 0}
 --- !u!114 &8227271367695568832
 MonoBehaviour:

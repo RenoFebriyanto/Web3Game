@@ -664,21 +664,65 @@ public class LevelCompleteUI : MonoBehaviour
 
     /// <summary>
     /// Setup reward item UI (icon + amount)
+    /// ✅ FIXED: Hanya ganti sprite di IconItemsRW, tidak touch border box
     /// </summary>
     void SetupRewardItem(GameObject item, RewardData reward)
     {
-        // Find Image component for icon
-        Image iconImage = item.GetComponentInChildren<Image>();
-        if (iconImage != null)
+        // ✅ Find IconItemsRW specifically (by name)
+        Transform iconTransform = item.transform.Find("IconItemsRW");
+
+        if (iconTransform != null)
         {
-            switch (reward.type)
+            Image iconImage = iconTransform.GetComponent<Image>();
+
+            if (iconImage != null)
             {
-                case RewardType.Coin:
-                    if (coinIcon != null) iconImage.sprite = coinIcon;
+                switch (reward.type)
+                {
+                    case RewardType.Coin:
+                        if (coinIcon != null)
+                        {
+                            iconImage.sprite = coinIcon;
+                            Log($"✓ Set coin icon on {iconTransform.name}");
+                        }
+                        break;
+                    case RewardType.Energy:
+                        if (energyIcon != null)
+                        {
+                            iconImage.sprite = energyIcon;
+                            Log($"✓ Set energy icon on {iconTransform.name}");
+                        }
+                        break;
+                }
+            }
+            else
+            {
+                LogWarning($"IconItemsRW found but missing Image component!");
+            }
+        }
+        else
+        {
+            LogWarning($"IconItemsRW not found in {item.name}! Make sure prefab has child named 'IconItemsRW'");
+
+            // Fallback: Search for any Image with specific name pattern
+            Image[] allImages = item.GetComponentsInChildren<Image>(true);
+            foreach (var img in allImages)
+            {
+                if (img.gameObject.name.Contains("Icon") || img.gameObject.name.Contains("RW"))
+                {
+                    Log($"Found potential icon: {img.gameObject.name}, using this as fallback");
+
+                    switch (reward.type)
+                    {
+                        case RewardType.Coin:
+                            if (coinIcon != null) img.sprite = coinIcon;
+                            break;
+                        case RewardType.Energy:
+                            if (energyIcon != null) img.sprite = energyIcon;
+                            break;
+                    }
                     break;
-                case RewardType.Energy:
-                    if (energyIcon != null) iconImage.sprite = energyIcon;
-                    break;
+                }
             }
         }
 
@@ -687,6 +731,10 @@ public class LevelCompleteUI : MonoBehaviour
         if (amountText != null)
         {
             amountText.text = $"+{reward.amount}";
+        }
+        else
+        {
+            LogWarning($"TMP_Text not found in {item.name} for amount display!");
         }
 
         Log($"✓ Setup reward item: {reward.type} x{reward.amount}");

@@ -1,29 +1,53 @@
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
 /// <summary>
-/// COMPACT version of QuestItemUI untuk display di Level Panel
-/// Ukuran lebih kecil, less details, quick claim support
+/// FIXED: QuestItemCompact dengan struktur sesuai hierarchy
+/// - Desk (Text) untuk title
+/// - IconImage untuk icon quest
+/// - ProgessBar (Slider) untuk progress
+/// - ClaimButton untuk tombol claim
+/// - ClaimedOverlay untuk overlay ketika sudah diclaim
+/// 
+/// Full sinkronisasi dengan QuestP (QuestItemUI)
 /// </summary>
 public class QuestItemCompact : MonoBehaviour
 {
-    [Header("UI Components (Compact)")]
-    public TMP_Text titleText;
+    [Header("=== UI COMPONENTS (Sesuai Hierarchy) ===")]
+    [Tooltip("Text component untuk judul quest (child: Desk)")]
+    public TMP_Text deskText;
+
+    [Tooltip("Image component untuk icon quest (child: IconImage)")]
     public Image iconImage;
-    public Image progressFillImage;     // Fill image untuk progress bar
-    public TMP_Text progressText;       // "2/5" format
+
+    [Tooltip("Slider component untuk progress bar (child: ProgessBar)")]
+    public Slider progessBar; // typo sesuai hierarchy: "Progess"
+
+    [Tooltip("Button component untuk claim (child: ClaimButton)")]
     public Button claimButton;
+
+    [Tooltip("GameObject overlay ketika sudah diclaim (child: ClaimedOverlay)")]
     public GameObject claimedOverlay;
 
-    [Header("Button Sprites")]
-    public Sprite claimButtonReady;     // Blue/active
-    public Sprite claimButtonDisabled;  // Gray
-    public Sprite claimButtonClaimed;   // Yellow/green
+    [Header("=== BUTTON SPRITES ===")]
+    [Tooltip("Sprite untuk button disabled (gray)")]
+    public Sprite claimButtonDisabled;
 
-    [Header("Settings")]
+    [Tooltip("Sprite untuk button ready (blue)")]
+    public Sprite claimButtonReady;
+
+    [Tooltip("Sprite untuk button claimed (yellow)")]
+    public Sprite claimButtonClaimed;
+
+    [Header("=== AUTO REFRESH ===")]
+    [Tooltip("Interval refresh untuk sinkronisasi (detik)")]
     public float autoRefreshInterval = 0.5f;
 
+    [Header("=== DEBUG ===")]
+    public bool enableDebugLogs = false;
+
+    // Runtime data
     [HideInInspector] public QuestData questData;
     private QuestProgressModel model;
     private QuestManager manager;
@@ -31,6 +55,7 @@ public class QuestItemCompact : MonoBehaviour
 
     /// <summary>
     /// Setup komponen dengan data quest
+    /// Dipanggil dari DailyQuestDisplayLevel saat spawn
     /// </summary>
     public void Setup(QuestData data, QuestProgressModel progressModel, QuestManager mgr)
     {
@@ -40,37 +65,68 @@ public class QuestItemCompact : MonoBehaviour
 
         if (data == null)
         {
-            Debug.LogWarning("[QuestItemCompact] data is NULL!");
+            LogError("Setup failed: questData is NULL!");
             return;
         }
 
-        // Set title (compact - no prefix)
-        if (titleText != null)
+        // ✅ Set title (tanpa prefix untuk compact version)
+        if (deskText != null)
         {
-            titleText.text = data.title;
+            deskText.text = data.title;
+            Log($"✓ Set title: {data.title}");
+        }
+        else
+        {
+            LogWarning("deskText is NULL!");
         }
 
-        // Set icon
+        // ✅ Set icon
         if (iconImage != null && data.icon != null)
         {
             iconImage.sprite = data.icon;
             iconImage.enabled = true;
+            Log($"✓ Set icon: {data.icon.name}");
+        }
+        else
+        {
+            LogWarning($"iconImage={(iconImage != null)}, icon={(data.icon != null)}");
         }
 
-        // Initial refresh
-        Refresh(progressModel);
+        // ✅ Setup progress bar (slider)
+        if (progessBar != null)
+        {
+            progessBar.minValue = 0;
+            progessBar.maxValue = data.requiredAmount;
+            progessBar.value = 0;
+            progessBar.interactable = false; // Non-interactable (read-only)
+            Log("✓ Setup progress bar");
+        }
+        else
+        {
+            LogWarning("progessBar is NULL!");
+        }
 
-        // Setup button callback
+        // ✅ Setup button callback
         if (claimButton != null)
         {
             claimButton.onClick.RemoveAllListeners();
             claimButton.onClick.AddListener(OnClaimClicked);
+            Log("✓ Setup claim button callback");
         }
+        else
+        {
+            LogError("claimButton is NULL!");
+        }
+
+        // ✅ Initial refresh
+        Refresh(progressModel);
+
+        Log($"✓✓✓ Setup complete for quest: {data.questId}");
     }
 
     void Update()
     {
-        // Auto-refresh untuk sinkronisasi dengan QuestManager
+        // ✅ Auto-refresh untuk sinkronisasi real-time dengan QuestManager
         if (Time.time - lastRefreshTime >= autoRefreshInterval)
         {
             lastRefreshTime = Time.time;
@@ -79,7 +135,7 @@ public class QuestItemCompact : MonoBehaviour
     }
 
     /// <summary>
-    /// Refresh data dari QuestManager (untuk sinkronisasi real-time)
+    /// ✅ Refresh data dari QuestManager (sinkronisasi dengan QuestP)
     /// </summary>
     void RefreshFromManager()
     {
@@ -99,7 +155,7 @@ public class QuestItemCompact : MonoBehaviour
     }
 
     /// <summary>
-    /// Update UI berdasarkan progress model
+    /// ✅ Update UI berdasarkan progress model
     /// </summary>
     public void Refresh(QuestProgressModel progressModel)
     {
@@ -111,23 +167,19 @@ public class QuestItemCompact : MonoBehaviour
         bool isComplete = current >= required && !model.claimed;
         bool isClaimed = model.claimed;
 
-        // Update progress fill (0-1)
-        if (progressFillImage != null)
+        Log($"Refresh: {questData.questId} - Progress: {current}/{required}, Complete: {isComplete}, Claimed: {isClaimed}");
+
+        // ✅ Update progress bar
+        if (progessBar != null)
         {
-            float fillAmount = required > 0 ? (float)current / required : 0f;
-            progressFillImage.fillAmount = Mathf.Clamp01(fillAmount);
+            progessBar.value = current;
+            progessBar.interactable = false; // Always non-interactable
         }
 
-        // Update progress text "2/5"
-        if (progressText != null)
-        {
-            progressText.text = $"{current}/{required}";
-        }
-
-        // Update button state
+        // ✅ Update button state
         UpdateButtonState(isComplete, isClaimed);
 
-        // Update claimed overlay
+        // ✅ Update claimed overlay
         if (claimedOverlay != null)
         {
             claimedOverlay.SetActive(isClaimed);
@@ -135,7 +187,7 @@ public class QuestItemCompact : MonoBehaviour
     }
 
     /// <summary>
-    /// Update button sprite dan interactability
+    /// ✅ Update button sprite dan interactability
     /// </summary>
     void UpdateButtonState(bool isComplete, bool isClaimed)
     {
@@ -145,85 +197,122 @@ public class QuestItemCompact : MonoBehaviour
 
         if (isClaimed)
         {
-            // Claimed state
+            // ✅ State: Claimed (yellow/green)
             if (buttonImage != null && claimButtonClaimed != null)
             {
                 buttonImage.sprite = claimButtonClaimed;
             }
             claimButton.interactable = false;
+            Log("Button state: CLAIMED");
         }
         else if (isComplete)
         {
-            // Ready to claim
+            // ✅ State: Ready to claim (blue)
             if (buttonImage != null && claimButtonReady != null)
             {
                 buttonImage.sprite = claimButtonReady;
             }
             claimButton.interactable = true;
+            Log("Button state: READY");
         }
         else
         {
-            // Not ready
+            // ✅ State: Not ready (gray)
             if (buttonImage != null && claimButtonDisabled != null)
             {
                 buttonImage.sprite = claimButtonDisabled;
             }
             claimButton.interactable = false;
+            Log("Button state: DISABLED");
         }
     }
 
     /// <summary>
-    /// Called when claim button clicked
+    /// ✅✅✅ CRITICAL: Called when claim button clicked
+    /// Shows popup dan handle sinkronisasi dengan QuestP
     /// </summary>
     void OnClaimClicked()
     {
-        if (questData == null || model == null) return;
-        if (model.claimed) return;
-        if (model.progress < questData.requiredAmount) return;
+        if (questData == null || model == null)
+        {
+            LogError("OnClaimClicked failed: questData or model is NULL!");
+            return;
+        }
 
-        // Get reward info
+        if (model.claimed)
+        {
+            Log("Quest already claimed, ignoring click");
+            return;
+        }
+
+        if (model.progress < questData.requiredAmount)
+        {
+            Log("Quest not complete, ignoring click");
+            return;
+        }
+
+        Log($"✓ Claim button clicked for quest: {questData.questId}");
+
+        // ✅ Get reward info untuk popup
         string rewardDisplayName = GetRewardDisplayName();
         Sprite rewardIcon = GetRewardIcon();
         string amountText = GetRewardAmountText();
 
-        // Show popup
+        // ✅ Validate icon
+        if (rewardIcon == null)
+        {
+            LogError($"Reward icon is NULL for quest {questData.questId}!");
+        }
+
+        // ✅ Show popup
         if (PopupClaimQuest.Instance != null)
         {
+            Log($"Opening popup: icon={rewardIcon?.name}, amount={amountText}, name={rewardDisplayName}");
+
             PopupClaimQuest.Instance.Open(
                 rewardIcon,
                 amountText,
                 rewardDisplayName,
                 () => {
-                    // Claim quest
-                    manager?.ClaimQuest(questData.questId);
+                    // ✅✅✅ Callback saat player confirm di popup
+                    Log($"Popup confirmed! Claiming quest: {questData.questId}");
 
-                    // Notify QuestP panel untuk refresh
-                    NotifyQuestPanelRefresh();
+                    // ✅ Claim quest via QuestManager (ini akan trigger event)
+                    if (manager != null)
+                    {
+                        manager.ClaimQuest(questData.questId);
+                        Log($"✓✓✓ Quest claimed via QuestManager");
+                    }
+                    else
+                    {
+                        LogError("QuestManager is NULL!");
+                    }
 
-                    // Play sound
+                    // ✅ Play success sound
                     if (SoundManager.Instance != null)
                     {
                         SoundManager.Instance.PlayPurchaseSuccess();
                     }
+
+                    // ✅ Force refresh untuk update UI immediately
+                    RefreshFromManager();
+
+                    Log($"✓✓✓ Quest claim complete! Should sync to QuestP automatically via events.");
                 }
             );
         }
         else
         {
-            // Fallback: claim directly
-            manager?.ClaimQuest(questData.questId);
-            NotifyQuestPanelRefresh();
-        }
-    }
+            LogError("PopupClaimQuest.Instance is NULL! Claiming directly without popup.");
 
-    /// <summary>
-    /// Notify QuestP panel to refresh (untuk sinkronisasi)
-    /// </summary>
-    void NotifyQuestPanelRefresh()
-    {
-        // QuestItemUI akan auto-refresh via Update loop
-        // Tidak perlu manual notify karena sudah ada auto-refresh system
-        Debug.Log($"[QuestItemCompact] Quest {questData.questId} claimed - QuestP will auto-sync");
+            // ✅ Fallback: claim directly
+            if (manager != null)
+            {
+                manager.ClaimQuest(questData.questId);
+            }
+
+            RefreshFromManager();
+        }
     }
 
     // ========================================
@@ -287,8 +376,34 @@ public class QuestItemCompact : MonoBehaviour
         {
             return questData.icon;
         }
+
+        LogWarning($"Quest {questData?.questId} has no icon!");
         return null;
     }
+
+    // ========================================
+    // LOGGING
+    // ========================================
+
+    void Log(string message)
+    {
+        if (enableDebugLogs)
+            Debug.Log($"[QuestItemCompact:{questData?.questId}] {message}");
+    }
+
+    void LogWarning(string message)
+    {
+        Debug.LogWarning($"[QuestItemCompact:{questData?.questId}] ⚠️ {message}");
+    }
+
+    void LogError(string message)
+    {
+        Debug.LogError($"[QuestItemCompact:{questData?.questId}] ❌ {message}");
+    }
+
+    // ========================================
+    // CLEANUP
+    // ========================================
 
     void OnDestroy()
     {
@@ -296,5 +411,17 @@ public class QuestItemCompact : MonoBehaviour
         {
             claimButton.onClick.RemoveAllListeners();
         }
+    }
+
+    // ========================================
+    // PUBLIC API (untuk external refresh)
+    // ========================================
+
+    /// <summary>
+    /// Force refresh dari external (called dari DailyQuestDisplayLevel)
+    /// </summary>
+    public void ForceRefresh()
+    {
+        RefreshFromManager();
     }
 }

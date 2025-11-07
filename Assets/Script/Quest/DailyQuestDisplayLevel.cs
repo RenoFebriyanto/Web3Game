@@ -3,9 +3,10 @@ using UnityEngine;
 using TMPro;
 
 /// <summary>
-/// FIXED: Display daily quests di Level Panel dengan proper layout & sync
-/// Uses QuestItemCompact prefab untuk tampilan yang lebih kecil
-/// Auto-sync dengan QuestManager dan QuestP panel
+/// ✅✅✅ IMPROVED: Full sinkronisasi dengan QuestP via Event System
+/// - Subscribe ke QuestManager events
+/// - Auto-refresh when quest claimed (dari LevelP atau QuestP)
+/// - Proper layout & spacing
 /// </summary>
 public class DailyQuestDisplayLevel : MonoBehaviour
 {
@@ -23,10 +24,7 @@ public class DailyQuestDisplayLevel : MonoBehaviour
     [Tooltip("Berapa quest yang ditampilkan")]
     public int maxVisibleQuests = 3;
 
-    [Tooltip("Auto-refresh interval (detik)")]
-    public float autoRefreshInterval = 1f;
-
-    [Header("📐 Layout Settings (PENTING!)")]
+    [Header("📐 Layout Settings")]
     [Tooltip("Spacing antar quest items (vertical)")]
     public float itemSpacing = 10f;
 
@@ -39,7 +37,6 @@ public class DailyQuestDisplayLevel : MonoBehaviour
 
     // Runtime
     private Dictionary<string, QuestItemCompact> spawnedUI = new Dictionary<string, QuestItemCompact>();
-    private float lastRefreshTime = 0f;
 
     void Start()
     {
@@ -51,28 +48,118 @@ public class DailyQuestDisplayLevel : MonoBehaviour
         // Setup layout
         SetupContentLayout();
 
+        // ✅✅✅ Subscribe to QuestManager events
+        SubscribeToEvents();
+
         // Initial refresh (dengan delay agar QuestManager ready)
         Invoke(nameof(RefreshDisplay), 0.2f);
     }
 
-    void Update()
-    {
-        // Auto-refresh untuk sinkronisasi real-time
-        if (Time.time - lastRefreshTime >= autoRefreshInterval)
-        {
-            lastRefreshTime = Time.time;
-            RefreshDisplay();
-        }
-    }
-
     void OnEnable()
     {
+        SubscribeToEvents();
         RefreshDisplay();
     }
 
+    void OnDisable()
+    {
+        UnsubscribeFromEvents();
+    }
+
+    void OnDestroy()
+    {
+        UnsubscribeFromEvents();
+    }
+
+    // ========================================
+    // ✅✅✅ EVENT SUBSCRIPTION (CRITICAL!)
+    // ========================================
+
+    void SubscribeToEvents()
+    {
+        if (QuestManager.Instance == null)
+        {
+            LogWarning("Cannot subscribe: QuestManager.Instance is null");
+            return;
+        }
+
+        // ✅ Subscribe to quest progress changes
+        QuestManager.Instance.OnQuestProgressChanged.RemoveListener(OnQuestProgressChanged);
+        QuestManager.Instance.OnQuestProgressChanged.AddListener(OnQuestProgressChanged);
+
+        // ✅ Subscribe to quest claimed events
+        QuestManager.Instance.OnQuestClaimed.RemoveListener(OnQuestClaimed);
+        QuestManager.Instance.OnQuestClaimed.AddListener(OnQuestClaimed);
+
+        // ✅ Subscribe to quests refreshed
+        QuestManager.Instance.OnQuestsRefreshed.RemoveListener(OnQuestsRefreshed);
+        QuestManager.Instance.OnQuestsRefreshed.AddListener(OnQuestsRefreshed);
+
+        Log("✓ Subscribed to QuestManager events");
+    }
+
+    void UnsubscribeFromEvents()
+    {
+        if (QuestManager.Instance == null) return;
+
+        QuestManager.Instance.OnQuestProgressChanged.RemoveListener(OnQuestProgressChanged);
+        QuestManager.Instance.OnQuestClaimed.RemoveListener(OnQuestClaimed);
+        QuestManager.Instance.OnQuestsRefreshed.RemoveListener(OnQuestsRefreshed);
+
+        Log("✓ Unsubscribed from QuestManager events");
+    }
+
+    // ========================================
+    // ✅✅✅ EVENT HANDLERS
+    // ========================================
+
     /// <summary>
-    /// Setup ContentDaily layout (VerticalLayoutGroup)
+    /// Called when any quest progress changes
     /// </summary>
+    void OnQuestProgressChanged(string questId, QuestProgressModel model)
+    {
+        Log($"📊 Quest progress changed: {questId} -> {model.progress}");
+
+        // Update specific quest UI
+        if (spawnedUI.TryGetValue(questId, out var ui))
+        {
+            ui.Refresh(model);
+            Log($"✓ Updated UI for quest: {questId}");
+        }
+    }
+
+    /// <summary>
+    /// ✅✅✅ Called when quest claimed (FROM ANYWHERE - LevelP or QuestP!)
+    /// </summary>
+    void OnQuestClaimed(string questId, QuestData questData)
+    {
+        Log($"🎉 Quest claimed: {questId} (from LevelP or QuestP)");
+
+        // Update specific quest UI
+        if (spawnedUI.TryGetValue(questId, out var ui))
+        {
+            var model = QuestManager.Instance?.GetProgress(questId);
+            if (model != null)
+            {
+                ui.Refresh(model);
+                Log($"✓✓✓ Synced UI for claimed quest: {questId}");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Called when quests refreshed (reset daily/weekly)
+    /// </summary>
+    void OnQuestsRefreshed()
+    {
+        Log("🔄 Quests refreshed - full refresh display");
+        RefreshDisplay();
+    }
+
+    // ========================================
+    // LAYOUT SETUP
+    // ========================================
+
     void SetupContentLayout()
     {
         if (contentDaily == null)
@@ -112,6 +199,10 @@ public class DailyQuestDisplayLevel : MonoBehaviour
         Log("✓ ContentDaily layout setup complete");
     }
 
+    // ========================================
+    // DISPLAY REFRESH
+    // ========================================
+
     /// <summary>
     /// Main refresh method - update semua quest display
     /// </summary>
@@ -130,7 +221,7 @@ public class DailyQuestDisplayLevel : MonoBehaviour
         }
 
         // Get daily quests
-        var dailyQuests = GetDailyQuests();
+        var dailyQuests = QuestManager.Instance.GetDailyQuests();
 
         if (dailyQuests == null || dailyQuests.Count == 0)
         {
@@ -172,17 +263,6 @@ public class DailyQuestDisplayLevel : MonoBehaviour
     }
 
     /// <summary>
-    /// Get daily quests dari QuestManager
-    /// </summary>
-    List<QuestData> GetDailyQuests()
-    {
-        var qm = QuestManager.Instance;
-        if (qm == null) return null;
-
-        return qm.dailyQuests;
-    }
-
-    /// <summary>
     /// Create new quest UI item
     /// </summary>
     void CreateQuestUI(QuestData questData)
@@ -205,7 +285,7 @@ public class DailyQuestDisplayLevel : MonoBehaviour
             model = new QuestProgressModel(questData.questId, 0, false);
         }
 
-        // Setup UI
+        // ✅ Setup UI dengan manager reference
         ui.Setup(questData, model, QuestManager.Instance);
 
         spawnedUI[questData.questId] = ui;
@@ -273,29 +353,6 @@ public class DailyQuestDisplayLevel : MonoBehaviour
         Log("✓ Cleared all quest UI");
     }
 
-    /// <summary>
-    /// Called when player claims quest (untuk force refresh)
-    /// </summary>
-    public void OnQuestClaimed()
-    {
-        Invoke(nameof(RefreshDisplay), 0.1f);
-    }
-
-    /// <summary>
-    /// Update single quest UI
-    /// </summary>
-    public void UpdateQuest(string questId)
-    {
-        if (spawnedUI.TryGetValue(questId, out var ui))
-        {
-            var model = QuestManager.Instance?.GetProgress(questId);
-            if (model != null)
-            {
-                ui.Refresh(model);
-            }
-        }
-    }
-
     // ========================================
     // PUBLIC API
     // ========================================
@@ -341,13 +398,14 @@ public class DailyQuestDisplayLevel : MonoBehaviour
         ClearUI();
     }
 
-    [ContextMenu("Print Quest Status")]
+    [ContextMenu("Print Status")]
     void Context_PrintStatus()
     {
         Debug.Log("=== DAILY QUEST DISPLAY STATUS ===");
         Debug.Log($"Spawned UI count: {spawnedUI.Count}");
+        Debug.Log($"Subscribed to events: {(QuestManager.Instance != null)}");
 
-        var dailyQuests = GetDailyQuests();
+        var dailyQuests = QuestManager.Instance?.GetDailyQuests();
         if (dailyQuests != null)
         {
             Debug.Log($"Available daily quests: {dailyQuests.Count}");

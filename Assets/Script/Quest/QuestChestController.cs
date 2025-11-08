@@ -3,33 +3,30 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// ✅✅✅ FINAL FIX: QuestChestController yang count SEMUA quest (daily + weekly)
-/// - Remove filter isDaily (count semua quest)
-/// - Robust event subscription
+/// ✅✅✅ FINAL FIX: Event flow yang benar untuk crate progress
+/// - Remove legacy OnQuestClaimed(QuestData) method
+/// - Pure event-driven architecture
 /// - Works dari LevelP & QuestP
 /// </summary>
 public class QuestChestController : MonoBehaviour
 {
     [Header("UI")]
-    public Image[] crateImages;            // 4 crate images (assign di Inspector)
-    public Slider progressSlider;          // bottom big slider
+    public Image[] crateImages;
+    public Slider progressSlider;
 
     [Header("Crate Sprites")]
     public Sprite crateLocked;
     public Sprite crateReady;
     public Sprite crateClaimed;
 
-    [Header("Thresholds (quest completed count untuk unlock crate)")]
-    [Tooltip("Threshold untuk setiap crate. Default: 1, 3, 5, 8 untuk 4 crates")]
-    public int[] thresholds = new int[] { 1, 3, 5, 8 }; // 4 thresholds untuk 4 crates
+    [Header("Thresholds")]
+    [Tooltip("Threshold untuk setiap crate")]
+    public int[] thresholds = new int[] { 1, 3, 5, 8 };
 
-    [Header("Reward Icons (Assign sprites di Inspector)")]
-    [Tooltip("Icon untuk Economy rewards")]
+    [Header("Reward Icons")]
     public Sprite iconCoin;
     public Sprite iconShard;
     public Sprite iconEnergy;
-
-    [Tooltip("Icon untuk Booster rewards")]
     public Sprite iconMagnet;
     public Sprite iconShield;
     public Sprite iconCoin2x;
@@ -43,20 +40,17 @@ public class QuestChestController : MonoBehaviour
     [Header("Debug")]
     public bool enableDebugLogs = true;
 
-    // Save keys
     const string PREF_CLAIMED_COUNT = "Kulino_CrateClaimedCount_v1";
-    const string PREF_CRATE_CLAIMED_PREFIX = "Kulino_CrateStatus_"; // + index
+    const string PREF_CRATE_CLAIMED_PREFIX = "Kulino_CrateStatus_";
 
     int claimedCount = 0;
     bool[] claimedCrates;
 
     void Awake()
     {
-        // Ensure array size matches thresholds
         if (crateImages.Length != thresholds.Length)
         {
-            Debug.LogWarning($"[QuestChestController] crateImages.Length ({crateImages.Length}) != thresholds.Length ({thresholds.Length})! Adjusting...");
-
+            Debug.LogWarning($"[QuestChestController] Adjusting array sizes to match");
             int minLength = Mathf.Min(crateImages.Length, thresholds.Length);
             System.Array.Resize(ref crateImages, minLength);
             System.Array.Resize(ref thresholds, minLength);
@@ -96,7 +90,7 @@ public class QuestChestController : MonoBehaviour
     }
 
     // ========================================
-    // ✅✅✅ EVENT SUBSCRIPTION
+    // ✅✅✅ EVENT SUBSCRIPTION (PURE)
     // ========================================
 
     void SubscribeToQuestEvents()
@@ -108,10 +102,7 @@ public class QuestChestController : MonoBehaviour
             return;
         }
 
-        // Remove listener first (prevent double subscription)
         QuestManager.Instance.OnQuestClaimed.RemoveListener(OnQuestClaimedHandler);
-
-        // Add listener
         QuestManager.Instance.OnQuestClaimed.AddListener(OnQuestClaimedHandler);
 
         Log("✓✓✓ Subscribed to QuestManager.OnQuestClaimed event");
@@ -133,7 +124,7 @@ public class QuestChestController : MonoBehaviour
     }
 
     /// <summary>
-    /// ✅✅✅ CRITICAL FIX: Count ALL quests (daily + weekly) atau hanya daily
+    /// ✅✅✅ EVENT HANDLER: Called when quest claimed (dari mana saja)
     /// </summary>
     void OnQuestClaimedHandler(string questId, QuestData questData)
     {
@@ -143,7 +134,7 @@ public class QuestChestController : MonoBehaviour
             return;
         }
 
-        // ✅ NEW: Configurable filter
+        // ✅ Check filter
         if (countOnlyDailyQuests && !questData.isDaily)
         {
             Log($"Quest {questId} is WEEKLY - SKIPPING (countOnlyDailyQuests=true)");
@@ -151,23 +142,14 @@ public class QuestChestController : MonoBehaviour
         }
 
         string questType = questData.isDaily ? "DAILY" : "WEEKLY";
-        Log($"✅✅✅ QUEST CLAIMED EVENT: {questId} ({questType})");
+        Log($"✅✅✅ QUEST CLAIMED EVENT RECEIVED: {questId} ({questType})");
 
-        // Increment crate progress
+        // ✅ Increment crate progress
         claimedCount++;
         SaveProgress();
         UpdateVisuals();
 
-        Log($"✓ Crate progress updated: {claimedCount} quests claimed");
-    }
-
-    // ========================================
-    // LEGACY METHOD (backward compatibility)
-    // ========================================
-
-    public void OnQuestClaimed(QuestData q)
-    {
-        Log($"[LEGACY] OnQuestClaimed called - using event system instead");
+        Log($"✓✓✓ CRATE PROGRESS UPDATED: {claimedCount} quests claimed");
     }
 
     // ========================================

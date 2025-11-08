@@ -6188,10 +6188,10 @@ MonoBehaviour:
   - {fileID: 710595657}
   - {fileID: 1504936396}
   - {fileID: 234708480}
+  progressSlider: {fileID: 754621779}
   crateLocked: {fileID: 5510957682466590713, guid: 2c43dea87480542418c2495372604fe9, type: 3}
   crateReady: {fileID: 9058918285721810730, guid: 1820e298206f52341a7c7724f4549220, type: 3}
   crateClaimed: {fileID: 4307880083079091793, guid: 902fe7795d2e8a849953155a67c2ea02, type: 3}
-  progressSlider: {fileID: 754621779}
   thresholds: 0300000005000000080000000a000000
   iconCoin: {fileID: 6765926063464852416, guid: c36ed03bf5abb2e45a972295e241e11a, type: 3}
   iconShard: {fileID: -4101916017452507219, guid: 17c51150cca33ca46bb76c4c0df5bffd, type: 3}
@@ -6201,6 +6201,8 @@ MonoBehaviour:
   iconCoin2x: {fileID: 6664195757074223314, guid: fcd981a8393ec014bafc59768ab03aac, type: 3}
   iconSpeedBoost: {fileID: -3722323677837822175, guid: b6222723cc3456a409a3aae412cde445, type: 3}
   iconTimeFreeze: {fileID: -8264797683879417840, guid: 781feb8762f3c63408189934f04a050e, type: 3}
+  countOnlyDailyQuests: 0
+  enableDebugLogs: 1
 --- !u!1 &757269042
 GameObject:
   m_ObjectHideFlags: 0
@@ -6927,7 +6929,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2664920955126151448, guid: 2759036920f9aa246920866e26ff3b75, type: 3}
       propertyPath: m_AnchorMax.y
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 7609643420665963605, guid: 2759036920f9aa246920866e26ff3b75, type: 3}
       propertyPath: m_Name
@@ -12003,7 +12005,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: bb1a95083c74c7c42a00699c06460e67, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  questId: daily_complete_5levels
+  questId: dailyquest4
 --- !u!114 &1806553400
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -12935,7 +12937,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_Color: {r: 0, g: 0.7195444, b: 1, a: 1}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
@@ -14642,7 +14644,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2664920955126151448, guid: 2759036920f9aa246920866e26ff3b75, type: 3}
       propertyPath: m_AnchorMax.y
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 7609643420665963605, guid: 2759036920f9aa246920866e26ff3b75, type: 3}
       propertyPath: m_Name

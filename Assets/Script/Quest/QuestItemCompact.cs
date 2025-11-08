@@ -3,10 +3,10 @@ using UnityEngine.UI;
 using TMPro;
 
 /// <summary>
-/// ✅✅✅ FINAL FIX: QuestItemCompact dengan amount text & popup claim
-/// - Amount text WAJIB update sesuai QuestData
-/// - Popup claim WAJIB muncul (sama seperti QuestItemUI)
-/// - Full sinkronisasi via event system
+/// ✅✅✅ FINAL FIX: QuestItemCompact dengan PROPER event trigger untuk crate progress
+/// - Amount text update
+/// - Popup claim
+/// - Event trigger ke QuestChestController (CRITICAL FIX)
 /// </summary>
 public class QuestItemCompact : MonoBehaviour
 {
@@ -53,9 +53,6 @@ public class QuestItemCompact : MonoBehaviour
     private QuestManager manager;
     private float lastRefreshTime = 0f;
 
-    /// <summary>
-    /// Setup komponen dengan data quest
-    /// </summary>
     public void Setup(QuestData data, QuestProgressModel progressModel, QuestManager mgr)
     {
         questData = data;
@@ -70,14 +67,14 @@ public class QuestItemCompact : MonoBehaviour
 
         Log($"=== SETUP START: {data.questId} ===");
 
-        // ✅ Set title
+        // Set title
         if (deskText != null)
         {
             deskText.text = data.title;
             Log($"✓ Title set: {data.title}");
         }
 
-        // ✅ Set icon
+        // Set icon
         if (iconImage != null && data.icon != null)
         {
             iconImage.sprite = data.icon;
@@ -85,10 +82,10 @@ public class QuestItemCompact : MonoBehaviour
             Log($"✓ Icon set: {data.icon.name}");
         }
 
-        // ✅✅✅ CRITICAL: Set amount text (WAJIB!)
+        // Set amount text
         UpdateAmountText(data);
 
-        // ✅ Setup progress bar
+        // Setup progress bar
         if (progessBar != null)
         {
             progessBar.minValue = 0;
@@ -98,18 +95,15 @@ public class QuestItemCompact : MonoBehaviour
             Log($"✓ Progress bar setup: 0/{data.requiredAmount}");
         }
 
-        // ✅✅✅ CRITICAL FIX: Setup button callback dengan FORCE
+        // Setup button callback
         SetupClaimButton();
 
-        // ✅ Initial refresh
+        // Initial refresh
         Refresh(progressModel);
 
         Log($"=== SETUP COMPLETE: {data.questId} ===");
     }
 
-    /// <summary>
-    /// ✅ NEW: Setup claim button dengan validation lengkap
-    /// </summary>
     void SetupClaimButton()
     {
         if (claimButton == null)
@@ -136,15 +130,8 @@ public class QuestItemCompact : MonoBehaviour
         claimButton.onClick.AddListener(OnClaimClicked);
 
         Log($"✓ Claim button callback setup for {questData?.questId}");
-
-        // Debug: Check button state
-        Log($"  Button interactable: {claimButton.interactable}");
-        Log($"  Button gameObject active: {claimButton.gameObject.activeSelf}");
     }
 
-    /// <summary>
-    /// ✅✅✅ UPDATE AMOUNT TEXT (CRITICAL FIX)
-    /// </summary>
     void UpdateAmountText(QuestData data)
     {
         if (amountText == null)
@@ -159,19 +146,16 @@ public class QuestItemCompact : MonoBehaviour
             return;
         }
 
-        // Format amount text
         string formattedAmount = "";
 
         if (data.rewardAmount > 0)
         {
             if (data.rewardType == QuestRewardType.Booster)
             {
-                // Booster: x3, x5, etc
                 formattedAmount = $"x{data.rewardAmount}";
             }
             else
             {
-                // Economy: 1,000 or 5,000
                 formattedAmount = data.rewardAmount.ToString("N0");
             }
         }
@@ -179,12 +163,11 @@ public class QuestItemCompact : MonoBehaviour
         amountText.text = formattedAmount;
         amountText.gameObject.SetActive(!string.IsNullOrEmpty(formattedAmount));
 
-        Log($"✓✓✓ Amount text updated: '{formattedAmount}' (type: {data.rewardType}, amount: {data.rewardAmount})");
+        Log($"✓ Amount text updated: '{formattedAmount}'");
     }
 
     void Update()
     {
-        // Auto-refresh untuk sinkronisasi real-time
         if (Time.time - lastRefreshTime >= autoRefreshInterval)
         {
             lastRefreshTime = Time.time;
@@ -192,9 +175,6 @@ public class QuestItemCompact : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Refresh data dari QuestManager
-    /// </summary>
     void RefreshFromManager()
     {
         if (manager == null || questData == null) return;
@@ -211,9 +191,6 @@ public class QuestItemCompact : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Update UI berdasarkan progress model
-    /// </summary>
     public void Refresh(QuestProgressModel progressModel)
     {
         model = progressModel;
@@ -226,28 +203,21 @@ public class QuestItemCompact : MonoBehaviour
 
         Log($"Refresh: Progress={current}/{required}, Complete={isComplete}, Claimed={isClaimed}");
 
-        // Update progress bar
         if (progessBar != null)
         {
             progessBar.value = current;
         }
 
-        // Update button state
         UpdateButtonState(isComplete, isClaimed);
 
-        // Update claimed overlay
         if (claimedOverlay != null)
         {
             claimedOverlay.SetActive(isClaimed);
         }
 
-        // ✅ Re-update amount text (ensure always correct)
         UpdateAmountText(questData);
     }
 
-    /// <summary>
-    /// Update button sprite dan interactability
-    /// </summary>
     void UpdateButtonState(bool isComplete, bool isClaimed)
     {
         if (claimButton == null) return;
@@ -284,8 +254,7 @@ public class QuestItemCompact : MonoBehaviour
     }
 
     /// <summary>
-    /// ✅✅✅ CRITICAL: Called when claim button clicked
-    /// WAJIB menampilkan popup (sama seperti QuestItemUI)
+    /// ✅✅✅ CRITICAL FIX: Proper claim flow dengan event trigger
     /// </summary>
     void OnClaimClicked()
     {
@@ -307,73 +276,88 @@ public class QuestItemCompact : MonoBehaviour
             return;
         }
 
-        Log($"✅ CLAIM BUTTON CLICKED: {questData.questId}");
+        Log($"✅✅✅ CLAIM BUTTON CLICKED: {questData.questId}");
 
-        // ✅ Get reward info
-        Sprite rewardIcon = questData.icon; // Gunakan icon dari questData
+        // Get reward info
+        Sprite rewardIcon = questData.icon;
         string amountText = GetRewardAmountText();
         string displayName = GetRewardDisplayName();
 
         Log($"Reward info: icon={rewardIcon?.name}, amount={amountText}, name={displayName}");
 
-        // ✅✅✅ CRITICAL: Validate popup instance
+        // Validate popup instance
         if (PopupClaimQuest.Instance == null)
         {
             LogError("❌ PopupClaimQuest.Instance is NULL! Cannot show popup!");
-            LogError("Make sure PopupClaimQuest GameObject exists in scene!");
-
-            // Fallback: claim directly
+            
+            // ✅ CRITICAL FIX: Fallback claim dengan PROPER event trigger
             if (manager != null)
             {
-                manager.ClaimQuest(questData.questId);
-                Log("⚠️ Claimed directly without popup (fallback)");
+                Log("⚠️ Using fallback claim (no popup)");
+                ClaimQuestDirect();
             }
             return;
         }
 
-        // ✅ Validate icon
         if (rewardIcon == null)
         {
             LogError($"❌ Reward icon is NULL for {questData.questId}!");
-            LogError("Make sure QuestData has icon assigned in Inspector!");
         }
 
         Log("✅ Opening PopupClaimQuest...");
 
-        // ✅✅✅ Show popup (SAMA seperti QuestItemUI)
+        // Show popup
         PopupClaimQuest.Instance.Open(
             rewardIcon,
             amountText,
             displayName,
             () => {
-                // Callback saat confirm
                 Log($"✅ Popup confirmed! Claiming {questData.questId}...");
-
-                // Claim via QuestManager (trigger event)
-                if (manager != null)
-                {
-                    manager.ClaimQuest(questData.questId);
-                    Log("✅ Quest claimed via QuestManager");
-                }
-                else
-                {
-                    LogError("❌ QuestManager is NULL!");
-                }
-
-                // Play sound
-                if (SoundManager.Instance != null)
-                {
-                    SoundManager.Instance.PlayPurchaseSuccess();
-                }
-
-                // Force refresh
-                RefreshFromManager();
-
+                ClaimQuestDirect();
                 Log("✅✅✅ CLAIM COMPLETE!");
             }
         );
 
         Log("✅ Popup opened successfully!");
+    }
+
+    /// <summary>
+    /// ✅✅✅ CRITICAL FIX: Direct claim dengan PROPER event trigger
+    /// Ini yang MISSING di versi sebelumnya!
+    /// </summary>
+    void ClaimQuestDirect()
+    {
+        if (manager == null)
+        {
+            LogError("❌ QuestManager is NULL!");
+            return;
+        }
+
+        if (questData == null)
+        {
+            LogError("❌ questData is NULL!");
+            return;
+        }
+
+        Log($"✅✅✅ ClaimQuestDirect called for: {questData.questId}");
+
+        // ✅✅✅ CRITICAL: Call QuestManager.ClaimQuest()
+        // Ini akan:
+        // 1. Mark quest as claimed
+        // 2. Grant rewards
+        // 3. ✅ TRIGGER OnQuestClaimed EVENT → QuestChestController akan update!
+        manager.ClaimQuest(questData.questId);
+
+        Log($"✅ Quest claimed via QuestManager - event triggered!");
+
+        // Play sound
+        if (SoundManager.Instance != null)
+        {
+            SoundManager.Instance.PlayPurchaseSuccess();
+        }
+
+        // Force refresh UI
+        RefreshFromManager();
     }
 
     // ========================================
@@ -462,42 +446,38 @@ public class QuestItemCompact : MonoBehaviour
     // CONTEXT MENU DEBUG
     // ========================================
 
+    [ContextMenu("Debug: Force Claim Quest")]
+    void Context_ForceClaimQuest()
+    {
+        if (questData == null)
+        {
+            Debug.LogError("questData is NULL!");
+            return;
+        }
+
+        Debug.Log($"Force claiming quest: {questData.questId}");
+        ClaimQuestDirect();
+    }
+
     [ContextMenu("Debug: Print Component Status")]
     void Context_PrintStatus()
     {
         Debug.Log("=== QUEST ITEM COMPACT STATUS ===");
         Debug.Log($"Quest ID: {questData?.questId}");
-        Debug.Log($"deskText: {(deskText != null ? "OK" : "NULL")}");
-        Debug.Log($"iconImage: {(iconImage != null ? "OK" : "NULL")}");
-        Debug.Log($"amountText: {(amountText != null ? "OK ✓" : "NULL ❌")}");
-        Debug.Log($"progessBar: {(progessBar != null ? "OK" : "NULL")}");
+        Debug.Log($"Quest Type: {(questData != null ? (questData.isDaily ? "DAILY" : "WEEKLY") : "NULL")}");
+        Debug.Log($"manager: {(manager != null ? "OK" : "NULL")}");
+        Debug.Log($"model: {(model != null ? $"progress={model.progress}, claimed={model.claimed}" : "NULL")}");
         Debug.Log($"claimButton: {(claimButton != null ? "OK" : "NULL")}");
-        Debug.Log($"claimedOverlay: {(claimedOverlay != null ? "OK" : "NULL")}");
-
-        if (questData != null)
+        
+        if (manager != null)
         {
-            Debug.Log($"\nQuest Data:");
-            Debug.Log($"  Title: {questData.title}");
-            Debug.Log($"  Reward Type: {questData.rewardType}");
-            Debug.Log($"  Reward Amount: {questData.rewardAmount}");
-            Debug.Log($"  Icon: {(questData.icon != null ? questData.icon.name : "NULL")}");
+            Debug.Log($"QuestManager.Instance: {(QuestManager.Instance != null ? "OK" : "NULL")}");
+            if (QuestManager.Instance != null)
+            {
+                Debug.Log($"OnQuestClaimed event listener count: {QuestManager.Instance.OnQuestClaimed.GetPersistentEventCount()}");
+            }
         }
-
-        Debug.Log($"\nPopupClaimQuest.Instance: {(PopupClaimQuest.Instance != null ? "OK ✓" : "NULL ❌")}");
+        
         Debug.Log("================================");
-    }
-
-    [ContextMenu("Debug: Force Update Amount Text")]
-    void Context_ForceUpdateAmount()
-    {
-        if (questData != null)
-        {
-            UpdateAmountText(questData);
-            Debug.Log("✓ Amount text force updated");
-        }
-        else
-        {
-            Debug.LogError("❌ Cannot update: questData is NULL");
-        }
     }
 }

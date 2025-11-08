@@ -2,16 +2,22 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
+/// <summary>
+/// ✅✅✅ FINAL FIX: QuestChestController yang count SEMUA quest (daily + weekly)
+/// - Remove filter isDaily (count semua quest)
+/// - Robust event subscription
+/// - Works dari LevelP & QuestP
+/// </summary>
 public class QuestChestController : MonoBehaviour
 {
     [Header("UI")]
     public Image[] crateImages;            // 4 crate images (assign di Inspector)
+    public Slider progressSlider;          // bottom big slider
+
+    [Header("Crate Sprites")]
     public Sprite crateLocked;
     public Sprite crateReady;
     public Sprite crateClaimed;
-
-    [Header("Progress")]
-    public Slider progressSlider;          // bottom big slider
 
     [Header("Thresholds (quest completed count untuk unlock crate)")]
     [Tooltip("Threshold untuk setiap crate. Default: 1, 3, 5, 8 untuk 4 crates")]
@@ -30,6 +36,13 @@ public class QuestChestController : MonoBehaviour
     public Sprite iconSpeedBoost;
     public Sprite iconTimeFreeze;
 
+    [Header("Quest Counting Mode")]
+    [Tooltip("Count only daily quests? (false = count all quests)")]
+    public bool countOnlyDailyQuests = false;
+
+    [Header("Debug")]
+    public bool enableDebugLogs = true;
+
     // Save keys
     const string PREF_CLAIMED_COUNT = "Kulino_CrateClaimedCount_v1";
     const string PREF_CRATE_CLAIMED_PREFIX = "Kulino_CrateStatus_"; // + index
@@ -37,14 +50,13 @@ public class QuestChestController : MonoBehaviour
     int claimedCount = 0;
     bool[] claimedCrates;
 
-    void Start()
+    void Awake()
     {
         // Ensure array size matches thresholds
         if (crateImages.Length != thresholds.Length)
         {
             Debug.LogWarning($"[QuestChestController] crateImages.Length ({crateImages.Length}) != thresholds.Length ({thresholds.Length})! Adjusting...");
 
-            // Resize arrays to match smaller one
             int minLength = Mathf.Min(crateImages.Length, thresholds.Length);
             System.Array.Resize(ref crateImages, minLength);
             System.Array.Resize(ref thresholds, minLength);
@@ -52,46 +64,133 @@ public class QuestChestController : MonoBehaviour
 
         claimedCrates = new bool[thresholds.Length];
 
-        // PENTING: Disable slider interaction agar tidak bisa digeser
         if (progressSlider != null)
         {
             progressSlider.interactable = false;
-            Debug.Log("[QuestChestController] Progress slider set to non-interactable");
+            Log("Progress slider set to non-interactable");
+        }
+    }
+
+    void Start()
+    {
+        LoadProgress();
+        SubscribeToQuestEvents();
+        UpdateVisuals();
+
+        Log($"QuestChestController initialized (countOnlyDailyQuests={countOnlyDailyQuests})");
+    }
+
+    void OnEnable()
+    {
+        SubscribeToQuestEvents();
+    }
+
+    void OnDisable()
+    {
+        UnsubscribeFromQuestEvents();
+    }
+
+    void OnDestroy()
+    {
+        UnsubscribeFromQuestEvents();
+    }
+
+    // ========================================
+    // ✅✅✅ EVENT SUBSCRIPTION
+    // ========================================
+
+    void SubscribeToQuestEvents()
+    {
+        if (QuestManager.Instance == null)
+        {
+            LogWarning("QuestManager.Instance is null! Will retry...");
+            Invoke(nameof(RetrySubscribe), 0.5f);
+            return;
         }
 
-        // Load saved progress
-        LoadProgress();
+        // Remove listener first (prevent double subscription)
+        QuestManager.Instance.OnQuestClaimed.RemoveListener(OnQuestClaimedHandler);
 
-        UpdateVisuals();
+        // Add listener
+        QuestManager.Instance.OnQuestClaimed.AddListener(OnQuestClaimedHandler);
+
+        Log("✓✓✓ Subscribed to QuestManager.OnQuestClaimed event");
+    }
+
+    void RetrySubscribe()
+    {
+        Log("Retrying subscribe to QuestManager events...");
+        SubscribeToQuestEvents();
+    }
+
+    void UnsubscribeFromQuestEvents()
+    {
+        if (QuestManager.Instance != null)
+        {
+            QuestManager.Instance.OnQuestClaimed.RemoveListener(OnQuestClaimedHandler);
+            Log("Unsubscribed from QuestManager events");
+        }
     }
 
     /// <summary>
-    /// Load saved crate progress dari PlayerPrefs
+    /// ✅✅✅ CRITICAL FIX: Count ALL quests (daily + weekly) atau hanya daily
     /// </summary>
+    void OnQuestClaimedHandler(string questId, QuestData questData)
+    {
+        if (questData == null)
+        {
+            LogWarning($"OnQuestClaimedHandler: questData is NULL for {questId}");
+            return;
+        }
+
+        // ✅ NEW: Configurable filter
+        if (countOnlyDailyQuests && !questData.isDaily)
+        {
+            Log($"Quest {questId} is WEEKLY - SKIPPING (countOnlyDailyQuests=true)");
+            return;
+        }
+
+        string questType = questData.isDaily ? "DAILY" : "WEEKLY";
+        Log($"✅✅✅ QUEST CLAIMED EVENT: {questId} ({questType})");
+
+        // Increment crate progress
+        claimedCount++;
+        SaveProgress();
+        UpdateVisuals();
+
+        Log($"✓ Crate progress updated: {claimedCount} quests claimed");
+    }
+
+    // ========================================
+    // LEGACY METHOD (backward compatibility)
+    // ========================================
+
+    public void OnQuestClaimed(QuestData q)
+    {
+        Log($"[LEGACY] OnQuestClaimed called - using event system instead");
+    }
+
+    // ========================================
+    // LOAD / SAVE PROGRESS
+    // ========================================
+
     void LoadProgress()
     {
-        // Load claimed count
         claimedCount = PlayerPrefs.GetInt(PREF_CLAIMED_COUNT, 0);
 
-        // Load each crate claimed status
         for (int i = 0; i < claimedCrates.Length; i++)
         {
             string key = PREF_CRATE_CLAIMED_PREFIX + i;
             claimedCrates[i] = PlayerPrefs.GetInt(key, 0) == 1;
         }
 
-        Debug.Log($"[QuestChestController] Loaded progress: claimedCount={claimedCount}, crates claimed: {string.Join(",", claimedCrates)}");
+        Log($"Loaded progress: claimedCount={claimedCount}");
     }
 
-    /// <summary>
-    /// Save crate progress ke PlayerPrefs
-    /// </summary>
     void SaveProgress()
     {
-        // Save claimed count
         PlayerPrefs.SetInt(PREF_CLAIMED_COUNT, claimedCount);
 
-        // Save each crate claimed status
         for (int i = 0; i < claimedCrates.Length; i++)
         {
             string key = PREF_CRATE_CLAIMED_PREFIX + i;
@@ -99,158 +198,130 @@ public class QuestChestController : MonoBehaviour
         }
 
         PlayerPrefs.Save();
-        Debug.Log($"[QuestChestController] Saved progress: claimedCount={claimedCount}");
+        Log($"Saved progress: claimedCount={claimedCount}");
     }
 
-    /// <summary>
-    /// Dipanggil oleh QuestManager saat player claim quest
-    /// </summary>
-    public void OnQuestClaimed(QuestData q)
-    {
-        claimedCount++;
-        SaveProgress(); // Save setiap kali ada perubahan
-        UpdateVisuals();
-        Debug.Log($"[QuestChestController] Quest claimed. Total: {claimedCount}");
-    }
+    // ========================================
+    // VISUAL UPDATE
+    // ========================================
 
     void UpdateVisuals()
     {
-        // Update slider (range 0..max threshold)
         int max = thresholds.Length > 0 ? thresholds[thresholds.Length - 1] : 1;
+        
         if (progressSlider != null)
         {
             progressSlider.minValue = 0;
             progressSlider.maxValue = max;
             progressSlider.value = Mathf.Clamp(claimedCount, 0, max);
-
-            // Make sure slider stays non-interactable
             progressSlider.interactable = false;
         }
 
-        // Update crate sprites based on state
         for (int i = 0; i < crateImages.Length && i < thresholds.Length; i++)
         {
             if (crateImages[i] == null) continue;
 
             if (claimedCrates[i])
             {
-                // Already claimed
                 crateImages[i].sprite = crateClaimed;
             }
             else if (claimedCount >= thresholds[i])
             {
-                // Ready to claim
                 crateImages[i].sprite = crateReady;
             }
             else
             {
-                // Still locked
                 crateImages[i].sprite = crateLocked;
             }
         }
+
+        Log($"Visuals updated: progress={claimedCount}/{max}");
     }
 
-    /// <summary>
-    /// Dipanggil saat player klik crate (dari CrateButton script atau Button.onClick)
-    /// </summary>
+    // ========================================
+    // CRATE CLAIM
+    // ========================================
+
     public void TryClaimCrate(int index)
     {
         if (index < 0 || index >= thresholds.Length)
         {
-            Debug.LogWarning($"[QuestChestController] Invalid crate index: {index}");
+            LogWarning($"Invalid crate index: {index}");
             return;
         }
 
         if (claimedCrates[index])
         {
-            Debug.Log($"[QuestChestController] Crate {index} already claimed");
+            Log($"Crate {index} already claimed");
             return;
         }
 
         if (claimedCount >= thresholds[index])
         {
-            Debug.Log($"[QuestChestController] Claiming crate {index}...");
+            Log($"Claiming crate {index}...");
 
-            // Generate reward data (tanpa langsung grant ke player)
             var rewardData = QuestRewardGenerator.RollRandomReward();
 
             if (rewardData != null)
             {
-                // Show popup dengan reward yang didapat
                 ShowCrateRewardPopup(index, rewardData);
             }
             else
             {
-                Debug.LogError("[QuestChestController] Failed to roll reward!");
+                LogError("Failed to roll reward!");
             }
         }
         else
         {
-            Debug.Log($"[QuestChestController] Crate {index} not ready. Need {thresholds[index]} claimed quests, have {claimedCount}");
+            Log($"Crate {index} not ready. Need {thresholds[index]}, have {claimedCount}");
         }
     }
 
-    /// <summary>
-    /// Tampilkan popup reward dan grant reward setelah confirm
-    /// </summary>
     void ShowCrateRewardPopup(int crateIndex, QuestRewardGenerator.RewardData reward)
     {
         if (PopupClaimQuest.Instance == null)
         {
-            Debug.LogError("[QuestChestController] PopupClaimQuest.Instance is null!");
-            // Fallback: grant langsung tanpa popup
+            LogError("PopupClaimQuest.Instance is null!");
             QuestRewardGenerator.GrantRewardDirect(reward);
             claimedCrates[crateIndex] = true;
-            SaveProgress(); // Save setelah claim
+            SaveProgress();
             UpdateVisuals();
             return;
         }
 
-        // Get icon untuk reward
         Sprite rewardIcon = GetRewardIcon(reward);
-
-        // Format amount text
         string amountText = reward.amount > 0 ? reward.amount.ToString("N0") : "";
-
-        // Get display name
         string displayName = GetRewardDisplayName(reward);
 
-        // Debug log untuk check icon
         if (rewardIcon == null)
         {
-            Debug.LogWarning($"[QuestChestController] Icon is NULL for {reward.rewardName}! Please assign icon sprites in Inspector.");
+            LogWarning($"Icon is NULL for {reward.rewardName}!");
         }
 
-        // Open popup
         PopupClaimQuest.Instance.Open(
             rewardIcon,
             amountText,
             displayName,
             () => {
-                // Callback saat player confirm di popup
-                // Grant reward ke player
                 QuestRewardGenerator.GrantRewardDirect(reward);
-
-                // Mark crate as claimed
                 claimedCrates[crateIndex] = true;
-                SaveProgress(); // Save setelah claim
+                SaveProgress();
                 UpdateVisuals();
-
-                Debug.Log($"[QuestChestController] Crate {crateIndex} claimed successfully!");
+                Log($"Crate {crateIndex} claimed successfully!");
             }
         );
     }
 
-    /// <summary>
-    /// Get icon sprite untuk reward (dari Inspector assignment)
-    /// </summary>
+    // ========================================
+    // REWARD HELPERS
+    // ========================================
+
     Sprite GetRewardIcon(QuestRewardGenerator.RewardData reward)
     {
         if (reward == null) return null;
 
         if (reward.isBooster)
         {
-            // Icon booster
             string id = reward.rewardName.ToLower();
             switch (id)
             {
@@ -261,33 +332,28 @@ public class QuestChestController : MonoBehaviour
                 case "rocketboost": return iconSpeedBoost;
                 case "timefreeze": return iconTimeFreeze;
                 default:
-                    Debug.LogWarning($"[QuestChestController] Unknown booster icon: {reward.rewardName}");
+                    LogWarning($"Unknown booster icon: {reward.rewardName}");
                     return null;
             }
         }
         else
         {
-            // Icon economy (coins, shards, energy)
             string lowerName = reward.rewardName.ToLower();
             if (lowerName.Contains("coin")) return iconCoin;
             if (lowerName.Contains("shard")) return iconShard;
             if (lowerName.Contains("energy")) return iconEnergy;
 
-            Debug.LogWarning($"[QuestChestController] Unknown economy icon: {reward.rewardName}");
+            LogWarning($"Unknown economy icon: {reward.rewardName}");
             return null;
         }
     }
 
-    /// <summary>
-    /// Get display name untuk reward
-    /// </summary>
     string GetRewardDisplayName(QuestRewardGenerator.RewardData reward)
     {
         if (reward == null) return "Reward";
 
         if (reward.isBooster)
         {
-            // Booster display names
             string id = reward.rewardName.ToLower();
             switch (id)
             {
@@ -305,7 +371,6 @@ public class QuestChestController : MonoBehaviour
         }
         else
         {
-            // Economy display names
             string lowerName = reward.rewardName.ToLower();
             if (lowerName.Contains("coin")) return "Coins";
             if (lowerName.Contains("shard")) return "Blue Shard";
@@ -314,7 +379,30 @@ public class QuestChestController : MonoBehaviour
         }
     }
 
-    // Debug helpers
+    // ========================================
+    // LOGGING
+    // ========================================
+
+    void Log(string message)
+    {
+        if (enableDebugLogs)
+            Debug.Log($"[QuestChestController] {message}");
+    }
+
+    void LogWarning(string message)
+    {
+        Debug.LogWarning($"[QuestChestController] {message}");
+    }
+
+    void LogError(string message)
+    {
+        Debug.LogError($"[QuestChestController] ❌ {message}");
+    }
+
+    // ========================================
+    // CONTEXT MENU DEBUG
+    // ========================================
+
     [ContextMenu("Debug: Add Quest Progress")]
     void DebugAddProgress()
     {
@@ -337,17 +425,64 @@ public class QuestChestController : MonoBehaviour
         Debug.Log("[DEBUG] All crates reset");
     }
 
-    [ContextMenu("Debug: Print Reward Probabilities")]
-    void DebugPrintProbabilities()
+    [ContextMenu("Debug: Print Status")]
+    void DebugPrintStatus()
     {
-        QuestRewardGenerator.DebugPrintProbabilities();
+        Debug.Log("=== QUEST CHEST CONTROLLER STATUS ===");
+        Debug.Log($"Claimed Count: {claimedCount}");
+        Debug.Log($"Count Only Daily: {countOnlyDailyQuests}");
+        Debug.Log($"QuestManager.Instance: {(QuestManager.Instance != null ? "OK" : "NULL")}");
+        
+        if (QuestManager.Instance != null)
+        {
+            var dailyQuests = QuestManager.Instance.GetDailyQuests();
+            Debug.Log($"Available Daily Quests: {dailyQuests?.Count ?? 0}");
+            
+            if (dailyQuests != null)
+            {
+                int claimedDaily = 0;
+                foreach (var q in dailyQuests)
+                {
+                    if (q == null) continue;
+                    var p = QuestManager.Instance.GetProgress(q.questId);
+                    if (p != null && p.claimed)
+                    {
+                        claimedDaily++;
+                        Debug.Log($"  ✓ DAILY {q.questId}: CLAIMED");
+                    }
+                }
+                Debug.Log($"Claimed Daily: {claimedDaily}/{dailyQuests.Count}");
+            }
+        }
+
+        Debug.Log($"\nCrates status:");
+        for (int i = 0; i < claimedCrates.Length; i++)
+        {
+            string status = claimedCrates[i] ? "CLAIMED" : 
+                           (claimedCount >= thresholds[i] ? "READY" : $"LOCKED ({claimedCount}/{thresholds[i]})");
+            Debug.Log($"  Crate {i}: {status}");
+        }
+        Debug.Log("====================================");
+    }
+
+    [ContextMenu("Debug: Toggle Count Mode")]
+    void DebugToggleCountMode()
+    {
+        countOnlyDailyQuests = !countOnlyDailyQuests;
+        Debug.Log($"[DEBUG] Count mode changed to: {(countOnlyDailyQuests ? "DAILY ONLY" : "ALL QUESTS")}");
+    }
+
+    [ContextMenu("Debug: Force Subscribe")]
+    void DebugForceSubscribe()
+    {
+        SubscribeToQuestEvents();
     }
 
     [ContextMenu("Debug: Clear Saved Progress")]
     void DebugClearSavedProgress()
     {
         PlayerPrefs.DeleteKey(PREF_CLAIMED_COUNT);
-        for (int i = 0; i < 10; i++) // clear up to 10 crates
+        for (int i = 0; i < 10; i++)
         {
             PlayerPrefs.DeleteKey(PREF_CRATE_CLAIMED_PREFIX + i);
         }
@@ -360,6 +495,6 @@ public class QuestChestController : MonoBehaviour
         }
         UpdateVisuals();
 
-        Debug.Log("[DEBUG] Cleared saved crate progress from PlayerPrefs");
+        Debug.Log("[DEBUG] Cleared saved progress");
     }
 }

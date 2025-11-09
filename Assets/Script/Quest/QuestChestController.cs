@@ -3,10 +3,10 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// ✅✅✅ FINAL FIX: Event flow yang benar untuk crate progress
-/// - Remove legacy OnQuestClaimed(QuestData) method
-/// - Pure event-driven architecture
-/// - Works dari LevelP & QuestP
+/// ✅✅✅ PERSISTENT FIX: QuestChestController yang SELALU subscribe
+/// - NEVER unsubscribe on disable (persistent listener)
+/// - Subscribe di Awake dan NEVER unsubscribe sampai destroy
+/// - Crate progress works dari MANA SAJA (LevelP atau QuestP)
 /// </summary>
 public class QuestChestController : MonoBehaviour
 {
@@ -45,6 +45,7 @@ public class QuestChestController : MonoBehaviour
 
     int claimedCount = 0;
     bool[] claimedCrates;
+    bool isSubscribed = false;
 
     void Awake()
     {
@@ -68,33 +69,37 @@ public class QuestChestController : MonoBehaviour
     void Start()
     {
         LoadProgress();
-        SubscribeToQuestEvents();
+        
+        // ✅ CRITICAL FIX: Subscribe ONCE dan NEVER unsubscribe sampai destroy
+        SubscribeToQuestEventsPersistent();
+        
         UpdateVisuals();
 
         Log($"QuestChestController initialized (countOnlyDailyQuests={countOnlyDailyQuests})");
-    }
-
-    void OnEnable()
-    {
-        SubscribeToQuestEvents();
-    }
-
-    void OnDisable()
-    {
-        UnsubscribeFromQuestEvents();
+        Log($"Initial claimedCount: {claimedCount}");
     }
 
     void OnDestroy()
     {
+        // ✅ ONLY unsubscribe on destroy
         UnsubscribeFromQuestEvents();
     }
 
     // ========================================
-    // ✅✅✅ EVENT SUBSCRIPTION (PURE)
+    // ✅✅✅ PERSISTENT EVENT SUBSCRIPTION
     // ========================================
 
-    void SubscribeToQuestEvents()
+    /// <summary>
+    /// ✅ Subscribe ONCE dan PERSISTENT (never unsubscribe except destroy)
+    /// </summary>
+    void SubscribeToQuestEventsPersistent()
     {
+        if (isSubscribed)
+        {
+            Log("Already subscribed - skipping");
+            return;
+        }
+
         if (QuestManager.Instance == null)
         {
             LogWarning("QuestManager.Instance is null! Will retry...");
@@ -102,25 +107,34 @@ public class QuestChestController : MonoBehaviour
             return;
         }
 
+        // ✅ Remove dulu untuk ensure tidak double-subscribe
         QuestManager.Instance.OnQuestClaimed.RemoveListener(OnQuestClaimedHandler);
+        // ✅ Subscribe
         QuestManager.Instance.OnQuestClaimed.AddListener(OnQuestClaimedHandler);
 
-        Log("✓✓✓ Subscribed to QuestManager.OnQuestClaimed event");
+        isSubscribed = true;
+
+        Log("✅✅✅ PERSISTENT SUBSCRIPTION ACTIVE");
+        Log("Will receive events even when panel is disabled!");
     }
 
     void RetrySubscribe()
     {
         Log("Retrying subscribe to QuestManager events...");
-        SubscribeToQuestEvents();
+        SubscribeToQuestEventsPersistent();
     }
 
     void UnsubscribeFromQuestEvents()
     {
+        if (!isSubscribed) return;
+
         if (QuestManager.Instance != null)
         {
             QuestManager.Instance.OnQuestClaimed.RemoveListener(OnQuestClaimedHandler);
-            Log("Unsubscribed from QuestManager events");
+            Log("✓ Unsubscribed from QuestManager events (on destroy)");
         }
+
+        isSubscribed = false;
     }
 
     /// <summary>
@@ -128,28 +142,45 @@ public class QuestChestController : MonoBehaviour
     /// </summary>
     void OnQuestClaimedHandler(string questId, QuestData questData)
     {
+        Log($"========================================");
+        Log($"EVENT RECEIVED: Quest claimed");
+        Log($"  Quest ID: {questId}");
+        Log($"  Quest Data: {(questData != null ? "OK" : "NULL")}");
+        
         if (questData == null)
         {
             LogWarning($"OnQuestClaimedHandler: questData is NULL for {questId}");
+            Log($"========================================");
             return;
         }
+
+        Log($"  Quest Type: {(questData.isDaily ? "DAILY" : "WEEKLY")}");
+        Log($"  Count Mode: {(countOnlyDailyQuests ? "DAILY ONLY" : "ALL QUESTS")}");
 
         // ✅ Check filter
         if (countOnlyDailyQuests && !questData.isDaily)
         {
-            Log($"Quest {questId} is WEEKLY - SKIPPING (countOnlyDailyQuests=true)");
+            Log($"❌ FILTERED OUT: Quest is WEEKLY but countOnlyDailyQuests=true");
+            Log($"========================================");
             return;
         }
 
         string questType = questData.isDaily ? "DAILY" : "WEEKLY";
-        Log($"✅✅✅ QUEST CLAIMED EVENT RECEIVED: {questId} ({questType})");
+        Log($"✅ PASSED FILTER: Processing {questType} quest");
 
         // ✅ Increment crate progress
+        int oldCount = claimedCount;
         claimedCount++;
+        
+        Log($"✅ CRATE PROGRESS INCREMENT:");
+        Log($"  Before: {oldCount}");
+        Log($"  After: {claimedCount}");
+        
         SaveProgress();
         UpdateVisuals();
 
-        Log($"✓✓✓ CRATE PROGRESS UPDATED: {claimedCount} quests claimed");
+        Log($"✓✓✓ CRATE PROGRESS UPDATED SUCCESSFULLY");
+        Log($"========================================");
     }
 
     // ========================================
@@ -180,7 +211,7 @@ public class QuestChestController : MonoBehaviour
         }
 
         PlayerPrefs.Save();
-        Log($"Saved progress: claimedCount={claimedCount}");
+        Log($"✓ Saved progress: claimedCount={claimedCount}");
     }
 
     // ========================================
@@ -197,6 +228,8 @@ public class QuestChestController : MonoBehaviour
             progressSlider.maxValue = max;
             progressSlider.value = Mathf.Clamp(claimedCount, 0, max);
             progressSlider.interactable = false;
+            
+            Log($"✓ Slider updated: {claimedCount}/{max}");
         }
 
         for (int i = 0; i < crateImages.Length && i < thresholds.Length; i++)
@@ -217,7 +250,7 @@ public class QuestChestController : MonoBehaviour
             }
         }
 
-        Log($"Visuals updated: progress={claimedCount}/{max}");
+        Log($"✓ Visuals updated: progress={claimedCount}/{max}");
     }
 
     // ========================================
@@ -412,6 +445,7 @@ public class QuestChestController : MonoBehaviour
     {
         Debug.Log("=== QUEST CHEST CONTROLLER STATUS ===");
         Debug.Log($"Claimed Count: {claimedCount}");
+        Debug.Log($"Is Subscribed: {isSubscribed} (PERSISTENT)");
         Debug.Log($"Count Only Daily: {countOnlyDailyQuests}");
         Debug.Log($"QuestManager.Instance: {(QuestManager.Instance != null ? "OK" : "NULL")}");
         
@@ -454,10 +488,11 @@ public class QuestChestController : MonoBehaviour
         Debug.Log($"[DEBUG] Count mode changed to: {(countOnlyDailyQuests ? "DAILY ONLY" : "ALL QUESTS")}");
     }
 
-    [ContextMenu("Debug: Force Subscribe")]
-    void DebugForceSubscribe()
+    [ContextMenu("Debug: Force Resubscribe")]
+    void DebugForceResubscribe()
     {
-        SubscribeToQuestEvents();
+        isSubscribed = false;
+        SubscribeToQuestEventsPersistent();
     }
 
     [ContextMenu("Debug: Clear Saved Progress")]

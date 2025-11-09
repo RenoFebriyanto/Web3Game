@@ -3,11 +3,11 @@ using UnityEngine;
 using UnityEngine.Events;
 
 /// <summary>
-/// ✅✅✅ CRITICAL FIX: DailyRewardSystem dengan IMMEDIATE CHECK
-/// - Check completion IMMEDIATELY setelah quest claimed
-/// - Subscribe ke SEMUA quest events (progress + claimed)
-/// - Force check di Start, OnEnable, dan setiap kali quest berubah
-/// - Better logging untuk debugging
+/// ✅✅✅ PERSISTENT FIX: DailyRewardSystem yang TIDAK PERNAH DIHANCURKAN
+/// - DontDestroyOnLoad untuk persist antar scene
+/// - Proper singleton pattern dengan cleanup
+/// - Persistent event subscription
+/// - Offline daily reset support
 /// </summary>
 public class DailyRewardSystem : MonoBehaviour
 {
@@ -55,14 +55,27 @@ public class DailyRewardSystem : MonoBehaviour
 
     void Awake()
     {
-        if (Instance != null && Instance != this)
+        // ✅✅✅ CRITICAL: Proper singleton dengan DontDestroyOnLoad
+        if (Instance != null)
         {
-            Destroy(gameObject);
-            return;
+            if (Instance != this)
+            {
+                Log($"Duplicate found on '{gameObject.name}' - DESTROYING");
+                Destroy(gameObject);
+                return;
+            }
         }
 
         Instance = this;
+
+        // ✅ CRITICAL: Mark as persistent IMMEDIATELY
         DontDestroyOnLoad(gameObject);
+
+        // Add unique tag untuk easy identification
+        gameObject.tag = "Untagged"; // Reset tag first
+        gameObject.name = "[DailyRewardSystem - PERSISTENT]";
+
+        Log("✅✅✅ DailyRewardSystem initialized as PERSISTENT");
     }
 
     void Start()
@@ -77,20 +90,18 @@ public class DailyRewardSystem : MonoBehaviour
         // ✅ CRITICAL: Force check completion at start
         Invoke(nameof(ForceCheckQuestCompletion), 1f);
 
-        Log("✓ DailyRewardSystem initialized");
-    }
-
-    void OnEnable()
-    {
-        // Re-subscribe jika belum
-        SubscribeToQuestEventsPersistent();
-        
-        // ✅ Force check saat enable
-        Invoke(nameof(ForceCheckQuestCompletion), 0.5f);
+        Log("✓ DailyRewardSystem started");
     }
 
     void OnDestroy()
     {
+        // ✅ Clear instance reference when destroyed
+        if (Instance == this)
+        {
+            LogWarning("DailyRewardSystem is being destroyed! This should NOT happen!");
+            Instance = null;
+        }
+
         UnsubscribeFromQuestEvents();
     }
 
@@ -513,6 +524,30 @@ public class DailyRewardSystem : MonoBehaviour
         CheckAllDailyQuestsComplete();
     }
 
+    /// <summary>
+    /// PUBLIC API: Reset reward untuk testing (dari DevQuestTester)
+    /// </summary>
+    public void ResetRewardForTesting()
+    {
+        Log("=== RESETTING DAILY REWARD FOR TESTING ===");
+        
+        isRewardAvailable = false;
+        isRewardClaimed = false;
+        rolledShardAmount = 0;
+        rolledEnergyAmount = 0;
+        
+        SaveState();
+        
+        // Clear last claim date agar bisa claim lagi
+        PlayerPrefs.DeleteKey(PREF_LAST_CLAIM_DATE);
+        PlayerPrefs.Save();
+        
+        // Trigger event
+        OnRewardReset?.Invoke();
+        
+        Log("✓ Daily reward reset for testing - can check completion again");
+    }
+
     // ========================================
     // LOGGING
     // ========================================
@@ -584,30 +619,6 @@ public class DailyRewardSystem : MonoBehaviour
 
         Debug.Log("✓ Cleared saved daily reward data");
     }
-    
-    /// <summary>
-    /// PUBLIC API: Reset reward untuk testing (dari DevQuestTester)
-    /// </summary>
-    public void ResetRewardForTesting()
-    {
-        Log("=== RESETTING DAILY REWARD FOR TESTING ===");
-        
-        isRewardAvailable = false;
-        isRewardClaimed = false;
-        rolledShardAmount = 0;
-        rolledEnergyAmount = 0;
-        
-        SaveState();
-        
-        // Clear last claim date agar bisa claim lagi
-        PlayerPrefs.DeleteKey(PREF_LAST_CLAIM_DATE);
-        PlayerPrefs.Save();
-        
-        // Trigger event
-        OnRewardReset?.Invoke();
-        
-        Log("✓ Daily reward reset for testing - can check completion again");
-    }
 
     [ContextMenu("📊 Print Full Status")]
     void Context_PrintStatus()
@@ -615,6 +626,10 @@ public class DailyRewardSystem : MonoBehaviour
         Debug.Log("===========================================");
         Debug.Log("     DAILY REWARD SYSTEM STATUS");
         Debug.Log("===========================================");
+        Debug.Log($"GameObject Name: {gameObject.name}");
+        Debug.Log($"Instance: {(Instance != null ? "✅ OK" : "❌ NULL")}");
+        Debug.Log($"Is This Instance: {(Instance == this ? "✅ YES" : "❌ NO")}");
+        Debug.Log($"DontDestroyOnLoad: ✅ YES (persistent)");
         Debug.Log($"Subscribed to Events: {isSubscribed}");
         Debug.Log($"Reward Available: {isRewardAvailable}");
         Debug.Log($"Reward Claimed: {isRewardClaimed}");

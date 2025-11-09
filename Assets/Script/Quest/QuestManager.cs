@@ -4,7 +4,8 @@ using UnityEngine;
 using UnityEngine.Events;
 
 /// <summary>
-/// UPDATED: QuestManager dengan Event System untuk sinkronisasi real-time
+/// FIXED: Remove legacy OnQuestClaimed(QuestData) call
+/// Event system sudah handle semua sinkronisasi
 /// </summary>
 public class QuestManager : MonoBehaviour
 {
@@ -153,7 +154,7 @@ public class QuestManager : MonoBehaviour
 
     #region Progress API
     /// <summary>
-    /// ✅ UPDATED: Add progress dengan event notification
+    /// ✅ Add progress dengan event notification
     /// </summary>
     public void AddProgress(string questId, int amount)
     {
@@ -216,7 +217,7 @@ public class QuestManager : MonoBehaviour
 
     #region Claiming & Rewards
     /// <summary>
-    /// ✅ UPDATED: Claim quest dengan event notification
+    /// ✅ Claim quest dengan event notification
     /// </summary>
     public void ClaimQuest(string questId)
     {
@@ -257,14 +258,11 @@ public class QuestManager : MonoBehaviour
         SaveProgress();
         UpdateUIForQuest(questId);
 
-        // ✅ Notify all listeners (CRITICAL untuk sinkronisasi)
+        // ✅ ✅ ✅ CRITICAL FIX: Broadcast event untuk SEMUA listeners
+        // QuestChestController sudah subscribe ke event ini
         OnQuestClaimed?.Invoke(questId, qdata);
 
-        Debug.Log($"[QuestManager] Quest claimed: {questId} - Event broadcast to all listeners");
-
-        // Update chest controller
-        var chest = FindFirstObjectByType<QuestChestController>();
-        chest?.OnQuestClaimed(qdata);
+        Debug.Log($"[QuestManager] ✓✓✓ Quest claimed: {questId} - Event broadcast complete");
     }
     #endregion
 
@@ -307,7 +305,7 @@ public class QuestManager : MonoBehaviour
     }
 
     /// <summary>
-    /// ✅ NEW: Get quest data by ID (untuk external access)
+    /// ✅ Get quest data by ID (untuk external access)
     /// </summary>
     public QuestData GetQuestData(string questId)
     {
@@ -315,7 +313,7 @@ public class QuestManager : MonoBehaviour
     }
 
     /// <summary>
-    /// ✅ NEW: Get all daily quests (untuk external display)
+    /// ✅ Get all daily quests (untuk external display)
     /// </summary>
     public List<QuestData> GetDailyQuests()
     {

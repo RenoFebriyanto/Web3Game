@@ -3,10 +3,11 @@ using UnityEngine;
 using UnityEngine.Events;
 
 /// <summary>
-/// System untuk daily reward yang diberikan setelah semua quest daily selesai.
-/// - Random amount shard & energy
-/// - Real-time daily reset (offline support)
-/// - Integration dengan QuestManager
+/// ✅✅✅ CRITICAL FIX: DailyRewardSystem dengan IMMEDIATE CHECK
+/// - Check completion IMMEDIATELY setelah quest claimed
+/// - Subscribe ke SEMUA quest events (progress + claimed)
+/// - Force check di Start, OnEnable, dan setiap kali quest berubah
+/// - Better logging untuk debugging
 /// </summary>
 public class DailyRewardSystem : MonoBehaviour
 {
@@ -50,6 +51,7 @@ public class DailyRewardSystem : MonoBehaviour
     private bool isRewardClaimed = false;
     private int rolledShardAmount = 0;
     private int rolledEnergyAmount = 0;
+    private bool isSubscribed = false;
 
     void Awake()
     {
@@ -69,10 +71,22 @@ public class DailyRewardSystem : MonoBehaviour
         LoadState();
         CheckDailyReset();
 
-        // Subscribe to quest events
-        SubscribeToQuestEvents();
+        // Subscribe to quest events (PERSISTENT)
+        SubscribeToQuestEventsPersistent();
+
+        // ✅ CRITICAL: Force check completion at start
+        Invoke(nameof(ForceCheckQuestCompletion), 1f);
 
         Log("✓ DailyRewardSystem initialized");
+    }
+
+    void OnEnable()
+    {
+        // Re-subscribe jika belum
+        SubscribeToQuestEventsPersistent();
+        
+        // ✅ Force check saat enable
+        Invoke(nameof(ForceCheckQuestCompletion), 0.5f);
     }
 
     void OnDestroy()
@@ -81,21 +95,42 @@ public class DailyRewardSystem : MonoBehaviour
     }
 
     // ========================================
-    // QUEST EVENT SUBSCRIPTION
+    // ✅✅✅ PERSISTENT EVENT SUBSCRIPTION
     // ========================================
 
-    void SubscribeToQuestEvents()
+    void SubscribeToQuestEventsPersistent()
     {
-        if (QuestManager.Instance == null)
+        if (isSubscribed)
         {
-            LogWarning("QuestManager.Instance is null! Cannot subscribe to events.");
+            Log("Already subscribed - skipping");
             return;
         }
 
-        // Subscribe to quest claimed events
+        if (QuestManager.Instance == null)
+        {
+            LogWarning("QuestManager.Instance is null! Will retry...");
+            Invoke(nameof(RetrySubscribe), 0.5f);
+            return;
+        }
+
+        // ✅ Subscribe to quest CLAIMED events (CRITICAL!)
+        QuestManager.Instance.OnQuestClaimed.RemoveListener(OnQuestClaimedHandler);
         QuestManager.Instance.OnQuestClaimed.AddListener(OnQuestClaimedHandler);
 
-        Log("✓ Subscribed to QuestManager events");
+        // ✅ Also subscribe to quest PROGRESS events (for safety)
+        QuestManager.Instance.OnQuestProgressChanged.RemoveListener(OnQuestProgressChangedHandler);
+        QuestManager.Instance.OnQuestProgressChanged.AddListener(OnQuestProgressChangedHandler);
+
+        isSubscribed = true;
+
+        Log("✅✅✅ PERSISTENT SUBSCRIPTION ACTIVE");
+        Log("Will check completion after EVERY quest change!");
+    }
+
+    void RetrySubscribe()
+    {
+        Log("Retrying subscribe to QuestManager events...");
+        SubscribeToQuestEventsPersistent();
     }
 
     void UnsubscribeFromQuestEvents()
@@ -103,11 +138,13 @@ public class DailyRewardSystem : MonoBehaviour
         if (QuestManager.Instance != null)
         {
             QuestManager.Instance.OnQuestClaimed.RemoveListener(OnQuestClaimedHandler);
+            QuestManager.Instance.OnQuestProgressChanged.RemoveListener(OnQuestProgressChangedHandler);
         }
+        isSubscribed = false;
     }
 
     /// <summary>
-    /// Called when any quest is claimed
+    /// ✅✅✅ Called when any quest is CLAIMED
     /// </summary>
     void OnQuestClaimedHandler(string questId, QuestData questData)
     {
@@ -116,14 +153,36 @@ public class DailyRewardSystem : MonoBehaviour
         // Only check daily quests
         if (!questData.isDaily) return;
 
-        Log($"Daily quest claimed: {questId}");
+        Log($"========================================");
+        Log($"QUEST CLAIMED: {questId} (Daily)");
+        Log($"Quest Title: {questData.title}");
 
-        // Check if all daily quests are complete
+        // ✅ IMMEDIATE CHECK after claim
         CheckAllDailyQuestsComplete();
+        
+        Log($"========================================");
+    }
+
+    /// <summary>
+    /// ✅ Called when any quest PROGRESS changes
+    /// </summary>
+    void OnQuestProgressChangedHandler(string questId, QuestProgressModel model)
+    {
+        if (model == null) return;
+
+        // Get quest data
+        var questData = QuestManager.Instance?.GetQuestData(questId);
+        if (questData == null || !questData.isDaily) return;
+
+        // Check if quest just became complete
+        if (model.progress >= questData.requiredAmount && !model.claimed)
+        {
+            Log($"Daily quest {questId} is now COMPLETE (not yet claimed)");
+        }
     }
 
     // ========================================
-    // DAILY QUEST COMPLETION CHECK
+    // ✅✅✅ COMPLETION CHECK (IMPROVED)
     // ========================================
 
     /// <summary>
@@ -137,6 +196,13 @@ public class DailyRewardSystem : MonoBehaviour
             return;
         }
 
+        // ✅ Skip check if already claimed today
+        if (isRewardClaimed)
+        {
+            Log("Reward already claimed today - skipping check");
+            return;
+        }
+
         var dailyQuests = QuestManager.Instance.GetDailyQuests();
         if (dailyQuests == null || dailyQuests.Count == 0)
         {
@@ -144,8 +210,13 @@ public class DailyRewardSystem : MonoBehaviour
             return;
         }
 
+        Log("===========================================");
+        Log("CHECKING DAILY QUEST COMPLETION...");
+        Log($"Total daily quests: {dailyQuests.Count}");
+
         bool allComplete = true;
         int completedCount = 0;
+        int claimedCount = 0;
         int totalCount = dailyQuests.Count;
 
         foreach (var quest in dailyQuests)
@@ -153,31 +224,58 @@ public class DailyRewardSystem : MonoBehaviour
             if (quest == null) continue;
 
             var progress = QuestManager.Instance.GetProgress(quest.questId);
-            if (progress == null) continue;
+            if (progress == null)
+            {
+                Log($"  ❌ {quest.questId}: NO PROGRESS DATA");
+                allComplete = false;
+                continue;
+            }
 
             // Check if quest is complete AND claimed
             bool isComplete = progress.progress >= quest.requiredAmount;
             bool isClaimed = progress.claimed;
 
-            if (isComplete && isClaimed)
+            string status = "";
+            if (isClaimed)
+            {
+                claimedCount++;
+                completedCount++;
+                status = "✅ CLAIMED";
+            }
+            else if (isComplete)
             {
                 completedCount++;
+                status = "⚠️ COMPLETE but NOT CLAIMED";
+                allComplete = false;
             }
             else
             {
+                status = $"❌ INCOMPLETE ({progress.progress}/{quest.requiredAmount})";
                 allComplete = false;
             }
 
-            Log($"  Quest {quest.questId}: complete={isComplete}, claimed={isClaimed}");
+            Log($"  {quest.questId}: {status}");
         }
 
-        Log($"Daily quest progress: {completedCount}/{totalCount} complete & claimed");
+        Log($"\nSummary:");
+        Log($"  Complete: {completedCount}/{totalCount}");
+        Log($"  Claimed: {claimedCount}/{totalCount}");
+        Log($"  All Complete & Claimed: {(allComplete ? "✅ YES" : "❌ NO")}");
 
-        if (allComplete && !isRewardClaimed)
+        if (allComplete && !isRewardClaimed && !isRewardAvailable)
         {
-            Log("✓✓✓ ALL DAILY QUESTS COMPLETE! Reward available!");
+            Log("===========================================");
+            Log("✅✅✅ ALL DAILY QUESTS COMPLETE & CLAIMED!");
+            Log("🎉 MAKING REWARD AVAILABLE!");
+            Log("===========================================");
             MakeRewardAvailable();
         }
+        else if (isRewardAvailable)
+        {
+            Log("Reward already available (waiting for claim)");
+        }
+        
+        Log("===========================================");
     }
 
     /// <summary>
@@ -200,7 +298,10 @@ public class DailyRewardSystem : MonoBehaviour
         // Trigger event
         OnRewardAvailable?.Invoke();
 
-        Log($"✓ Daily reward available! Shard: {rolledShardAmount}, Energy: {rolledEnergyAmount}");
+        Log($"✅✅✅ DAILY REWARD AVAILABLE!");
+        Log($"  Shard: {rolledShardAmount} (chance: {shardChance}%)");
+        Log($"  Energy: {rolledEnergyAmount}");
+        Log($"  Event triggered: OnRewardAvailable");
     }
 
     // ========================================
@@ -223,7 +324,7 @@ public class DailyRewardSystem : MonoBehaviour
         else
         {
             rolledShardAmount = 0;
-            Log($"Shard roll: {shardRoll:F1}% >= {shardChance}% = LOSE");
+            Log($"Shard roll: {shardRoll:F1}% >= {shardChance}% = LOSE (no shard reward)");
         }
 
         // Roll energy (always gets)
@@ -407,7 +508,8 @@ public class DailyRewardSystem : MonoBehaviour
     /// </summary>
     public void ForceCheckQuestCompletion()
     {
-        Log("Force checking quest completion...");
+        Log("========================================");
+        Log("⚡ FORCE CHECK QUEST COMPLETION");
         CheckAllDailyQuestsComplete();
     }
 
@@ -435,13 +537,13 @@ public class DailyRewardSystem : MonoBehaviour
     // CONTEXT MENU DEBUG
     // ========================================
 
-    [ContextMenu("Debug: Force Check Quest Completion")]
+    [ContextMenu("⚡ Force Check Quest Completion")]
     void Context_ForceCheck()
     {
         ForceCheckQuestCompletion();
     }
 
-    [ContextMenu("Debug: Force Make Reward Available")]
+    [ContextMenu("🎁 Force Make Reward Available")]
     void Context_ForceMakeAvailable()
     {
         RollRewards();
@@ -452,7 +554,7 @@ public class DailyRewardSystem : MonoBehaviour
         Debug.Log("✓ Forced reward available");
     }
 
-    [ContextMenu("Debug: Force Claim Reward")]
+    [ContextMenu("💰 Force Claim Reward")]
     void Context_ForceClaimReward()
     {
         if (!isRewardAvailable)
@@ -462,40 +564,68 @@ public class DailyRewardSystem : MonoBehaviour
         ClaimReward();
     }
 
-    [ContextMenu("Debug: Reset Daily Reward")]
+    [ContextMenu("🔄 Reset Daily Reward")]
     void Context_ResetReward()
     {
         ResetDailyReward();
         Debug.Log("✓ Daily reward reset");
     }
 
-    [ContextMenu("Debug: Clear Saved Data")]
+    [ContextMenu("🗑️ Clear Saved Data")]
     void Context_ClearSavedData()
     {
+        ResetDailyReward();
+        
         PlayerPrefs.DeleteKey(PREF_LAST_CLAIM_DATE);
         PlayerPrefs.DeleteKey(PREF_REWARD_CLAIMED);
         PlayerPrefs.DeleteKey(PREF_ROLLED_SHARD);
         PlayerPrefs.DeleteKey(PREF_ROLLED_ENERGY);
         PlayerPrefs.Save();
 
+        Debug.Log("✓ Cleared saved daily reward data");
+    }
+    
+    /// <summary>
+    /// PUBLIC API: Reset reward untuk testing (dari DevQuestTester)
+    /// </summary>
+    public void ResetRewardForTesting()
+    {
+        Log("=== RESETTING DAILY REWARD FOR TESTING ===");
+        
         isRewardAvailable = false;
         isRewardClaimed = false;
         rolledShardAmount = 0;
         rolledEnergyAmount = 0;
-
-        Debug.Log("✓ Cleared saved daily reward data");
+        
+        SaveState();
+        
+        // Clear last claim date agar bisa claim lagi
+        PlayerPrefs.DeleteKey(PREF_LAST_CLAIM_DATE);
+        PlayerPrefs.Save();
+        
+        // Trigger event
+        OnRewardReset?.Invoke();
+        
+        Log("✓ Daily reward reset for testing - can check completion again");
     }
 
-    [ContextMenu("Debug: Print Status")]
+    [ContextMenu("📊 Print Full Status")]
     void Context_PrintStatus()
     {
-        Debug.Log("=== DAILY REWARD STATUS ===");
+        Debug.Log("===========================================");
+        Debug.Log("     DAILY REWARD SYSTEM STATUS");
+        Debug.Log("===========================================");
+        Debug.Log($"Subscribed to Events: {isSubscribed}");
         Debug.Log($"Reward Available: {isRewardAvailable}");
         Debug.Log($"Reward Claimed: {isRewardClaimed}");
         Debug.Log($"Rolled Shard: {rolledShardAmount}");
         Debug.Log($"Rolled Energy: {rolledEnergyAmount}");
         Debug.Log($"Last Claim Date: {PlayerPrefs.GetString(PREF_LAST_CLAIM_DATE, "NEVER")}");
         Debug.Log($"Today: {DateTime.Now:yyyy-MM-dd}");
+
+        Debug.Log($"\nManagers:");
+        Debug.Log($"  QuestManager: {(QuestManager.Instance != null ? "✅ OK" : "❌ NULL")}");
+        Debug.Log($"  PlayerEconomy: {(PlayerEconomy.Instance != null ? "✅ OK" : "❌ NULL")}");
 
         if (QuestManager.Instance != null)
         {
@@ -505,23 +635,28 @@ public class DailyRewardSystem : MonoBehaviour
             if (dailyQuests != null)
             {
                 int completed = 0;
+                int claimed = 0;
                 foreach (var q in dailyQuests)
                 {
                     if (q == null) continue;
                     var p = QuestManager.Instance.GetProgress(q.questId);
-                    if (p != null && p.claimed)
+                    if (p != null)
                     {
-                        completed++;
-                        Debug.Log($"  ✓ {q.questId}: CLAIMED");
-                    }
-                    else
-                    {
-                        Debug.Log($"  ✗ {q.questId}: {(p != null ? $"{p.progress}/{q.requiredAmount}" : "NO PROGRESS")}");
+                        bool isComplete = p.progress >= q.requiredAmount;
+                        if (isComplete) completed++;
+                        if (p.claimed) claimed++;
+                        
+                        string status = p.claimed ? "✅ CLAIMED" : 
+                                       isComplete ? "⚠️ COMPLETE" : 
+                                       $"❌ {p.progress}/{q.requiredAmount}";
+                        Debug.Log($"  {q.questId}: {status}");
                     }
                 }
-                Debug.Log($"Completed & Claimed: {completed}/{dailyQuests.Count}");
+                Debug.Log($"\nCompleted: {completed}/{dailyQuests.Count}");
+                Debug.Log($"Claimed: {claimed}/{dailyQuests.Count}");
+                Debug.Log($"All Complete & Claimed: {(claimed == dailyQuests.Count ? "✅ YES" : "❌ NO")}");
             }
         }
-        Debug.Log("===========================");
+        Debug.Log("===========================================");
     }
 }

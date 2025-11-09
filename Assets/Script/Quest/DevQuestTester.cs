@@ -1,9 +1,8 @@
 using UnityEngine;
 
 /// <summary>
-/// Dev helper untuk testing quest system.
-/// Tambahkan GameObject ini di scene dan assign QuestChestController.
-/// Panggil method ini dari Button.onClick atau manual di Inspector.
+/// ✅✅✅ FINAL FIX: Dev helper dengan DailyRewardSystem reset support
+/// Sekarang juga reset daily reward system saat clear all
 /// </summary>
 public class DevQuestTester : MonoBehaviour
 {
@@ -21,7 +20,7 @@ public class DevQuestTester : MonoBehaviour
         // Auto-find QuestChestController jika tidak di-assign
         if (crateController == null)
         {
-            crateController = crateController = FindFirstObjectByType<QuestChestController>();
+            crateController = FindFirstObjectByType<QuestChestController>();
         }
     }
 
@@ -64,7 +63,26 @@ public class DevQuestTester : MonoBehaviour
     }
 
     // ========================================
-    // CRATE METHODS (NEW!)
+    // ✅✅✅ NEW: DAILY REWARD SYSTEM RESET
+    // ========================================
+
+    /// <summary>
+    /// Reset DailyRewardSystem untuk testing
+    /// </summary>
+    public void ResetDailyRewardNow()
+    {
+        if (DailyRewardSystem.Instance == null)
+        {
+            Debug.LogError("[DevQuestTester] DailyRewardSystem.Instance is null!");
+            return;
+        }
+
+        DailyRewardSystem.Instance.ResetRewardForTesting();
+        Debug.Log("[DevQuestTester] ✅ DailyRewardSystem reset for testing!");
+    }
+
+    // ========================================
+    // CRATE METHODS
     // ========================================
 
     /// <summary>
@@ -75,11 +93,11 @@ public class DevQuestTester : MonoBehaviour
         if (crateController == null)
         {
             Debug.LogWarning("[DevQuestTester] crateController is not assigned! Trying to find...");
-            crateController = crateController = FindFirstObjectByType<QuestChestController>();
+            crateController = FindFirstObjectByType<QuestChestController>();
 
             if (crateController != null)
             {
-                // Call context menu method via reflection (karena ContextMenu tidak bisa dipanggil langsung)
+                // Call context menu method via reflection
                 var method = crateController.GetType().GetMethod("DebugResetCrates",
                     System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
 
@@ -108,7 +126,7 @@ public class DevQuestTester : MonoBehaviour
         if (crateController == null)
         {
             Debug.LogWarning("[DevQuestTester] crateController is not assigned! Trying to find...");
-            crateController = crateController = FindFirstObjectByType<QuestChestController>();
+            crateController = FindFirstObjectByType<QuestChestController>();
         }
 
         if (crateController != null)
@@ -141,7 +159,7 @@ public class DevQuestTester : MonoBehaviour
         if (crateController == null)
         {
             Debug.LogWarning("[DevQuestTester] crateController is not assigned! Trying to find...");
-            crateController = crateController = FindFirstObjectByType<QuestChestController>();
+            crateController = FindFirstObjectByType<QuestChestController>();
         }
 
         if (crateController != null)
@@ -167,18 +185,32 @@ public class DevQuestTester : MonoBehaviour
     }
 
     // ========================================
-    // COMBINED METHODS
+    // ✅✅✅ COMBINED METHODS (UPDATED)
     // ========================================
 
     /// <summary>
-    /// Reset SEMUA (quest + crate)
+    /// Reset SEMUA (quest + crate + DAILY REWARD SYSTEM)
     /// </summary>
     public void ResetAllNow()
     {
+        Debug.Log("===========================================");
+        Debug.Log("   ⚡ RESETTING ALL SYSTEMS");
+        Debug.Log("===========================================");
+        
         ResetDailyNow();
         ResetWeeklyNow();
         ResetCratesNow();
-        Debug.Log("[DevQuestTester] ===== RESET ALL (Quest + Crate) =====");
+        
+        // ✅✅✅ CRITICAL: Reset DailyRewardSystem juga!
+        ResetDailyRewardNow();
+        
+        Debug.Log("===========================================");
+        Debug.Log("✅ RESET COMPLETE!");
+        Debug.Log("   - Daily Quests: RESET");
+        Debug.Log("   - Weekly Quests: RESET");
+        Debug.Log("   - Crate Progress: RESET");
+        Debug.Log("   - Daily Reward System: RESET ✓✓✓");
+        Debug.Log("===========================================");
     }
 
     /// <summary>
@@ -186,16 +218,31 @@ public class DevQuestTester : MonoBehaviour
     /// </summary>
     public void ClearAllSavedDataNow()
     {
+        Debug.Log("===========================================");
+        Debug.Log("   🗑️ CLEARING ALL SAVED DATA");
+        Debug.Log("===========================================");
+        
         // Clear quest progress
         PlayerPrefs.DeleteKey("QuestProgress_v1");
 
         // Clear crate progress
         ClearCrateSaveNow();
 
+        // ✅✅✅ Clear daily reward data
+        PlayerPrefs.DeleteKey("Kulino_DailyReward_LastClaimDate_v1");
+        PlayerPrefs.DeleteKey("Kulino_DailyReward_Claimed_v1");
+        PlayerPrefs.DeleteKey("Kulino_DailyReward_RolledShard_v1");
+        PlayerPrefs.DeleteKey("Kulino_DailyReward_RolledEnergy_v1");
+
         PlayerPrefs.Save();
 
-        Debug.Log("[DevQuestTester] ===== CLEARED ALL SAVED DATA =====");
-        Debug.Log("[DevQuestTester] Restart Play Mode to see fresh state!");
+        Debug.Log("===========================================");
+        Debug.Log("✅ ALL SAVED DATA CLEARED!");
+        Debug.Log("   - Quest Progress: CLEARED");
+        Debug.Log("   - Crate Progress: CLEARED");
+        Debug.Log("   - Daily Reward Data: CLEARED ✓✓✓");
+        Debug.Log("===========================================");
+        Debug.Log("⚠️ Restart Play Mode to see fresh state!");
     }
 
     // ========================================
@@ -214,12 +261,15 @@ public class DevQuestTester : MonoBehaviour
     [ContextMenu("Reset Crate Progress")]
     void Context_ResetCrates() => ResetCratesNow();
 
+    [ContextMenu("⚡ Reset Daily Reward System")]
+    void Context_ResetDailyReward() => ResetDailyRewardNow();
+
     [ContextMenu("Simulate Quest Claim (Crate +1)")]
     void Context_SimulateClaim() => SimulateQuestClaimNow();
 
-    [ContextMenu("===== RESET ALL =====")]
+    [ContextMenu("===== ⚡ RESET ALL =====")]
     void Context_ResetAll() => ResetAllNow();
 
-    [ContextMenu("===== CLEAR ALL SAVED DATA =====")]
+    [ContextMenu("===== 🗑️ CLEAR ALL SAVED DATA =====")]
     void Context_ClearAll() => ClearAllSavedDataNow();
 }

@@ -16,22 +16,6 @@ using TMPro;
 public class LevelCompleteUI : MonoBehaviour
 {
 
-    public enum RewardType
-{
-    Coin,
-    Energy,
-    Booster // ✅ NEW
-}
-
-[System.Serializable]
-public class RewardData
-{
-    public RewardType type;
-    public int amount;
-    public string boosterId; // ✅ NEW: untuk identify booster type
-}
-
-
     public static LevelCompleteUI Instance { get; private set; }
 
     [Header("UI References")]

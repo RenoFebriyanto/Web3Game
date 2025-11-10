@@ -103,17 +103,19 @@ public class LevelSelectionItem : MonoBehaviour
     }
 
     void OnClicked()
-{
-    // ✅ UPDATED: Show preview instead of direct load
-    if (levelConfig == null)
     {
-        Debug.LogError("[LevelSelectionItem] Cannot start level: levelConfig is NULL!");
-        return;
+        // ✅ Show preview instead of direct load
+        if (levelConfig == null)
+        {
+            Debug.LogError("[LevelSelectionItem] Cannot start level: levelConfig is NULL!");
+            return;
+        }
+
+        // Show level preview
+        LevelPreviewController.ShowPreview(levelConfig);
+
+        Debug.Log($"[LevelSelectionItem] Showing preview for {levelConfig.id} ({levelConfig.displayName})");
     }
 
-    // Show level preview
-    LevelPreviewController.ShowPreview(levelConfig);
-    
-    Debug.Log($"[LevelSelectionItem] Showing preview for {levelConfig.id} ({levelConfig.displayName})");
-}
+
 }

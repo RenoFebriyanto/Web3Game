@@ -5,25 +5,21 @@ using UnityEngine.SceneManagement;
 using TMPro;
 
 /// <summary>
-/// Controller untuk LevelPreview panel
-/// Menampilkan info level, rewards, mission, dan stars
+/// ✅ FIXED: LevelPreview dengan fitur lengkap:
+/// - Level number text update
+/// - Lino character sprite (happy/sad based on stars)
+/// - Random rewards per level
+/// - Fragment mission display (1-6 items dengan scroll)
+/// - Close button
 /// </summary>
 public class LevelPreviewController : MonoBehaviour
 {
-
-
-[Header("Object Pooling")]
-public int poolSize = 10;
-
-private Queue<GameObject> fragmentItemPool = new Queue<GameObject>();
-private Queue<GameObject> rewardItemPool = new Queue<GameObject>();
-
     [Header("Panel Reference")]
     public GameObject levelPreviewPanel;
 
     [Header("Level Info")]
-    public TMP_Text lvlText;
-    public TMP_Text levelTitleText; // Optional: untuk display name
+    public TMP_Text lvlText; // "Lvl. X"
+    public TMP_Text levelTitleText; // Optional
 
     [Header("Character Lino")]
     public Image linoCharacterImage;
@@ -31,19 +27,19 @@ private Queue<GameObject> rewardItemPool = new Queue<GameObject>();
     public Sprite linoSad;
 
     [Header("Stars Display")]
-    public GameObject[] stars; // Array of 3 star GameObjects
+    public GameObject[] stars; // 3 star GameObjects
     public Sprite starFilled;
     public Sprite starEmpty;
 
     [Header("Mission Fragments")]
-    public Transform fragmentListContent; // Content di dalam ScrollRect
-    public GameObject fragmentItemPrefab; // Prefab untuk display fragment
+    public Transform fragmentListContent; // Content di ScrollRect
+    public GameObject fragmentItemPrefab;
     public ScrollRect fragmentScrollRect;
 
     [Header("Rewards Display")]
     public Transform rewardItemsContainer;
-    public GameObject rewardItemPrefab; // Prefab untuk display reward
-    public TMP_Text rewardDescriptionText; // Optional description
+    public GameObject rewardItemPrefab;
+    public TMP_Text rewardDescriptionText;
 
     [Header("Buttons")]
     public Button playButton;
@@ -52,8 +48,7 @@ private Queue<GameObject> rewardItemPool = new Queue<GameObject>();
     [Header("Settings")]
     public string gameplaySceneName = "Gameplay";
 
-    [Header("Reward Settings")]
-    [Tooltip("Reward chances dan amounts untuk setiap tier level")]
+    [Header("Reward Settings - Level Tiers")]
     public LevelRewardTier[] rewardTiers;
 
     [Header("Icon References")]
@@ -65,6 +60,13 @@ private Queue<GameObject> rewardItemPool = new Queue<GameObject>();
     public Sprite coin2xIcon;
     public Sprite magnetIcon;
 
+    [Header("Registry")]
+    public FragmentPrefabRegistry fragmentRegistry;
+
+    [Header("Debug")]
+    public bool enableDebugLogs = true;
+
+    // Runtime
     private LevelConfig currentLevel;
     private List<RewardData> generatedRewards = new List<RewardData>();
     private List<GameObject> spawnedFragmentItems = new List<GameObject>();
@@ -72,7 +74,7 @@ private Queue<GameObject> rewardItemPool = new Queue<GameObject>();
 
     void Awake()
     {
-        // Setup button listeners
+        // Setup buttons
         if (playButton != null)
         {
             playButton.onClick.RemoveAllListeners();
@@ -85,15 +87,6 @@ private Queue<GameObject> rewardItemPool = new Queue<GameObject>();
             closeButton.onClick.AddListener(OnCloseButtonClicked);
         }
 
-        // ✅ Ensure BoosterInventory exists
-        if (BoosterInventory.Instance == null)
-        {
-            GameObject go = new GameObject("BoosterInventory");
-            go.AddComponent<BoosterInventory>();
-            DontDestroyOnLoad(go);
-            Debug.Log("[LevelPreview] Created BoosterInventory instance");
-        }
-
         // Hide panel initially
         if (levelPreviewPanel != null)
         {
@@ -101,65 +94,14 @@ private Queue<GameObject> rewardItemPool = new Queue<GameObject>();
         }
     }
 
-
-    void InitializePools()
-    {
-        // Fragment pool
-        for (int i = 0; i < poolSize; i++)
-        {
-            if (fragmentItemPrefab != null)
-            {
-                GameObject obj = Instantiate(fragmentItemPrefab);
-                obj.SetActive(false);
-                obj.transform.SetParent(transform);
-                fragmentItemPool.Enqueue(obj);
-            }
-        }
-
-        // Reward pool
-        for (int i = 0; i < poolSize; i++)
-        {
-            if (rewardItemPrefab != null)
-            {
-                GameObject obj = Instantiate(rewardItemPrefab);
-                obj.SetActive(false);
-                obj.transform.SetParent(transform);
-                rewardItemPool.Enqueue(obj);
-            }
-        }
-    }
-
-GameObject GetFragmentItemFromPool()
-{
-    if (fragmentItemPool.Count > 0)
-    {
-        GameObject obj = fragmentItemPool.Dequeue();
-        obj.SetActive(true);
-        return obj;
-    }
-    
-    // Fallback: instantiate new
-    return Instantiate(fragmentItemPrefab);
-}
-
-    void ReturnFragmentItemToPool(GameObject obj)
-    {
-        obj.SetActive(false);
-        obj.transform.SetParent(transform);
-        fragmentItemPool.Enqueue(obj);
-    }
-
-
-
     /// <summary>
-    /// Show level preview dengan level data
-    /// Called dari LevelSelectionItem
+    /// ✅ Main method: Show preview untuk level yang dipilih
     /// </summary>
     public void ShowLevelPreview(LevelConfig levelConfig)
     {
         if (levelConfig == null)
         {
-            Debug.LogError("[LevelPreview] LevelConfig is null!");
+            LogError("LevelConfig is null!");
             return;
         }
 
@@ -171,30 +113,33 @@ GameObject GetFragmentItemFromPool()
             levelPreviewPanel.SetActive(true);
         }
 
-        // Update UI
-        UpdateLevelInfo();
-        UpdateCharacterSprite();
+        // Update semua UI
+        UpdateLevelNumberText();
+        UpdateLinoCharacterSprite();
         UpdateStarsDisplay();
         UpdateMissionFragments();
         GenerateAndDisplayRewards();
 
-        Debug.Log($"[LevelPreview] Showing preview for {levelConfig.displayName}");
+        Log($"✓ Showing preview for {levelConfig.displayName} (Level {levelConfig.number})");
     }
 
+    // ========================================
+    // UPDATE UI ELEMENTS
+    // ========================================
+
     /// <summary>
-    /// Update level number text
+    /// ✅ Update "Lvl. X" text
     /// </summary>
-    void UpdateLevelInfo()
+    void UpdateLevelNumberText()
     {
         if (currentLevel == null) return;
 
-        // Update "Lvl. X" text
         if (lvlText != null)
         {
             lvlText.text = $"Lvl. {currentLevel.number}";
+            Log($"Updated level text: Lvl. {currentLevel.number}");
         }
 
-        // Update level title (optional)
         if (levelTitleText != null)
         {
             levelTitleText.text = currentLevel.displayName;
@@ -202,25 +147,26 @@ GameObject GetFragmentItemFromPool()
     }
 
     /// <summary>
-    /// Update character sprite based on stars earned
+    /// ✅ Update Lino character sprite (happy/sad based on earned stars)
     /// </summary>
-    void UpdateCharacterSprite()
+    void UpdateLinoCharacterSprite()
     {
         if (currentLevel == null || linoCharacterImage == null) return;
 
-        // Get earned stars for this level
+        // Get earned stars untuk level ini
         int earnedStars = 0;
         if (LevelProgressManager.Instance != null)
         {
             earnedStars = LevelProgressManager.Instance.GetBestStars(currentLevel.id);
         }
 
-        // Show happy if any stars earned, sad if 0 stars
+        // 0 stars = Sad, 1-3 stars = Happy
         if (earnedStars > 0)
         {
             if (linoHappy != null)
             {
                 linoCharacterImage.sprite = linoHappy;
+                Log($"Lino: Happy ({earnedStars} stars earned)");
             }
         }
         else
@@ -228,20 +174,18 @@ GameObject GetFragmentItemFromPool()
             if (linoSad != null)
             {
                 linoCharacterImage.sprite = linoSad;
+                Log("Lino: Sad (0 stars)");
             }
         }
-
-        Debug.Log($"[LevelPreview] Character sprite updated: {(earnedStars > 0 ? "Happy" : "Sad")} ({earnedStars} stars)");
     }
 
     /// <summary>
-    /// Update stars display (filled/empty based on earned stars)
+    /// ✅ Update stars display
     /// </summary>
     void UpdateStarsDisplay()
     {
         if (currentLevel == null || stars == null) return;
 
-        // Get earned stars
         int earnedStars = 0;
         if (LevelProgressManager.Instance != null)
         {
@@ -256,7 +200,6 @@ GameObject GetFragmentItemFromPool()
             Image starImage = stars[i].GetComponent<Image>();
             if (starImage == null) continue;
 
-            // Set sprite based on earned stars
             if (i < earnedStars)
             {
                 starImage.sprite = starFilled;
@@ -267,71 +210,62 @@ GameObject GetFragmentItemFromPool()
             }
         }
 
-        Debug.Log($"[LevelPreview] Stars display updated: {earnedStars}/3");
+        Log($"Stars updated: {earnedStars}/3");
     }
 
     /// <summary>
-    /// Update mission fragments list dengan ScrollRect support
+    /// ✅ Update mission fragments (1-6 items dengan ScrollRect)
     /// </summary>
     void UpdateMissionFragments()
     {
-
         if (currentLevel == null || fragmentListContent == null) return;
 
-    // Return existing items to pool
-    foreach (var item in spawnedFragmentItems)
-    {
-        if (item != null)
-        {
-            ReturnFragmentItemToPool(item);
-        }
-    }
-    spawnedFragmentItems.Clear();
-
-        if (currentLevel == null || fragmentListContent == null) return;
-
-        // Clear existing fragments
+        // Clear existing
         ClearSpawnedItems(spawnedFragmentItems);
 
         if (currentLevel.requirements == null || currentLevel.requirements.Count == 0)
         {
-            Debug.LogWarning("[LevelPreview] No requirements for this level");
+            LogWarning("No requirements for this level!");
             return;
         }
+
+        int reqCount = currentLevel.requirements.Count;
+        Log($"Spawning {reqCount} fragment items...");
 
         // Spawn fragment items
         foreach (var requirement in currentLevel.requirements)
         {
-
-            
             if (fragmentItemPrefab == null)
             {
-                Debug.LogError("[LevelPreview] fragmentItemPrefab not assigned!");
+                LogError("fragmentItemPrefab not assigned!");
                 break;
             }
 
             GameObject fragmentItem = Instantiate(fragmentItemPrefab, fragmentListContent);
-            
-            // Setup fragment item (gunakan FragmentPrefabRegistry untuk icon)
             SetupFragmentItem(fragmentItem, requirement);
-            
             spawnedFragmentItems.Add(fragmentItem);
         }
 
-        // Enable scroll jika items > 3
+        // ✅ Enable ScrollRect jika fragments > 3
         if (fragmentScrollRect != null)
         {
-            fragmentScrollRect.enabled = currentLevel.requirements.Count > 3;
-            
-            // Reset scroll position
-            if (fragmentScrollRect.enabled)
+            bool needScroll = reqCount > 3;
+            fragmentScrollRect.enabled = needScroll;
+
+            if (needScroll)
             {
+                // Reset scroll position
                 Canvas.ForceUpdateCanvases();
                 fragmentScrollRect.horizontalNormalizedPosition = 0f;
+                Log("ScrollRect enabled (more than 3 fragments)");
+            }
+            else
+            {
+                Log("ScrollRect disabled (3 or fewer fragments)");
             }
         }
 
-        Debug.Log($"[LevelPreview] Mission fragments updated: {currentLevel.requirements.Count} items");
+        Log($"✓ Mission fragments updated: {reqCount} items");
     }
 
     /// <summary>
@@ -339,23 +273,23 @@ GameObject GetFragmentItemFromPool()
     /// </summary>
     void SetupFragmentItem(GameObject item, FragmentRequirement requirement)
     {
-        // Cari Image component untuk icon (adjust sesuai hierarchy prefab)
+        // Find icon image
         Image iconImage = item.transform.Find("Icon")?.GetComponent<Image>();
         if (iconImage == null)
         {
             iconImage = item.GetComponentInChildren<Image>();
         }
 
-        // Cari Text component untuk count
+        // Find count text
         TMP_Text countText = item.transform.Find("CountText")?.GetComponent<TMP_Text>();
         if (countText == null)
         {
             countText = item.GetComponentInChildren<TMP_Text>();
         }
 
-        // Get fragment icon dari FragmentPrefabRegistry
+        // Get fragment icon
         Sprite fragmentIcon = GetFragmentIcon(requirement.type, requirement.colorVariant);
-        
+
         if (iconImage != null && fragmentIcon != null)
         {
             iconImage.sprite = fragmentIcon;
@@ -368,58 +302,52 @@ GameObject GetFragmentItemFromPool()
     }
 
     /// <summary>
-    /// Get fragment icon dari prefab registry
+    /// Get fragment icon dari registry
     /// </summary>
     Sprite GetFragmentIcon(FragmentType type, int variant)
-{
-    // Method 1: Try FragmentPrefabRegistry
-    var registry = Resources.Load<FragmentPrefabRegistry>("FragmentPrefabRegistry");
-    
-    if (registry != null)
     {
-        GameObject prefab = registry.GetPrefab(type, variant);
-        if (prefab != null)
+        if (fragmentRegistry != null)
         {
-            SpriteRenderer sr = prefab.GetComponentInChildren<SpriteRenderer>();
-            if (sr != null && sr.sprite != null)
+            GameObject prefab = fragmentRegistry.GetPrefab(type, variant);
+            if (prefab != null)
             {
-                return sr.sprite;
+                SpriteRenderer sr = prefab.GetComponentInChildren<SpriteRenderer>();
+                if (sr != null && sr.sprite != null)
+                {
+                    return sr.sprite;
+                }
             }
         }
+
+        LogWarning($"No icon found for {type} variant {variant}");
+        return null;
     }
 
-    // Method 2: Try FragmentPreviewManager (manual assignment)
-    Sprite manualIcon = FragmentPreviewManager.GetFragmentIcon(type, variant);
-    if (manualIcon != null)
-    {
-        return manualIcon;
-    }
-
-    Debug.LogWarning($"[LevelPreview] No icon found for {type} variant {variant}");
-    return null;
-}
+    // ========================================
+    // REWARD GENERATION SYSTEM
+    // ========================================
 
     /// <summary>
-    /// Generate random rewards based on level tier
+    /// ✅ Generate random rewards berdasarkan level tier
     /// </summary>
     void GenerateAndDisplayRewards()
     {
         if (currentLevel == null) return;
 
-        // Clear existing rewards
+        // Clear existing
         ClearSpawnedItems(spawnedRewardItems);
         generatedRewards.Clear();
 
-        // Get reward tier for this level
+        // Get reward tier untuk level ini
         LevelRewardTier tier = GetRewardTierForLevel(currentLevel.number);
-        
+
         if (tier == null)
         {
-            Debug.LogWarning($"[LevelPreview] No reward tier found for level {currentLevel.number}");
+            LogWarning($"No reward tier found for level {currentLevel.number}");
             return;
         }
 
-        // Generate random number of rewards (1-3)
+        // Generate random rewards (1-3 items)
         int rewardCount = Random.Range(tier.minRewards, tier.maxRewards + 1);
 
         for (int i = 0; i < rewardCount; i++)
@@ -434,7 +362,7 @@ GameObject GetFragmentItemFromPool()
         // Display rewards
         DisplayRewards();
 
-        Debug.Log($"[LevelPreview] Generated {generatedRewards.Count} rewards for level {currentLevel.number}");
+        Log($"✓ Generated {generatedRewards.Count} rewards for level {currentLevel.number}");
     }
 
     /// <summary>
@@ -442,7 +370,6 @@ GameObject GetFragmentItemFromPool()
     /// </summary>
     RewardData GenerateRandomReward(LevelRewardTier tier)
     {
-        // Random reward type berdasarkan chances
         float roll = Random.Range(0f, 100f);
         float cumulative = 0f;
 
@@ -471,9 +398,6 @@ GameObject GetFragmentItemFromPool()
         return GenerateCoinReward(tier);
     }
 
-    /// <summary>
-    /// Generate random booster reward
-    /// </summary>
     RewardData GenerateRandomBooster(LevelRewardTier tier)
     {
         string[] boosterTypes = { "speedboost", "timefreeze", "shield", "coin2x", "magnet" };
@@ -481,21 +405,16 @@ GameObject GetFragmentItemFromPool()
 
         int amount = Random.Range(tier.minBoosterAmount, tier.maxBoosterAmount + 1);
 
-        Sprite icon = GetBoosterIcon(randomBooster);
-
         return new RewardData
         {
             type = RewardType.Booster,
             boosterId = randomBooster,
             amount = amount,
-            icon = icon,
+            icon = GetBoosterIcon(randomBooster),
             displayName = GetBoosterDisplayName(randomBooster)
         };
     }
 
-    /// <summary>
-    /// Generate coin reward
-    /// </summary>
     RewardData GenerateCoinReward(LevelRewardTier tier)
     {
         int amount = Random.Range(tier.minCoinAmount, tier.maxCoinAmount + 1);
@@ -509,9 +428,6 @@ GameObject GetFragmentItemFromPool()
         };
     }
 
-    /// <summary>
-    /// Generate energy reward
-    /// </summary>
     RewardData GenerateEnergyReward(LevelRewardTier tier)
     {
         int amount = Random.Range(tier.minEnergyAmount, tier.maxEnergyAmount + 1);
@@ -525,9 +441,6 @@ GameObject GetFragmentItemFromPool()
         };
     }
 
-    /// <summary>
-    /// Get booster icon
-    /// </summary>
     Sprite GetBoosterIcon(string boosterId)
     {
         switch (boosterId.ToLower())
@@ -541,9 +454,6 @@ GameObject GetFragmentItemFromPool()
         }
     }
 
-    /// <summary>
-    /// Get booster display name
-    /// </summary>
     string GetBoosterDisplayName(string boosterId)
     {
         switch (boosterId.ToLower())
@@ -557,6 +467,26 @@ GameObject GetFragmentItemFromPool()
         }
     }
 
+    LevelRewardTier GetRewardTierForLevel(int levelNumber)
+    {
+        if (rewardTiers == null || rewardTiers.Length == 0)
+        {
+            LogWarning("No reward tiers defined!");
+            return null;
+        }
+
+        foreach (var tier in rewardTiers)
+        {
+            if (levelNumber >= tier.startLevel && levelNumber <= tier.endLevel)
+            {
+                return tier;
+            }
+        }
+
+        // Fallback: return last tier
+        return rewardTiers[rewardTiers.Length - 1];
+    }
+
     /// <summary>
     /// Display rewards di UI
     /// </summary>
@@ -567,32 +497,29 @@ GameObject GetFragmentItemFromPool()
         foreach (var reward in generatedRewards)
         {
             GameObject rewardItem = Instantiate(rewardItemPrefab, rewardItemsContainer);
-            
-            // Setup reward item UI
             SetupRewardItem(rewardItem, reward);
-            
             spawnedRewardItems.Add(rewardItem);
         }
 
-        // Update description (optional)
+        // Update description
         if (rewardDescriptionText != null)
         {
             rewardDescriptionText.text = $"Complete this level to get {generatedRewards.Count} reward{(generatedRewards.Count > 1 ? "s" : "")}!";
         }
+
+        Log($"✓ Displayed {generatedRewards.Count} rewards");
     }
 
-    /// <summary>
-    /// Setup individual reward item UI
-    /// </summary>
     void SetupRewardItem(GameObject item, RewardData reward)
     {
-        // Setup mirip dengan BundleItemDisplay
+        // Find icon
         Image iconImage = item.transform.Find("Icon")?.GetComponent<Image>();
         if (iconImage == null)
         {
             iconImage = item.GetComponentInChildren<Image>();
         }
 
+        // Find amount text
         TMP_Text amountText = item.transform.Find("Amount")?.GetComponent<TMP_Text>();
         if (amountText == null)
         {
@@ -610,98 +537,63 @@ GameObject GetFragmentItemFromPool()
         }
     }
 
-    /// <summary>
-    /// Get reward tier based on level number
-    /// </summary>
-    LevelRewardTier GetRewardTierForLevel(int levelNumber)
-    {
-        if (rewardTiers == null || rewardTiers.Length == 0)
-        {
-            Debug.LogWarning("[LevelPreview] No reward tiers defined!");
-            return null;
-        }
-
-        // Cari tier yang sesuai
-        foreach (var tier in rewardTiers)
-        {
-            if (levelNumber >= tier.startLevel && levelNumber <= tier.endLevel)
-            {
-                return tier;
-            }
-        }
-
-        // Fallback: return last tier
-        return rewardTiers[rewardTiers.Length - 1];
-    }
+    // ========================================
+    // BUTTON HANDLERS
+    // ========================================
 
     /// <summary>
-    /// Clear spawned items
-    /// </summary>
-    void ClearSpawnedItems(List<GameObject> items)
-    {
-        foreach (var item in items)
-        {
-            if (item != null)
-            {
-                Destroy(item);
-            }
-        }
-        items.Clear();
-    }
-
-    /// <summary>
-    /// Play button clicked - start level dengan rewards saved
+    /// ✅ Play button: Start level dengan rewards saved
     /// </summary>
     void OnPlayButtonClicked()
     {
         if (currentLevel == null)
         {
-            Debug.LogError("[LevelPreview] No level selected!");
+            LogError("No level selected!");
             return;
         }
 
-        // Save level info to PlayerPrefs
+        // Save level info
         PlayerPrefs.SetString("SelectedLevelId", currentLevel.id);
         PlayerPrefs.SetInt("SelectedLevelNumber", currentLevel.number);
 
-        // Save generated rewards untuk diklaim setelah level complete
+        // ✅ Save generated rewards untuk diklaim setelah level complete
         SaveGeneratedRewards();
 
         PlayerPrefs.Save();
 
-        // Play click sound
+        // Play sound
         if (SoundManager.Instance != null)
         {
             SoundManager.Instance.PlayButtonClick();
         }
 
+        Log($"Starting level {currentLevel.number}...");
+
         // Load gameplay scene
-        Debug.Log($"[LevelPreview] Starting level {currentLevel.number}");
         SceneManager.LoadScene(gameplaySceneName);
     }
 
     /// <summary>
-    /// Save generated rewards ke PlayerPrefs untuk diklaim later
+    /// Save rewards ke PlayerPrefs
     /// </summary>
     void SaveGeneratedRewards()
     {
         if (generatedRewards == null || generatedRewards.Count == 0) return;
 
-        // Serialize rewards to JSON
         RewardDataList rewardList = new RewardDataList { rewards = generatedRewards };
         string json = JsonUtility.ToJson(rewardList);
-        
+
         PlayerPrefs.SetString($"LevelRewards_{currentLevel.id}", json);
-        
-        Debug.Log($"[LevelPreview] Saved {generatedRewards.Count} rewards for {currentLevel.id}");
+
+        Log($"✓ Saved {generatedRewards.Count} rewards for {currentLevel.id}");
     }
 
     /// <summary>
-    /// Close button clicked
+    /// ✅ Close button: Hide panel
     /// </summary>
     void OnCloseButtonClicked()
     {
-        // Play click sound
+        // Play sound
         if (SoundManager.Instance != null)
         {
             SoundManager.Instance.PlayButtonClick();
@@ -719,11 +611,43 @@ GameObject GetFragmentItemFromPool()
         ClearSpawnedItems(spawnedRewardItems);
         generatedRewards.Clear();
 
-        Debug.Log("[LevelPreview] Panel closed");
+        Log("✓ Panel closed");
+    }
+
+    // ========================================
+    // HELPERS
+    // ========================================
+
+    void ClearSpawnedItems(List<GameObject> items)
+    {
+        foreach (var item in items)
+        {
+            if (item != null)
+            {
+                Destroy(item);
+            }
+        }
+        items.Clear();
+    }
+
+    void Log(string message)
+    {
+        if (enableDebugLogs)
+            Debug.Log($"[LevelPreview] {message}");
+    }
+
+    void LogWarning(string message)
+    {
+        Debug.LogWarning($"[LevelPreview] {message}");
+    }
+
+    void LogError(string message)
+    {
+        Debug.LogError($"[LevelPreview] {message}");
     }
 
     /// <summary>
-    /// Static helper: Show preview dari external script
+    /// ✅ Static helper: Show preview dari script lain
     /// </summary>
     public static void ShowPreview(LevelConfig levelConfig)
     {
@@ -737,10 +661,37 @@ GameObject GetFragmentItemFromPool()
             Debug.LogError("[LevelPreview] LevelPreviewController not found in scene!");
         }
     }
+
+    // ========================================
+    // CONTEXT MENU DEBUG
+    // ========================================
+
+    [ContextMenu("Debug: Print Current Level")]
+    void Context_PrintLevel()
+    {
+        if (currentLevel != null)
+        {
+            Debug.Log($"=== CURRENT LEVEL ===\nID: {currentLevel.id}\nNumber: {currentLevel.number}\nName: {currentLevel.displayName}\nRequirements: {currentLevel.requirements?.Count ?? 0}");
+        }
+        else
+        {
+            Debug.Log("No level loaded");
+        }
+    }
+
+    [ContextMenu("Debug: Print Generated Rewards")]
+    void Context_PrintRewards()
+    {
+        Debug.Log($"=== GENERATED REWARDS ({generatedRewards.Count}) ===");
+        foreach (var reward in generatedRewards)
+        {
+            Debug.Log($"- {reward.displayName}: x{reward.amount} ({reward.type})");
+        }
+    }
 }
 
 // ========================================
-// Data Classes
+// LEVEL REWARD TIER
 // ========================================
 
 [System.Serializable]
@@ -770,20 +721,4 @@ public class LevelRewardTier
     [Header("Energy Amounts")]
     public int minEnergyAmount = 5;
     public int maxEnergyAmount = 20;
-}
-
-[System.Serializable]
-public class RewardData
-{
-    public RewardType type;
-    public string boosterId; // untuk boosters
-    public int amount;
-    public Sprite icon;
-    public string displayName;
-}
-
-[System.Serializable]
-public class RewardDataList
-{
-    public List<RewardData> rewards;
 }

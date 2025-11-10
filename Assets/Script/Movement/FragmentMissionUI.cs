@@ -1,13 +1,11 @@
-﻿// Assets/Script/Movement/FragmentMissionUI.cs
+﻿using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using System.Linq;
-using System.Collections.Generic;
 
 /// <summary>
-/// FIXED: Properly triggers LevelGameSession.OnLevelCompleted event
-/// Dynamic mission boxes (1-6) berdasarkan level requirements
+/// ✅ CRITICAL FIX: Null safety untuk semua GameObject references
 /// </summary>
 public class FragmentMissionUI : MonoBehaviour
 {
@@ -40,7 +38,6 @@ public class FragmentMissionUI : MonoBehaviour
 
         LevelConfig levelConfig = null;
 
-        // Method 1: Dari database
         if (levelDatabase != null)
         {
             levelConfig = levelDatabase.GetById(levelId);
@@ -48,7 +45,6 @@ public class FragmentMissionUI : MonoBehaviour
                 levelConfig = levelDatabase.GetByNumber(levelNum);
         }
 
-        // Method 2: FindObjectsOfType untuk find semua LevelConfig
         if (levelConfig == null)
         {
             var allConfigs = Resources.FindObjectsOfTypeAll<LevelConfig>();
@@ -66,7 +62,6 @@ public class FragmentMissionUI : MonoBehaviour
             return;
         }
 
-        // Load requirements
         if (levelConfig.requirements == null || levelConfig.requirements.Count == 0)
         {
             Debug.LogError($"[FragmentMissionUI] LevelConfig '{levelId}' has no requirements!");
@@ -75,7 +70,6 @@ public class FragmentMissionUI : MonoBehaviour
 
         int reqCount = levelConfig.requirements.Count;
 
-        // ✅ VALIDATION: Max 6 requirements
         if (reqCount > 6)
         {
             Debug.LogWarning($"[FragmentMissionUI] Level has {reqCount} requirements! Max 6 supported. Using first 6.");
@@ -112,10 +106,22 @@ public class FragmentMissionUI : MonoBehaviour
             Debug.Log($"[FragmentMissionUI] UpdateUI: {reqCount} requirements, {missionBoxes.Count} boxes available");
         }
 
-        // ✅ Show only required boxes, hide the rest
+        // ✅ CRITICAL FIX: Null safety untuk semua operations
         for (int i = 0; i < missionBoxes.Count; i++)
         {
-            if (missionBoxes[i] == null) continue;
+            // ✅ Check if box exists
+            if (missionBoxes[i] == null) 
+            {
+                Debug.LogWarning($"[FragmentMissionUI] missionBoxes[{i}] is NULL!");
+                continue;
+            }
+
+            // ✅ Check if rootObject exists BEFORE SetActive
+            if (missionBoxes[i].rootObject == null)
+            {
+                Debug.LogWarning($"[FragmentMissionUI] missionBoxes[{i}].rootObject is NULL!");
+                continue;
+            }
 
             if (i < reqCount && currentRequirements[i] != null)
             {
@@ -140,13 +146,14 @@ public class FragmentMissionUI : MonoBehaviour
     {
         if (currentRequirements == null || index >= currentRequirements.Length || currentRequirements[index] == null)
         {
-            box.rootObject.SetActive(false);
+            if (box != null && box.rootObject != null)
+                box.rootObject.SetActive(false);
             return;
         }
 
         var req = currentRequirements[index];
 
-        // Update icon
+        // ✅ Update icon with null checks
         if (fragmentRegistry != null && box.iconImage != null)
         {
             GameObject prefab = fragmentRegistry.GetPrefab(req.type, req.colorVariant);
@@ -161,7 +168,7 @@ public class FragmentMissionUI : MonoBehaviour
             }
         }
 
-        // Update count text
+        // ✅ Update count text with null checks
         if (box.countText != null)
         {
             int collected = collectedCounts != null && index < collectedCounts.Length ? collectedCounts[index] : 0;
@@ -169,7 +176,9 @@ public class FragmentMissionUI : MonoBehaviour
             box.countText.gameObject.SetActive(true);
         }
 
-        box.rootObject.SetActive(true);
+        // ✅ Activate box with null check
+        if (box.rootObject != null)
+            box.rootObject.SetActive(true);
     }
 
     void HideAllBoxes()
@@ -241,7 +250,6 @@ public class FragmentMissionUI : MonoBehaviour
         string levelId = PlayerPrefs.GetString("SelectedLevelId", "");
         int levelNum = PlayerPrefs.GetInt("SelectedLevelNumber", 1);
 
-        // ✅ CRITICAL FIX: Save stars FIRST
         var starManager = FindFirstObjectByType<GameplayStarManager>();
         if (starManager != null)
         {
@@ -249,11 +257,9 @@ public class FragmentMissionUI : MonoBehaviour
         }
         else
         {
-            // Fallback: unlock next level
             LevelProgressManager.Instance?.UnlockNextLevel(levelNum);
         }
 
-        // ✅ CRITICAL FIX: INVOKE LevelGameSession.OnLevelCompleted EVENT
         if (LevelGameSession.Instance != null)
         {
             Debug.Log("[FragmentMissionUI] ✅ Invoking LevelGameSession.OnLevelCompleted event");
@@ -264,10 +270,6 @@ public class FragmentMissionUI : MonoBehaviour
             Debug.LogError("[FragmentMissionUI] ❌ LevelGameSession.Instance is NULL! Cannot invoke OnLevelCompleted!");
         }
     }
-
-    // ========================================
-    // CONTEXT MENU DEBUG
-    // ========================================
 
     [ContextMenu("Debug: Print Current Requirements")]
     void Context_PrintRequirements()
@@ -321,10 +323,6 @@ public class FragmentMissionUI : MonoBehaviour
         Debug.Log("[FragmentMissionUI] Progress reset");
     }
 }
-
-// ========================================
-// HELPER CLASS: Mission Box UI References
-// ========================================
 
 [System.Serializable]
 public class MissionBoxUI

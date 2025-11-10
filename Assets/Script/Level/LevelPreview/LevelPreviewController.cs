@@ -169,8 +169,8 @@ public class LevelPreviewController : MonoBehaviour
 
         if (lvlText != null)
         {
-            lvlText.text = $"Lvl. {currentLevel.number}";
-            Log($"✓ Level text: Lvl. {currentLevel.number}");
+            lvlText.text = $"Lv. {currentLevel.number}";
+            Log($"✓ Level text: Lv. {currentLevel.number}");
         }
 
         if (levelTitleText != null)
@@ -493,26 +493,68 @@ public class LevelPreviewController : MonoBehaviour
 
     void SetupRewardItem(GameObject item, RewardData reward)
     {
-        Image iconImage = item.transform.Find("Icon")?.GetComponent<Image>();
-        if (iconImage == null)
+        // ✅ CRITICAL FIX: Cari Icon yang BENAR (child, bukan parent)
+        // Hierarchy: RewardItem (border) > Icon (yang harus diganti sprite)
+        
+        Transform iconTransform = item.transform.Find("Icon");
+        Image iconImage = null;
+        
+        if (iconTransform != null)
         {
-            iconImage = item.GetComponent<Image>();
+            iconImage = iconTransform.GetComponent<Image>();
+            Log($"✓ Found Icon child: {iconTransform.name}");
+        }
+        else
+        {
+            // Fallback: cari Image di children (tapi SKIP yang parent/border)
+            Image[] images = item.GetComponentsInChildren<Image>();
+            foreach (var img in images)
+            {
+                // Skip parent border (cek jika GameObject name adalah "Icon" atau bukan parent)
+                if (img.gameObject != item && img.gameObject.name.Contains("Icon"))
+                {
+                    iconImage = img;
+                    Log($"✓ Found Icon via search: {img.gameObject.name}");
+                    break;
+                }
+            }
         }
 
-        TMP_Text amountText = item.transform.Find("Amount")?.GetComponent<TMP_Text>();
+        // Find amount text
+        TMP_Text amountText = null;
+        Transform amountTransform = item.transform.Find("Amount");
+        
+        if (amountTransform != null)
+        {
+            amountText = amountTransform.GetComponent<TMP_Text>();
+        }
+        
         if (amountText == null)
         {
+            // Fallback: find any TMP_Text in children
             amountText = item.GetComponentInChildren<TMP_Text>();
         }
 
+        // ✅ Update icon (ONLY the Icon child, NOT the parent border)
         if (iconImage != null && reward.icon != null)
         {
             iconImage.sprite = reward.icon;
+            Log($"✓ Set icon sprite: {reward.icon.name}");
+        }
+        else
+        {
+            LogWarning($"Failed to set icon! iconImage={iconImage != null}, reward.icon={reward.icon != null}");
         }
 
+        // Update amount text
         if (amountText != null)
         {
             amountText.text = $"x{reward.amount}";
+            Log($"✓ Set amount text: x{reward.amount}");
+        }
+        else
+        {
+            LogWarning("Amount text not found!");
         }
     }
 

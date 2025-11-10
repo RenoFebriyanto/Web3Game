@@ -1,10 +1,12 @@
-﻿using System.Collections;
+﻿// ✅ CRITICAL FIX: Hapus duplicate RewardType & RewardData definitions
+// Sekarang menggunakan GLOBAL RewardData dari RewardData.cs
+
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
 using TMPro;
-
 
 /// <summary>
 /// FIXED: Level Complete UI dengan reward 1x per level & improved reward system
@@ -12,10 +14,11 @@ using TMPro;
 /// - Double reward (10%): SELALU Coin + Energy (NEVER duplicate)
 /// - Energy dikecilkan: 3-10 (dari 5-20)
 /// - Text "Already Complete" dijamin muncul saat replay
+/// 
+/// ✅ NOW USES GLOBAL RewardData from RewardData.cs
 /// </summary>
 public class LevelCompleteUI : MonoBehaviour
 {
-
     public static LevelCompleteUI Instance { get; private set; }
 
     [Header("UI References")]
@@ -265,124 +268,116 @@ public class LevelCompleteUI : MonoBehaviour
     }
 
     /// <summary>
-    /// FIXED: Reward generation
-    /// - 90% chance: 1 reward (Coin saja)
-    /// - 10% chance: 2 rewards (SELALU Coin + Energy, NEVER duplicate)
+    /// ✅ Generate rewards menggunakan GLOBAL RewardData
     /// </summary>
     void GenerateImprovedRewards()
-{
-    generatedRewards.Clear();
-
-    // ✅ NEW: Check if ada saved rewards dari LevelPreview
-    string savedRewardsJson = PlayerPrefs.GetString($"LevelRewards_{currentLevelId}", "");
-    
-    if (!string.IsNullOrEmpty(savedRewardsJson))
     {
-        try
+        generatedRewards.Clear();
+
+        // Check for saved rewards from LevelPreview
+        string savedRewardsJson = PlayerPrefs.GetString($"LevelRewards_{currentLevelId}", "");
+        
+        if (!string.IsNullOrEmpty(savedRewardsJson))
         {
-            RewardDataList rewardList = JsonUtility.FromJson<RewardDataList>(savedRewardsJson);
-            if (rewardList != null && rewardList.rewards != null)
+            try
             {
-                // Use saved rewards dari preview
-                foreach (var reward in rewardList.rewards)
+                RewardDataList rewardList = JsonUtility.FromJson<RewardDataList>(savedRewardsJson);
+                if (rewardList != null && rewardList.rewards != null)
                 {
-                    generatedRewards.Add(new RewardData
-                    {
-                        type = reward.type,
-                        amount = reward.amount
-                    });
+                    generatedRewards.AddRange(rewardList.rewards);
+                    
+                    PlayerPrefs.DeleteKey($"LevelRewards_{currentLevelId}");
+                    PlayerPrefs.Save();
+                    
+                    Log($"✓ Using saved rewards from preview: {generatedRewards.Count} items");
+                    return;
                 }
-                
-                // Clear saved rewards
-                PlayerPrefs.DeleteKey($"LevelRewards_{currentLevelId}");
-                PlayerPrefs.Save();
-                
-                Log($"✓ Using saved rewards from preview: {generatedRewards.Count} items");
-                return;
+            }
+            catch (System.Exception e)
+            {
+                LogWarning($"Failed to parse saved rewards: {e.Message}");
             }
         }
-        catch (System.Exception e)
+
+        // Fallback: Generate random rewards
+        float roll = Random.Range(0f, 100f);
+
+        if (roll < singleRewardChance)
         {
-            LogWarning($"Failed to parse saved rewards: {e.Message}");
+            // Single reward: Coin only
+            int coinAmount = Random.Range(coinRewardRange.x, coinRewardRange.y + 1);
+            generatedRewards.Add(new RewardData(
+                RewardType.Coin, 
+                coinAmount,
+                coinIcon,
+                "Coins"
+            ));
+            Log($"✓ Single reward: Coin x{coinAmount}");
+        }
+        else
+        {
+            // Double reward: Coin + Energy
+            int coinAmount = Random.Range(coinRewardRange.x, coinRewardRange.y + 1);
+            generatedRewards.Add(new RewardData(
+                RewardType.Coin,
+                coinAmount,
+                coinIcon,
+                "Coins"
+            ));
+
+            int energyAmount = Random.Range(energyRewardRange.x, energyRewardRange.y + 1);
+            generatedRewards.Add(new RewardData(
+                RewardType.Energy,
+                energyAmount,
+                energyIcon,
+                "Energy"
+            ));
+
+            Log($"✓ Double reward: Coin x{coinAmount} + Energy x{energyAmount}");
         }
     }
 
-    // ✅ FALLBACK: Generate random rewards (existing code)
-    float roll = Random.Range(0f, 100f);
-
-    if (roll < singleRewardChance)
-    {
-        int coinAmount = Random.Range(coinRewardRange.x, coinRewardRange.y + 1);
-        generatedRewards.Add(new RewardData
-        {
-            type = RewardType.Coin,
-            amount = coinAmount
-        });
-        Log($"✓ Single reward: Coin x{coinAmount}");
-    }
-    else
-    {
-        int coinAmount = Random.Range(coinRewardRange.x, coinRewardRange.y + 1);
-        generatedRewards.Add(new RewardData
-        {
-            type = RewardType.Coin,
-            amount = coinAmount
-        });
-
-        int energyAmount = Random.Range(energyRewardRange.x, energyRewardRange.y + 1);
-        generatedRewards.Add(new RewardData
-        {
-            type = RewardType.Energy,
-            amount = energyAmount
-        });
-
-        Log($"✓ Double reward: Coin x{coinAmount} + Energy x{energyAmount}");
-    }
-}
-
+    /// <summary>
+    /// ✅ Apply rewards menggunakan GLOBAL RewardData
+    /// </summary>
     void ApplyRewards()
-{
-    if (PlayerEconomy.Instance == null)
     {
-        LogWarning("PlayerEconomy not found! Cannot apply rewards.");
-        return;
-    }
-
-    foreach (var reward in generatedRewards)
-    {
-        switch (reward.type)
+        if (PlayerEconomy.Instance == null)
         {
-            case RewardType.Coin:
-                PlayerEconomy.Instance.AddCoins(reward.amount);
-                Log($"✓ Added {reward.amount} coins");
-                break;
+            LogWarning("PlayerEconomy not found! Cannot apply rewards.");
+            return;
+        }
 
-            case RewardType.Energy:
-                PlayerEconomy.Instance.AddEnergy(reward.amount);
-                Log($"✓ Added {reward.amount} energy");
-                break;
+        foreach (var reward in generatedRewards)
+        {
+            switch (reward.type)
+            {
+                case RewardType.Coin:
+                    PlayerEconomy.Instance.AddCoins(reward.amount);
+                    Log($"✓ Added {reward.amount} coins");
+                    break;
 
-            // ✅ NEW: Support Booster rewards
-            case RewardType.Booster:
-                if (BoosterInventory.Instance != null && !string.IsNullOrEmpty(reward.boosterId))
-                {
-                    BoosterInventory.Instance.AddBooster(reward.boosterId, reward.amount);
-                    Log($"✓ Added {reward.amount}x {reward.boosterId}");
-                }
-                else
-                {
-                    LogWarning($"Cannot add booster: {reward.boosterId}");
-                }
-                break;
+                case RewardType.Energy:
+                    PlayerEconomy.Instance.AddEnergy(reward.amount);
+                    Log($"✓ Added {reward.amount} energy");
+                    break;
+
+                case RewardType.Booster:
+                    if (BoosterInventory.Instance != null && !string.IsNullOrEmpty(reward.boosterId))
+                    {
+                        BoosterInventory.Instance.AddBooster(reward.boosterId, reward.amount);
+                        Log($"✓ Added {reward.amount}x {reward.boosterId}");
+                    }
+                    break;
+            }
+        }
+
+        if (isFirstCompletion)
+        {
+            MarkLevelRewarded(currentLevelId);
+            Log($"✓ Marked {currentLevelId} as rewarded");
         }
     }
-
-    if (isFirstCompletion)
-    {
-        MarkLevelRewarded(currentLevelId);
-        Log($"✓ Marked {currentLevelId} as rewarded");
-    }
-}
 
     IEnumerator ShowLevelCompleteUI()
     {
@@ -407,7 +402,6 @@ public class LevelCompleteUI : MonoBehaviour
 
         yield return StartCoroutine(AnimateStars());
 
-        // Show rewards OR "already completed" message
         if (isFirstCompletion && generatedRewards.Count > 0)
         {
             yield return StartCoroutine(ShowRewards());
@@ -652,25 +646,10 @@ public class LevelCompleteUI : MonoBehaviour
         {
             Image iconImage = iconTransform.GetComponent<Image>();
 
-            if (iconImage != null)
+            if (iconImage != null && reward.icon != null)
             {
-                switch (reward.type)
-                {
-                    case RewardType.Coin:
-                        if (coinIcon != null)
-                        {
-                            iconImage.sprite = coinIcon;
-                            Log($"✓ Set coin icon");
-                        }
-                        break;
-                    case RewardType.Energy:
-                        if (energyIcon != null)
-                        {
-                            iconImage.sprite = energyIcon;
-                            Log($"✓ Set energy icon");
-                        }
-                        break;
-                }
+                iconImage.sprite = reward.icon;
+                Log($"✓ Set reward icon: {reward.icon.name}");
             }
         }
 
@@ -680,7 +659,7 @@ public class LevelCompleteUI : MonoBehaviour
             amountText.text = $"+{reward.amount}";
         }
 
-        Log($"✓ Setup reward: {reward.type} x{reward.amount}");
+        Log($"✓ Setup reward: {reward.displayName} x{reward.amount}");
     }
 
     void EnableButtons()
@@ -885,15 +864,4 @@ public class LevelCompleteUI : MonoBehaviour
     }
 }
 
-public enum RewardType
-{
-    Coin,
-    Energy
-}
-
-[System.Serializable]
-public class RewardData
-{
-    public RewardType type;
-    public int amount;
-}
+// ✅ REMOVED: Duplicate enum/class definitions (sekarang di RewardData.cs global)

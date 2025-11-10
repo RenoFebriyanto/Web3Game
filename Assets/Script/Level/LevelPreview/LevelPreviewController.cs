@@ -5,15 +5,16 @@ using UnityEngine.SceneManagement;
 using TMPro;
 
 /// <summary>
-/// ✅ FIXED: LevelPreview dengan fitur lengkap:
-/// - Level number text update
-/// - Lino character sprite (happy/sad based on stars)
-/// - Random rewards per level
-/// - Fragment mission display (1-6 items dengan scroll)
-/// - Close button
+/// ✅✅✅ CRITICAL FIX: Static instance yang SELALU aktif
+/// - Panel bisa inactive, tapi script HARUS active
+/// - Taruh script di GameObject TERPISAH yang SELALU active
+/// - Panel cukup dijadikan child/reference
 /// </summary>
 public class LevelPreviewController : MonoBehaviour
 {
+    // ✅ CRITICAL: Static instance untuk akses dari mana saja
+    public static LevelPreviewController Instance { get; private set; }
+
     [Header("Panel Reference")]
     public GameObject levelPreviewPanel;
 
@@ -74,6 +75,19 @@ public class LevelPreviewController : MonoBehaviour
 
     void Awake()
     {
+        // ✅ CRITICAL: Setup singleton pattern
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+        Instance = this;
+
+        Log("✓ LevelPreviewController instance created");
+    }
+
+    void Start()
+    {
         // Setup buttons
         if (playButton != null)
         {
@@ -87,15 +101,34 @@ public class LevelPreviewController : MonoBehaviour
             closeButton.onClick.AddListener(OnCloseButtonClicked);
         }
 
-        // Hide panel initially
+        // ✅ CRITICAL: Hide panel initially
         if (levelPreviewPanel != null)
         {
             levelPreviewPanel.SetActive(false);
+            Log("✓ Panel hidden initially");
         }
+
+        if (starImages == null || starImages.Length == 0)
+        {
+            starImages = new Image[3];
+            if (stars != null)
+            {
+                for (int i = 0; i < stars.Length && i < 3; i++)
+                {
+                    if (stars[i] != null)
+                        starImages[i] = stars[i].GetComponent<Image>();
+                }
+            }
+        }
+
+        Log("✓ LevelPreviewController initialized");
     }
 
+    // Stars cache
+    private Image[] starImages;
+
     /// <summary>
-    /// ✅ Main method: Show preview untuk level yang dipilih
+    /// ✅ Main method: Show preview
     /// </summary>
     public void ShowLevelPreview(LevelConfig levelConfig)
     {
@@ -107,29 +140,29 @@ public class LevelPreviewController : MonoBehaviour
 
         currentLevel = levelConfig;
 
-        // Show panel
+        Log($"=== SHOWING PREVIEW: {levelConfig.displayName} ===");
+
+        // ✅ CRITICAL: Show panel
         if (levelPreviewPanel != null)
         {
             levelPreviewPanel.SetActive(true);
+            Log("✓ Panel shown");
+        }
+        else
+        {
+            LogError("levelPreviewPanel is NULL!");
         }
 
-        // Update semua UI
+        // Update UI
         UpdateLevelNumberText();
         UpdateLinoCharacterSprite();
         UpdateStarsDisplay();
         UpdateMissionFragments();
         GenerateAndDisplayRewards();
 
-        Log($"✓ Showing preview for {levelConfig.displayName} (Level {levelConfig.number})");
+        Log($"=== PREVIEW COMPLETE: {levelConfig.displayName} ===");
     }
 
-    // ========================================
-    // UPDATE UI ELEMENTS
-    // ========================================
-
-    /// <summary>
-    /// ✅ Update "Lvl. X" text
-    /// </summary>
     void UpdateLevelNumberText()
     {
         if (currentLevel == null) return;
@@ -137,7 +170,7 @@ public class LevelPreviewController : MonoBehaviour
         if (lvlText != null)
         {
             lvlText.text = $"Lvl. {currentLevel.number}";
-            Log($"Updated level text: Lvl. {currentLevel.number}");
+            Log($"✓ Level text: Lvl. {currentLevel.number}");
         }
 
         if (levelTitleText != null)
@@ -146,27 +179,22 @@ public class LevelPreviewController : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// ✅ Update Lino character sprite (happy/sad based on earned stars)
-    /// </summary>
     void UpdateLinoCharacterSprite()
     {
         if (currentLevel == null || linoCharacterImage == null) return;
 
-        // Get earned stars untuk level ini
         int earnedStars = 0;
         if (LevelProgressManager.Instance != null)
         {
             earnedStars = LevelProgressManager.Instance.GetBestStars(currentLevel.id);
         }
 
-        // 0 stars = Sad, 1-3 stars = Happy
         if (earnedStars > 0)
         {
             if (linoHappy != null)
             {
                 linoCharacterImage.sprite = linoHappy;
-                Log($"Lino: Happy ({earnedStars} stars earned)");
+                Log($"✓ Lino: Happy ({earnedStars} stars)");
             }
         }
         else
@@ -174,14 +202,11 @@ public class LevelPreviewController : MonoBehaviour
             if (linoSad != null)
             {
                 linoCharacterImage.sprite = linoSad;
-                Log("Lino: Sad (0 stars)");
+                Log("✓ Lino: Sad (0 stars)");
             }
         }
     }
 
-    /// <summary>
-    /// ✅ Update stars display
-    /// </summary>
     void UpdateStarsDisplay()
     {
         if (currentLevel == null || stars == null) return;
@@ -192,12 +217,11 @@ public class LevelPreviewController : MonoBehaviour
             earnedStars = LevelProgressManager.Instance.GetBestStars(currentLevel.id);
         }
 
-        // Update each star
         for (int i = 0; i < stars.Length; i++)
         {
             if (stars[i] == null) continue;
 
-            Image starImage = stars[i].GetComponent<Image>();
+            Image starImage = starImages != null && i < starImages.Length ? starImages[i] : stars[i].GetComponent<Image>();
             if (starImage == null) continue;
 
             if (i < earnedStars)
@@ -210,43 +234,38 @@ public class LevelPreviewController : MonoBehaviour
             }
         }
 
-        Log($"Stars updated: {earnedStars}/3");
+        Log($"✓ Stars: {earnedStars}/3");
     }
 
-    /// <summary>
-    /// ✅ Update mission fragments (1-6 items dengan ScrollRect)
-    /// </summary>
     void UpdateMissionFragments()
     {
         if (currentLevel == null || fragmentListContent == null) return;
 
-        // Clear existing
         ClearSpawnedItems(spawnedFragmentItems);
 
         if (currentLevel.requirements == null || currentLevel.requirements.Count == 0)
         {
-            LogWarning("No requirements for this level!");
+            LogWarning("No requirements!");
             return;
         }
 
         int reqCount = currentLevel.requirements.Count;
-        Log($"Spawning {reqCount} fragment items...");
+        Log($"Spawning {reqCount} fragments...");
 
-        // Spawn fragment items
         foreach (var requirement in currentLevel.requirements)
         {
             if (fragmentItemPrefab == null)
             {
-                LogError("fragmentItemPrefab not assigned!");
+                LogError("fragmentItemPrefab is NULL!");
                 break;
             }
 
-            GameObject fragmentItem = Instantiate(fragmentItemPrefab, fragmentListContent);
-            SetupFragmentItem(fragmentItem, requirement);
-            spawnedFragmentItems.Add(fragmentItem);
+            GameObject item = Instantiate(fragmentItemPrefab, fragmentListContent);
+            SetupFragmentItem(item, requirement);
+            spawnedFragmentItems.Add(item);
         }
 
-        // ✅ Enable ScrollRect jika fragments > 3
+        // ✅ Enable scroll if > 3 fragments
         if (fragmentScrollRect != null)
         {
             bool needScroll = reqCount > 3;
@@ -254,40 +273,29 @@ public class LevelPreviewController : MonoBehaviour
 
             if (needScroll)
             {
-                // Reset scroll position
                 Canvas.ForceUpdateCanvases();
                 fragmentScrollRect.horizontalNormalizedPosition = 0f;
-                Log("ScrollRect enabled (more than 3 fragments)");
-            }
-            else
-            {
-                Log("ScrollRect disabled (3 or fewer fragments)");
+                Log("✓ ScrollRect enabled");
             }
         }
 
-        Log($"✓ Mission fragments updated: {reqCount} items");
+        Log($"✓ Fragments: {reqCount} items");
     }
 
-    /// <summary>
-    /// Setup individual fragment item UI
-    /// </summary>
     void SetupFragmentItem(GameObject item, FragmentRequirement requirement)
     {
-        // Find icon image
         Image iconImage = item.transform.Find("Icon")?.GetComponent<Image>();
         if (iconImage == null)
         {
             iconImage = item.GetComponentInChildren<Image>();
         }
 
-        // Find count text
         TMP_Text countText = item.transform.Find("CountText")?.GetComponent<TMP_Text>();
         if (countText == null)
         {
             countText = item.GetComponentInChildren<TMP_Text>();
         }
 
-        // Get fragment icon
         Sprite fragmentIcon = GetFragmentIcon(requirement.type, requirement.colorVariant);
 
         if (iconImage != null && fragmentIcon != null)
@@ -301,9 +309,6 @@ public class LevelPreviewController : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Get fragment icon dari registry
-    /// </summary>
     Sprite GetFragmentIcon(FragmentType type, int variant)
     {
         if (fragmentRegistry != null)
@@ -319,35 +324,24 @@ public class LevelPreviewController : MonoBehaviour
             }
         }
 
-        LogWarning($"No icon found for {type} variant {variant}");
+        LogWarning($"No icon for {type} variant {variant}");
         return null;
     }
 
-    // ========================================
-    // REWARD GENERATION SYSTEM
-    // ========================================
-
-    /// <summary>
-    /// ✅ Generate random rewards berdasarkan level tier
-    /// </summary>
     void GenerateAndDisplayRewards()
     {
         if (currentLevel == null) return;
 
-        // Clear existing
         ClearSpawnedItems(spawnedRewardItems);
         generatedRewards.Clear();
 
-        // Get reward tier untuk level ini
-        LevelRewardTier tier = GetRewardTierForLevel(currentLevel.number);
-
+        var tier = GetRewardTierForLevel(currentLevel.number);
         if (tier == null)
         {
-            LogWarning($"No reward tier found for level {currentLevel.number}");
+            LogWarning($"No reward tier for level {currentLevel.number}");
             return;
         }
 
-        // Generate random rewards (1-3 items)
         int rewardCount = Random.Range(tier.minRewards, tier.maxRewards + 1);
 
         for (int i = 0; i < rewardCount; i++)
@@ -359,42 +353,34 @@ public class LevelPreviewController : MonoBehaviour
             }
         }
 
-        // Display rewards
         DisplayRewards();
 
-        Log($"✓ Generated {generatedRewards.Count} rewards for level {currentLevel.number}");
+        Log($"✓ Generated {generatedRewards.Count} rewards");
     }
 
-    /// <summary>
-    /// Generate single random reward berdasarkan tier
-    /// </summary>
     RewardData GenerateRandomReward(LevelRewardTier tier)
     {
         float roll = Random.Range(0f, 100f);
         float cumulative = 0f;
 
-        // Check booster chance
         cumulative += tier.boosterChance;
         if (roll < cumulative)
         {
             return GenerateRandomBooster(tier);
         }
 
-        // Check coin chance
         cumulative += tier.coinChance;
         if (roll < cumulative)
         {
             return GenerateCoinReward(tier);
         }
 
-        // Check energy chance
         cumulative += tier.energyChance;
         if (roll < cumulative)
         {
             return GenerateEnergyReward(tier);
         }
 
-        // Fallback: coin
         return GenerateCoinReward(tier);
     }
 
@@ -471,7 +457,7 @@ public class LevelPreviewController : MonoBehaviour
     {
         if (rewardTiers == null || rewardTiers.Length == 0)
         {
-            LogWarning("No reward tiers defined!");
+            LogWarning("No reward tiers!");
             return null;
         }
 
@@ -483,13 +469,9 @@ public class LevelPreviewController : MonoBehaviour
             }
         }
 
-        // Fallback: return last tier
         return rewardTiers[rewardTiers.Length - 1];
     }
 
-    /// <summary>
-    /// Display rewards di UI
-    /// </summary>
     void DisplayRewards()
     {
         if (rewardItemsContainer == null || rewardItemPrefab == null) return;
@@ -501,7 +483,6 @@ public class LevelPreviewController : MonoBehaviour
             spawnedRewardItems.Add(rewardItem);
         }
 
-        // Update description
         if (rewardDescriptionText != null)
         {
             rewardDescriptionText.text = $"Complete this level to get {generatedRewards.Count} reward{(generatedRewards.Count > 1 ? "s" : "")}!";
@@ -512,14 +493,12 @@ public class LevelPreviewController : MonoBehaviour
 
     void SetupRewardItem(GameObject item, RewardData reward)
     {
-        // Find icon
         Image iconImage = item.transform.Find("Icon")?.GetComponent<Image>();
         if (iconImage == null)
         {
-            iconImage = item.GetComponentInChildren<Image>();
+            iconImage = item.GetComponent<Image>();
         }
 
-        // Find amount text
         TMP_Text amountText = item.transform.Find("Amount")?.GetComponent<TMP_Text>();
         if (amountText == null)
         {
@@ -537,13 +516,6 @@ public class LevelPreviewController : MonoBehaviour
         }
     }
 
-    // ========================================
-    // BUTTON HANDLERS
-    // ========================================
-
-    /// <summary>
-    /// ✅ Play button: Start level dengan rewards saved
-    /// </summary>
     void OnPlayButtonClicked()
     {
         if (currentLevel == null)
@@ -552,16 +524,13 @@ public class LevelPreviewController : MonoBehaviour
             return;
         }
 
-        // Save level info
         PlayerPrefs.SetString("SelectedLevelId", currentLevel.id);
         PlayerPrefs.SetInt("SelectedLevelNumber", currentLevel.number);
 
-        // ✅ Save generated rewards untuk diklaim setelah level complete
         SaveGeneratedRewards();
 
         PlayerPrefs.Save();
 
-        // Play sound
         if (SoundManager.Instance != null)
         {
             SoundManager.Instance.PlayButtonClick();
@@ -569,13 +538,9 @@ public class LevelPreviewController : MonoBehaviour
 
         Log($"Starting level {currentLevel.number}...");
 
-        // Load gameplay scene
         SceneManager.LoadScene(gameplaySceneName);
     }
 
-    /// <summary>
-    /// Save rewards ke PlayerPrefs
-    /// </summary>
     void SaveGeneratedRewards()
     {
         if (generatedRewards == null || generatedRewards.Count == 0) return;
@@ -585,38 +550,27 @@ public class LevelPreviewController : MonoBehaviour
 
         PlayerPrefs.SetString($"LevelRewards_{currentLevel.id}", json);
 
-        Log($"✓ Saved {generatedRewards.Count} rewards for {currentLevel.id}");
+        Log($"✓ Saved {generatedRewards.Count} rewards");
     }
 
-    /// <summary>
-    /// ✅ Close button: Hide panel
-    /// </summary>
     void OnCloseButtonClicked()
     {
-        // Play sound
         if (SoundManager.Instance != null)
         {
             SoundManager.Instance.PlayButtonClick();
         }
 
-        // Hide panel
         if (levelPreviewPanel != null)
         {
             levelPreviewPanel.SetActive(false);
+            Log("✓ Panel closed");
         }
 
-        // Clear data
         currentLevel = null;
         ClearSpawnedItems(spawnedFragmentItems);
         ClearSpawnedItems(spawnedRewardItems);
         generatedRewards.Clear();
-
-        Log("✓ Panel closed");
     }
-
-    // ========================================
-    // HELPERS
-    // ========================================
 
     void ClearSpawnedItems(List<GameObject> items)
     {
@@ -647,52 +601,20 @@ public class LevelPreviewController : MonoBehaviour
     }
 
     /// <summary>
-    /// ✅ Static helper: Show preview dari script lain
+    /// ✅ Static helper
     /// </summary>
     public static void ShowPreview(LevelConfig levelConfig)
     {
-        var instance = FindFirstObjectByType<LevelPreviewController>();
-        if (instance != null)
+        if (Instance != null)
         {
-            instance.ShowLevelPreview(levelConfig);
+            Instance.ShowLevelPreview(levelConfig);
         }
         else
         {
-            Debug.LogError("[LevelPreview] LevelPreviewController not found in scene!");
-        }
-    }
-
-    // ========================================
-    // CONTEXT MENU DEBUG
-    // ========================================
-
-    [ContextMenu("Debug: Print Current Level")]
-    void Context_PrintLevel()
-    {
-        if (currentLevel != null)
-        {
-            Debug.Log($"=== CURRENT LEVEL ===\nID: {currentLevel.id}\nNumber: {currentLevel.number}\nName: {currentLevel.displayName}\nRequirements: {currentLevel.requirements?.Count ?? 0}");
-        }
-        else
-        {
-            Debug.Log("No level loaded");
-        }
-    }
-
-    [ContextMenu("Debug: Print Generated Rewards")]
-    void Context_PrintRewards()
-    {
-        Debug.Log($"=== GENERATED REWARDS ({generatedRewards.Count}) ===");
-        foreach (var reward in generatedRewards)
-        {
-            Debug.Log($"- {reward.displayName}: x{reward.amount} ({reward.type})");
+            Debug.LogError("[LevelPreview] ❌ Instance is NULL!");
         }
     }
 }
-
-// ========================================
-// LEVEL REWARD TIER
-// ========================================
 
 [System.Serializable]
 public class LevelRewardTier

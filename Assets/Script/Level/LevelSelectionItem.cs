@@ -103,19 +103,17 @@ public class LevelSelectionItem : MonoBehaviour
     }
 
     void OnClicked()
+{
+    // ✅ UPDATED: Show preview instead of direct load
+    if (levelConfig == null)
     {
-        // ✅ CRITICAL: Null check before load scene
-        if (levelConfig == null)
-        {
-            Debug.LogError("[LevelSelectionItem] Cannot start level: levelConfig is NULL!");
-            return;
-        }
-
-        PlayerPrefs.SetString("SelectedLevelId", levelConfig.id);
-        PlayerPrefs.SetInt("SelectedLevelNumber", levelConfig.number);
-        PlayerPrefs.Save();
-
-        Debug.Log($"[LevelSelectionItem] Loading {levelConfig.id} ({levelConfig.displayName})");
-        SceneManager.LoadScene(gameplaySceneName);
+        Debug.LogError("[LevelSelectionItem] Cannot start level: levelConfig is NULL!");
+        return;
     }
+
+    // Show level preview
+    LevelPreviewController.ShowPreview(levelConfig);
+    
+    Debug.Log($"[LevelSelectionItem] Showing preview for {levelConfig.id} ({levelConfig.displayName})");
+}
 }

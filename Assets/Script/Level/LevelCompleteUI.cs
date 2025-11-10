@@ -5,6 +5,7 @@ using UnityEngine.UI;
 using UnityEngine.SceneManagement;
 using TMPro;
 
+
 /// <summary>
 /// FIXED: Level Complete UI dengan reward 1x per level & improved reward system
 /// - Single reward (90%): HANYA Coin
@@ -14,6 +15,23 @@ using TMPro;
 /// </summary>
 public class LevelCompleteUI : MonoBehaviour
 {
+
+    public enum RewardType
+{
+    Coin,
+    Energy,
+    Booster // ✅ NEW
+}
+
+[System.Serializable]
+public class RewardData
+{
+    public RewardType type;
+    public int amount;
+    public string boosterId; // ✅ NEW: untuk identify booster type
+}
+
+
     public static LevelCompleteUI Instance { get; private set; }
 
     [Header("UI References")]
@@ -268,75 +286,119 @@ public class LevelCompleteUI : MonoBehaviour
     /// - 10% chance: 2 rewards (SELALU Coin + Energy, NEVER duplicate)
     /// </summary>
     void GenerateImprovedRewards()
+{
+    generatedRewards.Clear();
+
+    // ✅ NEW: Check if ada saved rewards dari LevelPreview
+    string savedRewardsJson = PlayerPrefs.GetString($"LevelRewards_{currentLevelId}", "");
+    
+    if (!string.IsNullOrEmpty(savedRewardsJson))
     {
-        generatedRewards.Clear();
-
-        float roll = Random.Range(0f, 100f);
-
-        // 90% chance: Single reward (Coin only)
-        if (roll < singleRewardChance)
+        try
         {
-            int coinAmount = Random.Range(coinRewardRange.x, coinRewardRange.y + 1);
-            generatedRewards.Add(new RewardData
+            RewardDataList rewardList = JsonUtility.FromJson<RewardDataList>(savedRewardsJson);
+            if (rewardList != null && rewardList.rewards != null)
             {
-                type = RewardType.Coin,
-                amount = coinAmount
-            });
-            Log($"✓ Single reward: Coin x{coinAmount}");
-        }
-        // 10% chance: Double reward (ALWAYS Coin + Energy)
-        else
-        {
-            // First: Coin
-            int coinAmount = Random.Range(coinRewardRange.x, coinRewardRange.y + 1);
-            generatedRewards.Add(new RewardData
-            {
-                type = RewardType.Coin,
-                amount = coinAmount
-            });
-
-            // Second: Energy (NEVER duplicate Coin)
-            int energyAmount = Random.Range(energyRewardRange.x, energyRewardRange.y + 1);
-            generatedRewards.Add(new RewardData
-            {
-                type = RewardType.Energy,
-                amount = energyAmount
-            });
-
-            Log($"✓ Double reward: Coin x{coinAmount} + Energy x{energyAmount}");
-        }
-    }
-
-    void ApplyRewards()
-    {
-        if (PlayerEconomy.Instance == null)
-        {
-            LogWarning("PlayerEconomy not found! Cannot apply rewards.");
-            return;
-        }
-
-        foreach (var reward in generatedRewards)
-        {
-            switch (reward.type)
-            {
-                case RewardType.Coin:
-                    PlayerEconomy.Instance.AddCoins(reward.amount);
-                    Log($"✓ Added {reward.amount} coins");
-                    break;
-
-                case RewardType.Energy:
-                    PlayerEconomy.Instance.AddEnergy(reward.amount);
-                    Log($"✓ Added {reward.amount} energy");
-                    break;
+                // Use saved rewards dari preview
+                foreach (var reward in rewardList.rewards)
+                {
+                    generatedRewards.Add(new RewardData
+                    {
+                        type = reward.type,
+                        amount = reward.amount
+                    });
+                }
+                
+                // Clear saved rewards
+                PlayerPrefs.DeleteKey($"LevelRewards_{currentLevelId}");
+                PlayerPrefs.Save();
+                
+                Log($"✓ Using saved rewards from preview: {generatedRewards.Count} items");
+                return;
             }
         }
-
-        if (isFirstCompletion)
+        catch (System.Exception e)
         {
-            MarkLevelRewarded(currentLevelId);
-            Log($"✓ Marked {currentLevelId} as rewarded");
+            LogWarning($"Failed to parse saved rewards: {e.Message}");
         }
     }
+
+    // ✅ FALLBACK: Generate random rewards (existing code)
+    float roll = Random.Range(0f, 100f);
+
+    if (roll < singleRewardChance)
+    {
+        int coinAmount = Random.Range(coinRewardRange.x, coinRewardRange.y + 1);
+        generatedRewards.Add(new RewardData
+        {
+            type = RewardType.Coin,
+            amount = coinAmount
+        });
+        Log($"✓ Single reward: Coin x{coinAmount}");
+    }
+    else
+    {
+        int coinAmount = Random.Range(coinRewardRange.x, coinRewardRange.y + 1);
+        generatedRewards.Add(new RewardData
+        {
+            type = RewardType.Coin,
+            amount = coinAmount
+        });
+
+        int energyAmount = Random.Range(energyRewardRange.x, energyRewardRange.y + 1);
+        generatedRewards.Add(new RewardData
+        {
+            type = RewardType.Energy,
+            amount = energyAmount
+        });
+
+        Log($"✓ Double reward: Coin x{coinAmount} + Energy x{energyAmount}");
+    }
+}
+
+    void ApplyRewards()
+{
+    if (PlayerEconomy.Instance == null)
+    {
+        LogWarning("PlayerEconomy not found! Cannot apply rewards.");
+        return;
+    }
+
+    foreach (var reward in generatedRewards)
+    {
+        switch (reward.type)
+        {
+            case RewardType.Coin:
+                PlayerEconomy.Instance.AddCoins(reward.amount);
+                Log($"✓ Added {reward.amount} coins");
+                break;
+
+            case RewardType.Energy:
+                PlayerEconomy.Instance.AddEnergy(reward.amount);
+                Log($"✓ Added {reward.amount} energy");
+                break;
+
+            // ✅ NEW: Support Booster rewards
+            case RewardType.Booster:
+                if (BoosterInventory.Instance != null && !string.IsNullOrEmpty(reward.boosterId))
+                {
+                    BoosterInventory.Instance.AddBooster(reward.boosterId, reward.amount);
+                    Log($"✓ Added {reward.amount}x {reward.boosterId}");
+                }
+                else
+                {
+                    LogWarning($"Cannot add booster: {reward.boosterId}");
+                }
+                break;
+        }
+    }
+
+    if (isFirstCompletion)
+    {
+        MarkLevelRewarded(currentLevelId);
+        Log($"✓ Marked {currentLevelId} as rewarded");
+    }
+}
 
     IEnumerator ShowLevelCompleteUI()
     {

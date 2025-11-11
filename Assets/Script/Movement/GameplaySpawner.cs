@@ -183,6 +183,7 @@ public class FixedGameplaySpawner : MonoBehaviour
                 levelRequirements = config.requirements.ToArray();
                 Log($"✓ Loaded {levelRequirements.Length} requirements");
             }
+
         }
     }
 
@@ -382,6 +383,7 @@ public class FixedGameplaySpawner : MonoBehaviour
                 else if (prefabToSpawn != coinPrefab && prefabToSpawn != starPrefab) fragmentSpawned++;
 
                 totalSpawned++;
+                
             }
 
             yield return new WaitForSeconds(itemSpawnDelay);

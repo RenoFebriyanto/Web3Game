@@ -13459,6 +13459,7 @@ GameObject:
   - component: {fileID: 1824128629}
   - component: {fileID: 1824128631}
   - component: {fileID: 1824128630}
+  - component: {fileID: 1824128632}
   m_Layer: 5
   m_Name: LinoCharacter
   m_TagString: Untagged
@@ -13523,6 +13524,28 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1824128628}
   m_CullTransparentMesh: 1
+--- !u!95 &1824128632
+Animator:
+  serializedVersion: 7
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1824128628}
+  m_Enabled: 1
+  m_Avatar: {fileID: 0}
+  m_Controller: {fileID: 9100000, guid: 1800a115e1e4b5143a1ef379acc76d0a, type: 2}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_AnimatePhysics: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorStateOnDisable: 0
+  m_WriteDefaultValuesOnDisable: 0
 --- !u!1 &1832799511
 GameObject:
   m_ObjectHideFlags: 0

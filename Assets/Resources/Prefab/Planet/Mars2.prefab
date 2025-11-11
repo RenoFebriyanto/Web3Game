@@ -11,7 +11,6 @@ GameObject:
   - component: {fileID: 2580801661667695914}
   - component: {fileID: 8019380024219042159}
   - component: {fileID: 1967743768230024006}
-  - component: {fileID: 8403205961080132278}
   - component: {fileID: -4534323904322536484}
   m_Layer: 3
   m_Name: Mars2
@@ -126,20 +125,6 @@ CircleCollider2D:
   m_CompositeOrder: 0
   m_Offset: {x: 0, y: 0}
   m_Radius: 15.5
---- !u!114 &8403205961080132278
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4960012264651991130}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 71f2551b998d6924f9fd8a96290fef1d, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  speed: 3
-  destroyY: -12
 --- !u!114 &-4534323904322536484
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -154,3 +139,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   damage: 1
   playerTag: Player
+  destroyEffect: {fileID: 0}
+  hitEffect: {fileID: 0}
+  enableDebugLogs: 0

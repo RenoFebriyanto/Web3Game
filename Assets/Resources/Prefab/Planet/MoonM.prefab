@@ -11,7 +11,6 @@ GameObject:
   - component: {fileID: 6058028747311602378}
   - component: {fileID: 8940186565509602183}
   - component: {fileID: 2969804302603261985}
-  - component: {fileID: 2112418096054152629}
   - component: {fileID: -1425204470117958972}
   m_Layer: 3
   m_Name: MoonM
@@ -126,20 +125,6 @@ CircleCollider2D:
   m_CompositeOrder: 0
   m_Offset: {x: 0, y: 0.34}
   m_Radius: 12.21
---- !u!114 &2112418096054152629
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 279141384901392389}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 71f2551b998d6924f9fd8a96290fef1d, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  speed: 3
-  destroyY: -12
 --- !u!114 &-1425204470117958972
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -154,3 +139,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   damage: 1
   playerTag: Player
+  destroyEffect: {fileID: 0}
+  hitEffect: {fileID: 0}
+  enableDebugLogs: 0

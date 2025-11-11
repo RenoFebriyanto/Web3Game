@@ -11,7 +11,6 @@ GameObject:
   - component: {fileID: 499898331572029341}
   - component: {fileID: 4079532554333539372}
   - component: {fileID: 4847351499538412777}
-  - component: {fileID: -49519008780374955}
   - component: {fileID: -3776310874446038655}
   m_Layer: 3
   m_Name: BluePlanet
@@ -126,20 +125,6 @@ CircleCollider2D:
   m_CompositeOrder: 0
   m_Offset: {x: 0, y: 0}
   m_Radius: 8.66
---- !u!114 &-49519008780374955
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4825297902986891353}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 71f2551b998d6924f9fd8a96290fef1d, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  speed: 3
-  destroyY: -12
 --- !u!114 &-3776310874446038655
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -154,3 +139,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   damage: 1
   playerTag: Player
+  destroyEffect: {fileID: 0}
+  hitEffect: {fileID: 0}
+  enableDebugLogs: 0

@@ -238,35 +238,38 @@ public class LevelCompleteUI : MonoBehaviour
     }
 
     void StopAllSpawners()
+{
+    Log("Stopping all spawners...");
+
+    // Method 1: Via SpawnerController (recommended)
+    if (SpawnerController.Instance != null)
     {
-        Log("Stopping all spawners...");
-
-        if (SpawnerController.Instance != null)
-        {
-            SpawnerController.Instance.StopSpawner();
-            Log("✓ Stopped spawner via SpawnerController");
-        }
-
-        var spawner = FindFirstObjectByType<FixedGameplaySpawner>();
-        if (spawner != null)
-        {
-            spawner.enabled = false;
-            Log("✓ Disabled FixedGameplaySpawner");
-        }
-
-        var allSpawners = FindObjectsByType<FixedGameplaySpawner>(FindObjectsSortMode.None);
-        foreach (var s in allSpawners)
-        {
-            if (s != null)
-            {
-                s.StopAllCoroutines();
-                s.enabled = false;
-            }
-        }
-
-        Log("✓ All spawners stopped");
+        SpawnerController.Instance.StopSpawner();
+        Log("✓ Stopped spawner via SpawnerController");
     }
 
+    // Method 2: Find and disable ProceduralSpawner directly
+    var proceduralSpawner = FindFirstObjectByType<ProceduralSpawner>();
+    if (proceduralSpawner != null)
+    {
+        proceduralSpawner.enabled = false;
+        proceduralSpawner.StopAllCoroutines();
+        Log("✓ Disabled ProceduralSpawner");
+    }
+
+    // Method 3: Find any remaining spawner scripts (fallback)
+    var allSpawners = FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None);
+    foreach (var spawner in allSpawners)
+    {
+        if (spawner != null && spawner.GetType().Name.Contains("Spawner"))
+        {
+            spawner.StopAllCoroutines();
+            spawner.enabled = false;
+        }
+    }
+
+    Log("✓ All spawners stopped");
+}
     /// <summary>
     /// ✅ Generate rewards menggunakan GLOBAL RewardData
     /// </summary>

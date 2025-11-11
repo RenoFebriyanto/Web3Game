@@ -3219,7 +3219,7 @@ MonoBehaviour:
   spawnParent: {fileID: 1830271083}
   laneCount: 3
   laneXOffset: 2.5
-  startY: 8
+  startY: 10
   ySpacing: 0.8
 --- !u!1 &1057190540
 GameObject:
@@ -11868,29 +11868,34 @@ MonoBehaviour:
   m_GameObject: {fileID: 1830271082}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 6f320f9ebae2ee043a0ecf9e8b866377, type: 3}
+  m_Script: {fileID: 11500000, guid: 3191ac9a83daf8942a682a88561af2ae, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   lanesManager: {fileID: 1029806403}
   difficultyManager: {fileID: 1255187841}
   planetPrefabs:
   - {fileID: 4859472085069953281, guid: 10e4436b3fbad98428c49d4f85793e83, type: 3}
-  - {fileID: 2317271719180236776, guid: 4a1ec864f631c0e4299804c6045325d5, type: 3}
-  - {fileID: 8623831437168411947, guid: e906ba9e2e47f6a42a08f9f44541746c, type: 3}
-  - {fileID: 3506641348122442430, guid: ce82491f370c9064280ca3dad29fd2e9, type: 3}
   - {fileID: 4825297902986891353, guid: ce5ae273cec03d74b8772a3fd141a0a7, type: 3}
+  - {fileID: 8623831437168411947, guid: e906ba9e2e47f6a42a08f9f44541746c, type: 3}
   - {fileID: 2056561710091816579, guid: b9f6e8b717273aa4480dde025b6bb14f, type: 3}
+  - {fileID: 2317271719180236776, guid: 4a1ec864f631c0e4299804c6045325d5, type: 3}
   - {fileID: 5113602838793485311, guid: c570131ca4cf3484eacf07cb9266a5b5, type: 3}
+  - {fileID: 3506641348122442430, guid: ce82491f370c9064280ca3dad29fd2e9, type: 3}
   - {fileID: 4960012264651991130, guid: e86a1585bd4ac85469bd4daa8002b48f, type: 3}
-  - {fileID: 8546903855206273715, guid: e759f487421ef004bbfff58c97702927, type: 3}
   - {fileID: 279141384901392389, guid: cf974aa6032c6e84980003a86d6b4bcf, type: 3}
-  - {fileID: 1574119638395825906, guid: 136b4cdf50fea674b84a1e4734461572, type: 3}
+  - {fileID: 8546903855206273715, guid: e759f487421ef004bbfff58c97702927, type: 3}
   - {fileID: 1301558441701477298, guid: d159d928021a8004ca9f11b89e967767, type: 3}
+  - {fileID: 1574119638395825906, guid: 136b4cdf50fea674b84a1e4734461572, type: 3}
   - {fileID: 8214930018854636928, guid: 7618488fc1f01cb4eb3d3b9416b8a6aa, type: 3}
   coinPrefab: {fileID: 8204258798340378091, guid: b7fb0df391297bb47a410c9ef6a278ad, type: 3}
   starPrefab: {fileID: 1303944969474664622, guid: 0dfa52ff868e79540a42b1dcd501025a, type: 3}
   fragmentRegistry: {fileID: 11400000, guid: 325c8016bc09c84428f9f8b2db5675db, type: 2}
   levelDatabase: {fileID: 11400000, guid: 9d11e391857961a4d8bbf24bbab802f9, type: 2}
+  planetPatterns:
+  - {fileID: 11400000, guid: 3c51f1ad1dcde3f47b821c3518861869, type: 2}
+  - {fileID: 11400000, guid: 7790146f63b63be40b56da05b369baba, type: 2}
+  - {fileID: 11400000, guid: 8d537e3b5b86b3e4195bfdccda2e7506, type: 2}
+  - {fileID: 11400000, guid: 48a8af72655da6048a252d9ac28a121f, type: 2}
   coinPatterns:
   - {fileID: 11400000, guid: 1831c1d834a196147af62b15ce790cf6, type: 2}
   - {fileID: 11400000, guid: 8c76eb4b5ad35884494a0518692ecc6f, type: 2}
@@ -11899,21 +11904,22 @@ MonoBehaviour:
   - {fileID: 11400000, guid: a01c7687e54602a4dad32b499f323bdf, type: 2}
   - {fileID: 11400000, guid: c17b34447aebd1c4cb20617bc9c81b0f, type: 2}
   spawnParent: {fileID: 1830271083}
-  spawnY: 20
+  spawnY: 10
+  planetVerticalSpacing: 2.5
   coinVerticalSpacing: 2
-  planetInterval: 2
-  itemSpawnDelay: 0.15
-  minSpawnDistance: 3
-  star1SpawnTimeRange: {x: 5, y: 15}
+  minSafeDistance: 3
+  basePlanetInterval: 1.5
+  baseCoinInterval: 2
+  speedBoostSpawnMultiplier: 0.7
+  star1TimeRange: {x: 8, y: 15}
   star2ProgressRange: {x: 0.3, y: 0.6}
   star3ProgressRange: {x: 0.85, y: 0.95}
-  doublePlanetChance: 40
-  enableDebugLogs: 1
+  enableDebugLogs: 0
   showGizmos: 1
-  isInitialized: 1
+  enableDetailedLogs: 0
   totalSpawned: 0
-  coinSpawned: 0
   planetSpawned: 0
+  coinSpawned: 0
   fragmentSpawned: 0
   starSpawned: 0
 --- !u!1 &1860471498

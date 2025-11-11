@@ -5,12 +5,12 @@ using TMPro;
 using System.Linq;
 
 /// <summary>
-/// ✅ CRITICAL FIX: Null safety untuk semua GameObject references
+/// ✅ FIXED: Fragment Mission UI - Maximum 3 boxes
 /// </summary>
 public class FragmentMissionUI : MonoBehaviour
 {
-    [Header("Mission Boxes (Assign up to 6 boxes)")]
-    [Tooltip("Assign semua mission box GameObjects (max 6). Boxes yang tidak dipakai akan di-hide.")]
+    [Header("Mission Boxes (MAX 3)")]
+    [Tooltip("Assign 3 mission box GameObjects. Boxes not needed will be hidden.")]
     public List<MissionBoxUI> missionBoxes = new List<MissionBoxUI>();
 
     [Header("Registry")]
@@ -68,25 +68,25 @@ public class FragmentMissionUI : MonoBehaviour
             return;
         }
 
-        int reqCount = levelConfig.requirements.Count;
+        // ✅ CRITICAL: LIMIT TO 3 REQUIREMENTS MAXIMUM
+        int reqCount = Mathf.Min(levelConfig.requirements.Count, 3);
 
-        if (reqCount > 6)
+        if (levelConfig.requirements.Count > 3)
         {
-            Debug.LogWarning($"[FragmentMissionUI] Level has {reqCount} requirements! Max 6 supported. Using first 6.");
-            reqCount = 6;
+            Debug.LogWarning($"[FragmentMissionUI] Level has {levelConfig.requirements.Count} requirements! Limiting to 3.");
         }
 
         currentRequirements = new FragmentRequirement[reqCount];
         collectedCounts = new int[reqCount];
 
-        for (int i = 0; i < reqCount && i < levelConfig.requirements.Count; i++)
+        for (int i = 0; i < reqCount; i++)
         {
             currentRequirements[i] = levelConfig.requirements[i];
         }
 
         if (enableDebugLogs)
         {
-            Debug.Log($"[FragmentMissionUI] Loaded {reqCount} requirements from {levelConfig.id}");
+            Debug.Log($"[FragmentMissionUI] Loaded {reqCount} requirements (max 3) from {levelConfig.id}");
         }
     }
 
@@ -106,17 +106,16 @@ public class FragmentMissionUI : MonoBehaviour
             Debug.Log($"[FragmentMissionUI] UpdateUI: {reqCount} requirements, {missionBoxes.Count} boxes available");
         }
 
-        // ✅ CRITICAL FIX: Null safety untuk semua operations
+        // Update each box
         for (int i = 0; i < missionBoxes.Count; i++)
         {
-            // ✅ Check if box exists
-            if (missionBoxes[i] == null) 
+            // Null checks
+            if (missionBoxes[i] == null)
             {
                 Debug.LogWarning($"[FragmentMissionUI] missionBoxes[{i}] is NULL!");
                 continue;
             }
 
-            // ✅ Check if rootObject exists BEFORE SetActive
             if (missionBoxes[i].rootObject == null)
             {
                 Debug.LogWarning($"[FragmentMissionUI] missionBoxes[{i}].rootObject is NULL!");
@@ -153,7 +152,7 @@ public class FragmentMissionUI : MonoBehaviour
 
         var req = currentRequirements[index];
 
-        // ✅ Update icon with null checks
+        // Update icon
         if (fragmentRegistry != null && box.iconImage != null)
         {
             GameObject prefab = fragmentRegistry.GetPrefab(req.type, req.colorVariant);
@@ -168,7 +167,7 @@ public class FragmentMissionUI : MonoBehaviour
             }
         }
 
-        // ✅ Update count text with null checks
+        // Update count text
         if (box.countText != null)
         {
             int collected = collectedCounts != null && index < collectedCounts.Length ? collectedCounts[index] : 0;
@@ -176,7 +175,7 @@ public class FragmentMissionUI : MonoBehaviour
             box.countText.gameObject.SetActive(true);
         }
 
-        // ✅ Activate box with null check
+        // Activate box
         if (box.rootObject != null)
             box.rootObject.SetActive(true);
     }
@@ -280,7 +279,7 @@ public class FragmentMissionUI : MonoBehaviour
             return;
         }
 
-        Debug.Log($"=== CURRENT LEVEL REQUIREMENTS ({currentRequirements.Length}) ===");
+        Debug.Log($"=== CURRENT LEVEL REQUIREMENTS ({currentRequirements.Length}/3 max) ===");
         for (int i = 0; i < currentRequirements.Length; i++)
         {
             var req = currentRequirements[i];

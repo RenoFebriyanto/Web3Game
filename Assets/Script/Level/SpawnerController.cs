@@ -1,15 +1,17 @@
 ﻿using UnityEngine;
 
 /// <summary>
-/// Helper script untuk control spawner (stop/start)
-/// Attach ke GameObject yang sama dengan spawner atau buat GameObject terpisah
+/// UPDATED: Helper script untuk control spawner (stop/start)
+/// Sekarang support ProceduralSpawner
+/// REPLACE: Assets/Script/Level/SpawnerController.cs
 /// </summary>
 public class SpawnerController : MonoBehaviour
 {
     public static SpawnerController Instance { get; private set; }
 
     [Header("References")]
-    public FixedGameplaySpawner spawner;
+    [Tooltip("Assign ProceduralSpawner dari scene")]
+    public ProceduralSpawner spawner;
 
     [Header("Status")]
     [SerializeField] private bool isSpawning = true;
@@ -26,7 +28,12 @@ public class SpawnerController : MonoBehaviour
         // Auto-find spawner
         if (spawner == null)
         {
-            spawner = FindFirstObjectByType<FixedGameplaySpawner>();
+            spawner = FindFirstObjectByType<ProceduralSpawner>();
+        }
+
+        if (spawner == null)
+        {
+            Debug.LogWarning("[SpawnerController] ProceduralSpawner not found in scene!");
         }
     }
 
@@ -36,6 +43,11 @@ public class SpawnerController : MonoBehaviour
         if (LevelGameSession.Instance != null)
         {
             LevelGameSession.Instance.OnLevelCompleted.AddListener(OnLevelComplete);
+            Debug.Log("[SpawnerController] ✓ Subscribed to level complete event");
+        }
+        else
+        {
+            Debug.LogWarning("[SpawnerController] LevelGameSession not found!");
         }
     }
 
@@ -53,6 +65,7 @@ public class SpawnerController : MonoBehaviour
     void OnLevelComplete()
     {
         StopSpawner();
+        Debug.Log("[SpawnerController] Level complete - spawner stopped");
     }
 
     /// <summary>
@@ -65,6 +78,10 @@ public class SpawnerController : MonoBehaviour
             spawner.enabled = false;
             isSpawning = false;
             Debug.Log("[SpawnerController] ✓ Spawner stopped");
+        }
+        else
+        {
+            Debug.LogWarning("[SpawnerController] Cannot stop spawner - reference is null!");
         }
 
         // Stop all coroutines related to spawning
@@ -82,8 +99,15 @@ public class SpawnerController : MonoBehaviour
             isSpawning = true;
             Debug.Log("[SpawnerController] ✓ Spawner resumed");
         }
+        else
+        {
+            Debug.LogWarning("[SpawnerController] Cannot resume spawner - reference is null!");
+        }
     }
 
+    /// <summary>
+    /// Check if spawner is currently active
+    /// </summary>
     public bool IsSpawning() => isSpawning;
 
     [ContextMenu("Stop Spawner")]
@@ -91,4 +115,15 @@ public class SpawnerController : MonoBehaviour
 
     [ContextMenu("Resume Spawner")]
     void Context_Resume() => ResumeSpawner();
+
+    [ContextMenu("Debug: Print Status")]
+    void Context_PrintStatus()
+    {
+        Debug.Log("=== SPAWNER CONTROLLER STATUS ===");
+        Debug.Log($"Instance: {(Instance != null ? "OK" : "NULL")}");
+        Debug.Log($"Spawner Reference: {(spawner != null ? "OK" : "NULL")}");
+        Debug.Log($"Is Spawning: {isSpawning}");
+        Debug.Log($"Spawner Enabled: {(spawner != null ? spawner.enabled.ToString() : "N/A")}");
+        Debug.Log("=================================");
+    }
 }

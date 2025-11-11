@@ -4,16 +4,13 @@ using System.Linq;
 using UnityEngine;
 
 /// <summary>
-/// ADVANCED PROCEDURAL SPAWNER - Subway Surfer style
-/// Features:
-/// - Lane blocking detection (always 1+ lane free)
-/// - Continuous spawn (no gaps/delays)
-/// - Smart pattern selection (no overlap)
-/// - Star system (3 stars based on fragment progress)
-/// - Booster integration (TimeFreeze, SpeedBoost)
-/// - Separate planet and coin patterns
+/// ✅ UPDATED: Simplified Procedural Spawner
+/// - Planet: Spawn prefab obstacle (X=0, pre-arranged layout)
+/// - Coin: Dynamic spawn dengan random chance (coin/star/fragment)
+/// - TimeFreeze: Stop planet spawn, coin tetap spawn
+/// - Star: Spawn based on fragment mission progress
 /// 
-/// Letakkan di: Assets/Script/Movement/ProceduralSpawner.cs
+/// REPLACE: Assets/Script/Level/ProceduralSpawner.cs
 /// </summary>
 public class ProceduralSpawner : MonoBehaviour
 {
@@ -22,8 +19,11 @@ public class ProceduralSpawner : MonoBehaviour
     public LanesManager lanesManager;
     public DifficultyManager difficultyManager;
 
-    [Header("📦 PREFABS")]
-    public GameObject[] planetPrefabs;
+    [Header("📦 OBSTACLE PREFABS (Pre-arranged)")]
+    [Tooltip("Drag prefab obstacle yang sudah diatur layoutnya (X=0)")]
+    public GameObject[] obstaclePrefabs;
+
+    [Header("📦 COLLECTIBLE PREFABS")]
     public GameObject coinPrefab;
     public GameObject starPrefab;
 
@@ -31,51 +31,57 @@ public class ProceduralSpawner : MonoBehaviour
     public FragmentPrefabRegistry fragmentRegistry;
     public LevelDatabase levelDatabase;
 
-    [Header("🎨 PATTERNS")]
-    public List<PlanetSpawnPattern> planetPatterns = new List<PlanetSpawnPattern>();
+    [Header("🎨 COIN PATTERNS (Keep This!)")]
+    [Tooltip("Pattern untuk layout coin (coin bisa berubah jadi star/fragment)")]
     public List<CoinSpawnPattern> coinPatterns = new List<CoinSpawnPattern>();
 
-    [Header("⚙️ SETTINGS")]
+    [Header("⚙️ SPAWN SETTINGS")]
     public Transform spawnParent;
     public float spawnY = 10f;
-    public float planetVerticalSpacing = 2.5f;
     public float coinVerticalSpacing = 2f;
-    public float minSafeDistance = 3f; // Minimum jarak antar wave
+    public float obstacleMinDistance = 8f; // Minimum jarak antar obstacle
     #endregion
 
     #region SPAWN TIMING
     [Header("⏱️ SPAWN TIMING")]
-    [Tooltip("Base planet spawn interval (detik)")]
-    public float basePlanetInterval = 1.5f;
+    [Tooltip("Obstacle spawn interval (detik)")]
+    public float baseObstacleInterval = 3.0f;
 
-    [Tooltip("Base coin pattern interval (detik)")]
-    public float baseCoinInterval = 2.0f;
-
-    [Tooltip("SpeedBoost multiplier untuk spawn rate")]
-    public float speedBoostSpawnMultiplier = 0.7f; // Spawn lebih cepat tapi jaga jarak
+    [Tooltip("Coin pattern spawn interval (detik)")]
+    public float baseCoinInterval = 2.5f;
     #endregion
 
-    #region STAR CONTROL
+    #region RANDOM CHANCE
+    [Header("🎲 RANDOM CHANCE (%)")]
+    [Tooltip("Chance untuk spawn fragment (5-10% recommended)")]
+    [Range(0f, 100f)]
+    public float fragmentSpawnChance = 7f;
+
+    [Tooltip("Chance untuk spawn star (3-5% recommended)")]
+    [Range(0f, 100f)]
+    public float starSpawnChance = 4f;
+
+    [Tooltip("Star spawn multiplier based on progress (max 3x at 90% progress)")]
+    public float starProgressMultiplier = 3f;
+    #endregion
+
+    #region STAR PROGRESS
     [Header("⭐ STAR SYSTEM (3 Stars Per Level)")]
-    [Tooltip("Star 1: Random time range")]
-    public Vector2 star1TimeRange = new Vector2(8f, 15f);
+    [Tooltip("Progress range untuk allow star spawn")]
+    public Vector2 starProgressRange = new Vector2(0.1f, 0.95f);
 
-    [Tooltip("Star 2: Fragment progress range (30-60%)")]
-    public Vector2 star2ProgressRange = new Vector2(0.3f, 0.6f);
-
-    [Tooltip("Star 3: Fragment progress range (85-95%)")]
-    public Vector2 star3ProgressRange = new Vector2(0.85f, 0.95f);
+    [Tooltip("Star spawn rate increase per 10% progress")]
+    public AnimationCurve starProgressCurve = AnimationCurve.EaseInOut(0f, 1f, 1f, 3f);
     #endregion
 
     #region DEBUG
     [Header("🎯 DEBUG")]
     public bool enableDebugLogs = false;
     public bool showGizmos = true;
-    public bool enableDetailedLogs = false;
 
     [Header("📊 RUNTIME STATUS")]
     [SerializeField] private int totalSpawned = 0;
-    [SerializeField] private int planetSpawned = 0;
+    [SerializeField] private int obstacleSpawned = 0;
     [SerializeField] private int coinSpawned = 0;
     [SerializeField] private int fragmentSpawned = 0;
     [SerializeField] private int starSpawned = 0;
@@ -85,43 +91,22 @@ public class ProceduralSpawner : MonoBehaviour
     private int laneCount = 3;
     private float laneOffset = 2.5f;
 
-    // Lane tracking
-    private class LaneState
-    {
-        public bool isBlocked;
-        public float blockedUntilY;
-        public float lastSpawnY;
-        public string blockReason;
-    }
-    private LaneState[] lanes;
-
-    // Pattern weights
-    private int totalPlanetWeight = 0;
-    private int totalCoinWeight = 0;
-
-    // Level data
     private FragmentRequirement[] levelRequirements;
-
-    // Star tracking
-    private bool[] starSpawned_Flags = new bool[3];
-    private float star1ScheduledTime = 0f;
     private bool isInitialized = false;
 
-    // Spawn queues
-    private Queue<System.Action> planetSpawnQueue = new Queue<System.Action>();
-    private Queue<System.Action> coinSpawnQueue = new Queue<System.Action>();
-
-    // Next spawn times
-    private float nextPlanetSpawnTime = 0f;
+    private float nextObstacleSpawnTime = 0f;
     private float nextCoinSpawnTime = 0f;
+
+    private float lastObstacleY = 0f; // Track last obstacle spawn position
+
+    private int totalStarsAllowed = 3;
+    private int starsSpawnedCount = 0;
     #endregion
 
     #region INITIALIZATION
     void Awake()
     {
         SetupReferences();
-        InitializeLanes();
-        BuildPatternWeights();
     }
 
     void SetupReferences()
@@ -142,43 +127,6 @@ public class ProceduralSpawner : MonoBehaviour
             spawnParent = transform;
     }
 
-    void InitializeLanes()
-    {
-        lanes = new LaneState[laneCount];
-        for (int i = 0; i < laneCount; i++)
-        {
-            lanes[i] = new LaneState
-            {
-                isBlocked = false,
-                blockedUntilY = spawnY - 20f,
-                lastSpawnY = spawnY - 10f,
-                blockReason = ""
-            };
-        }
-    }
-
-    void BuildPatternWeights()
-    {
-        totalPlanetWeight = 0;
-        totalCoinWeight = 0;
-
-        if (planetPatterns != null)
-        {
-            foreach (var p in planetPatterns)
-            {
-                if (p != null) totalPlanetWeight += p.selectionWeight;
-            }
-        }
-
-        if (coinPatterns != null)
-        {
-            foreach (var c in coinPatterns)
-            {
-                if (c != null) totalCoinWeight += c.selectionWeight;
-            }
-        }
-    }
-
     void Start()
     {
         if (!ValidateSetup())
@@ -189,14 +137,13 @@ public class ProceduralSpawner : MonoBehaviour
         }
 
         LoadLevelRequirements();
-        ScheduleStar1();
 
-        // Initialize spawn times
-        nextPlanetSpawnTime = Time.time + 0.5f;
-        nextCoinSpawnTime = Time.time + 1.0f;
+        lastObstacleY = spawnY;
+
+        nextObstacleSpawnTime = Time.time + 1.0f;
+        nextCoinSpawnTime = Time.time + 1.5f;
 
         StartCoroutine(MasterSpawnLoop());
-        StartCoroutine(StarSpawnLoop());
 
         isInitialized = true;
         Log("✅ PROCEDURAL SPAWNER INITIALIZED");
@@ -206,9 +153,9 @@ public class ProceduralSpawner : MonoBehaviour
     {
         bool valid = true;
 
-        if (planetPrefabs == null || planetPrefabs.Length == 0)
+        if (obstaclePrefabs == null || obstaclePrefabs.Length == 0)
         {
-            LogError("planetPrefabs empty!");
+            LogError("obstaclePrefabs empty! Assign obstacle prefabs.");
             valid = false;
         }
 
@@ -224,15 +171,15 @@ public class ProceduralSpawner : MonoBehaviour
             valid = false;
         }
 
-        if (planetPatterns == null || planetPatterns.Count == 0)
+        if (coinPatterns == null || coinPatterns.Count == 0)
         {
-            LogError("planetPatterns empty!");
+            LogError("coinPatterns empty! Need at least 1 coin pattern.");
             valid = false;
         }
 
-        if (coinPatterns == null || coinPatterns.Count == 0)
+        if (fragmentRegistry == null)
         {
-            LogError("coinPatterns empty!");
+            LogError("fragmentRegistry null! Cannot spawn fragments.");
             valid = false;
         }
 
@@ -252,19 +199,15 @@ public class ProceduralSpawner : MonoBehaviour
                 Log($"✓ Loaded {levelRequirements.Length} fragment requirements");
             }
         }
-    }
 
-    void ScheduleStar1()
-    {
-        star1ScheduledTime = Time.time + Random.Range(star1TimeRange.x, star1TimeRange.y);
-        Log($"Star 1 scheduled at T+{star1ScheduledTime - Time.time:F1}s");
+        if (levelRequirements == null || levelRequirements.Length == 0)
+        {
+            LogWarning("No level requirements found! Fragment spawn disabled.");
+        }
     }
     #endregion
 
     #region MASTER SPAWN LOOP
-    /// <summary>
-    /// Master loop - manages continuous spawning
-    /// </summary>
     IEnumerator MasterSpawnLoop()
     {
         yield return new WaitForSeconds(0.5f);
@@ -272,47 +215,34 @@ public class ProceduralSpawner : MonoBehaviour
         while (true)
         {
             float currentTime = Time.time;
-            UpdateLaneStates();
 
-            // ✅ PLANET SPAWN CHECK
-            if (currentTime >= nextPlanetSpawnTime)
+            // ✅ OBSTACLE SPAWN CHECK
+            if (currentTime >= nextObstacleSpawnTime)
             {
-                bool canSpawnPlanet = CanSpawnPlanets();
-                if (canSpawnPlanet)
+                bool canSpawn = CanSpawnObstacle();
+                if (canSpawn)
                 {
-                    TrySpawnPlanetPattern();
+                    SpawnObstacle();
                 }
-                else if (enableDetailedLogs)
+                else if (enableDebugLogs)
                 {
-                    Log("⏸️ Planet spawn paused (TimeFreeze active)");
+                    Log("⏸️ Obstacle spawn paused (TimeFreeze active)");
                 }
             }
 
             // ✅ COIN SPAWN CHECK (always active, even during TimeFreeze)
             if (currentTime >= nextCoinSpawnTime)
             {
-                TrySpawnCoinPattern();
+                SpawnCoinPattern();
             }
 
-            yield return null; // Run every frame for precise timing
+            yield return null;
         }
     }
 
-    void UpdateLaneStates()
+    bool CanSpawnObstacle()
     {
-        for (int i = 0; i < laneCount; i++)
-        {
-            if (lanes[i].blockedUntilY < spawnY - minSafeDistance)
-            {
-                lanes[i].isBlocked = false;
-                lanes[i].blockReason = "";
-            }
-        }
-    }
-
-    bool CanSpawnPlanets()
-    {
-        // TimeFreeze blocks planet spawning
+        // TimeFreeze blocks obstacle spawning
         if (BoosterManager.Instance != null && BoosterManager.Instance.timeFreezeActive)
         {
             return false;
@@ -321,241 +251,97 @@ public class ProceduralSpawner : MonoBehaviour
     }
     #endregion
 
-    #region PLANET SPAWNING
-    void TrySpawnPlanetPattern()
+    #region OBSTACLE SPAWNING
+    void SpawnObstacle()
     {
-        // Get available lanes (at least minFreeLanes must remain)
-        List<int> availableLanes = GetAvailableLanesForPlanet();
-
-        if (availableLanes.Count == 0)
+        if (obstaclePrefabs == null || obstaclePrefabs.Length == 0)
         {
-            if (enableDetailedLogs)
-                Log("⚠️ No available lanes for planet pattern");
-
-            // Retry sooner
-            float retrySpeedMod = GetSpeedModifier();
-            nextPlanetSpawnTime = Time.time + (basePlanetInterval * 0.5f * retrySpeedMod);
+            LogError("No obstacle prefabs assigned!");
             return;
         }
 
-        // Select pattern
-        PlanetSpawnPattern pattern = SelectPlanetPattern(availableLanes);
-        if (pattern == null)
+        // Pick random obstacle prefab
+        GameObject prefab = obstaclePrefabs[Random.Range(0, obstaclePrefabs.Length)];
+
+        // ✅ SPAWN AT X=0 (prefab sudah diatur layoutnya)
+        Vector3 spawnPos = new Vector3(0f, spawnY, 0f);
+        GameObject obstacle = Instantiate(prefab, spawnPos, Quaternion.identity, spawnParent);
+        obstacle.name = $"Obstacle_{obstacleSpawned}";
+
+        // Setup mover (should be on parent obstacle prefab)
+        SetupObstacleMover(obstacle);
+
+        lastObstacleY = spawnY;
+        obstacleSpawned++;
+        totalSpawned++;
+
+        // Schedule next obstacle spawn
+        float currentSpeed = GetCurrentSpeed();
+        float speedMod = GetSpeedModifier();
+        float interval = baseObstacleInterval * speedMod;
+
+        nextObstacleSpawnTime = Time.time + interval;
+
+        if (enableDebugLogs)
         {
-            LogWarning("No valid planet pattern found!");
-            nextPlanetSpawnTime = Time.time + basePlanetInterval;
-            return;
+            Log($"🌍 Spawned obstacle: {prefab.name}, next in {interval:F2}s");
         }
-
-        // Choose base lane
-        int baseLane = SelectBaseLaneForPattern(pattern, availableLanes);
-        if (baseLane == -1)
-        {
-            if (enableDetailedLogs)
-                Log($"Cannot spawn pattern {pattern.name} - no valid base lane");
-
-            nextPlanetSpawnTime = Time.time + (basePlanetInterval * 0.3f);
-            return;
-        }
-
-        // Spawn pattern
-        StartCoroutine(SpawnPlanetPattern(pattern, baseLane));
-
-        // Schedule next planet spawn
-        float currentSpeedMod = GetSpeedModifier();
-        float baseInterval = basePlanetInterval * currentSpeedMod;
-        float patternDelay = pattern.GetRandomDelay();
-        nextPlanetSpawnTime = Time.time + baseInterval + patternDelay;
-
-        if (enableDetailedLogs)
-            Log($"🌍 Spawning planet pattern: {pattern.name}, next in {baseInterval + patternDelay:F2}s");
     }
 
-    IEnumerator SpawnPlanetPattern(PlanetSpawnPattern pattern, int baseLane)
+    void SetupObstacleMover(GameObject obstacle)
     {
-        if (pattern.spawnPoints == null || pattern.spawnPoints.Count == 0)
-            yield break;
-
-        float currentY = spawnY;
-        HashSet<int> usedLanes = pattern.GetBlockedLanes(baseLane, laneCount);
-
-        // Block lanes
-        foreach (int lane in usedLanes)
-        {
-            lanes[lane].isBlocked = true;
-            lanes[lane].blockReason = $"Planet:{pattern.name}";
-        }
-
         float currentSpeed = GetCurrentSpeed();
 
-        for (int i = 0; i < pattern.spawnPoints.Count; i++)
+        // Check if mover already exists
+        var mover = obstacle.GetComponent<PlanetMover>();
+        if (mover != null)
         {
-            Vector2 point = pattern.spawnPoints[i];
-            int targetLane = baseLane + Mathf.RoundToInt(point.x);
-            targetLane = Mathf.Clamp(targetLane, 0, laneCount - 1);
-
-            currentY -= point.y * planetVerticalSpacing;
-
-            // Spawn planet
-            GameObject prefab = planetPrefabs[Random.Range(0, planetPrefabs.Length)];
-            Vector3 pos = new Vector3(GetLaneWorldX(targetLane), currentY, 0f);
-            GameObject planet = Instantiate(prefab, pos, Quaternion.identity, spawnParent);
-
-            SetupMover(planet, currentSpeed);
-
-            lanes[targetLane].lastSpawnY = currentY;
-            lanes[targetLane].blockedUntilY = currentY;
-
-            planetSpawned++;
-            totalSpawned++;
-
-            yield return new WaitForSeconds(0.1f); // Small delay between items in pattern
+            mover.SetSpeed(currentSpeed);
+            return;
         }
 
-        // Update block status
-        float patternLength = pattern.GetTotalVerticalDistance() * planetVerticalSpacing;
-        float blockY = currentY - patternLength;
-
-        foreach (int lane in usedLanes)
-        {
-            lanes[lane].blockedUntilY = blockY;
-        }
-    }
-
-    List<int> GetAvailableLanesForPlanet()
-    {
-        List<int> available = new List<int>();
-
-        for (int i = 0; i < laneCount; i++)
-        {
-            if (!lanes[i].isBlocked)
-            {
-                available.Add(i);
-            }
-        }
-
-        return available;
-    }
-
-    PlanetSpawnPattern SelectPlanetPattern(List<int> availableLanes)
-    {
-        if (planetPatterns == null || planetPatterns.Count == 0) return null;
-
-        // Filter valid patterns
-        List<PlanetSpawnPattern> validPatterns = new List<PlanetSpawnPattern>();
-
-        foreach (var pattern in planetPatterns)
-        {
-            if (pattern == null) continue;
-
-            // Check if pattern can fit in available lanes
-            bool canFit = false;
-            foreach (int baseLane in availableLanes)
-            {
-                if (pattern.IsValidForBaseLane(baseLane, laneCount))
-                {
-                    canFit = true;
-                    break;
-                }
-            }
-
-            if (canFit)
-                validPatterns.Add(pattern);
-        }
-
-        if (validPatterns.Count == 0) return null;
-
-        // Weighted random selection
-        int totalWeight = 0;
-        foreach (var p in validPatterns)
-        {
-            totalWeight += p.selectionWeight;
-        }
-
-        int rand = Random.Range(0, totalWeight);
-        int cumulative = 0;
-
-        foreach (var p in validPatterns)
-        {
-            cumulative += p.selectionWeight;
-            if (rand < cumulative)
-                return p;
-        }
-
-        return validPatterns[0];
-    }
-
-    int SelectBaseLaneForPattern(PlanetSpawnPattern pattern, List<int> availableLanes)
-    {
-        List<int> validBaseLanes = new List<int>();
-
-        foreach (int lane in availableLanes)
-        {
-            if (pattern.IsValidForBaseLane(lane, laneCount))
-            {
-                // Additional check: ensure lanes used by pattern are not blocked
-                var blocked = pattern.GetBlockedLanes(lane, laneCount);
-                bool allClear = true;
-
-                foreach (int b in blocked)
-                {
-                    if (lanes[b].isBlocked)
-                    {
-                        allClear = false;
-                        break;
-                    }
-                }
-
-                if (allClear)
-                    validBaseLanes.Add(lane);
-            }
-        }
-
-        if (validBaseLanes.Count == 0) return -1;
-        return validBaseLanes[Random.Range(0, validBaseLanes.Count)];
+        // Add mover if not exists
+        mover = obstacle.AddComponent<PlanetMover>();
+        mover.SetSpeed(currentSpeed);
     }
     #endregion
 
-    #region COIN SPAWNING
-    void TrySpawnCoinPattern()
+    #region COIN PATTERN SPAWNING
+    void SpawnCoinPattern()
     {
-        // Get free lanes (lanes not blocked by planets)
-        List<int> freeLanes = GetFreeLanesForCollectibles();
-
-        if (freeLanes.Count == 0)
+        if (coinPatterns == null || coinPatterns.Count == 0)
         {
-            if (enableDetailedLogs)
-                Log("⚠️ No free lanes for coin pattern");
-
-            nextCoinSpawnTime = Time.time + (baseCoinInterval * 0.3f);
+            LogError("No coin patterns available!");
             return;
         }
 
-        // Select pattern
+        // Select random coin pattern
         CoinSpawnPattern pattern = SelectCoinPattern();
         if (pattern == null)
         {
-            LogWarning("No coin pattern found!");
+            LogWarning("Failed to select coin pattern!");
             nextCoinSpawnTime = Time.time + baseCoinInterval;
             return;
         }
 
-        // Choose base lane from free lanes
-        int baseLane = freeLanes[Random.Range(0, freeLanes.Count)];
+        // Choose base lane
+        int baseLane = Random.Range(0, laneCount);
 
-        // Spawn pattern
-        StartCoroutine(SpawnCoinPattern(pattern, baseLane));
+        // Spawn pattern with dynamic collectible selection
+        StartCoroutine(SpawnCoinPatternCoroutine(pattern, baseLane));
 
         // Schedule next coin spawn
         float speedMod = GetSpeedModifier();
         float delay = pattern.GetRandomDelay() * speedMod;
         nextCoinSpawnTime = Time.time + baseCoinInterval + delay;
 
-        if (enableDetailedLogs)
+        if (enableDebugLogs)
+        {
             Log($"💰 Spawning coin pattern: {pattern.patternName}, next in {baseCoinInterval + delay:F2}s");
+        }
     }
 
-    IEnumerator SpawnCoinPattern(CoinSpawnPattern pattern, int baseLane)
+    IEnumerator SpawnCoinPatternCoroutine(CoinSpawnPattern pattern, int baseLane)
     {
         if (pattern.spawnPoints == null || pattern.spawnPoints.Count == 0)
             yield break;
@@ -571,20 +357,32 @@ public class ProceduralSpawner : MonoBehaviour
 
             currentY -= point.y * coinVerticalSpacing;
 
-            // Decide what to spawn
-            GameObject prefab = DecideCollectiblePrefab(pattern);
+            // ✅ DYNAMIC COLLECTIBLE SELECTION
+            GameObject prefab = DecideCollectiblePrefab();
 
             if (prefab != null)
             {
-                Vector3 pos = new Vector3(GetLaneWorldX(targetLane), currentY, 0f);
+                float laneX = GetLaneWorldX(targetLane);
+                Vector3 pos = new Vector3(laneX, currentY, 0f);
                 GameObject spawned = Instantiate(prefab, pos, Quaternion.identity, spawnParent);
 
-                SetupMover(spawned, currentSpeed);
+                SetupCollectibleMover(spawned, currentSpeed);
                 SetupCollectibleComponent(spawned, prefab);
 
                 // Update stats
-                if (prefab == coinPrefab) coinSpawned++;
-                else if (prefab != coinPrefab && prefab != starPrefab) fragmentSpawned++;
+                if (prefab == coinPrefab)
+                {
+                    coinSpawned++;
+                }
+                else if (prefab == starPrefab)
+                {
+                    starSpawned++;
+                    starsSpawnedCount++;
+                }
+                else
+                {
+                    fragmentSpawned++;
+                }
 
                 totalSpawned++;
             }
@@ -593,27 +391,21 @@ public class ProceduralSpawner : MonoBehaviour
         }
     }
 
-    List<int> GetFreeLanesForCollectibles()
-    {
-        List<int> free = new List<int>();
-
-        for (int i = 0; i < laneCount; i++)
-        {
-            // Lane is free if not blocked by planet pattern
-            if (!lanes[i].isBlocked || lanes[i].blockReason == "")
-            {
-                free.Add(i);
-            }
-        }
-
-        return free;
-    }
-
     CoinSpawnPattern SelectCoinPattern()
     {
-        if (coinPatterns == null || coinPatterns.Count == 0) return null;
+        if (coinPatterns.Count == 0) return null;
+        if (coinPatterns.Count == 1) return coinPatterns[0];
 
-        int rand = Random.Range(0, totalCoinWeight);
+        // Weighted random selection
+        int totalWeight = 0;
+        foreach (var p in coinPatterns)
+        {
+            if (p != null) totalWeight += p.selectionWeight;
+        }
+
+        if (totalWeight == 0) return coinPatterns[0];
+
+        int rand = Random.Range(0, totalWeight);
         int cumulative = 0;
 
         foreach (var p in coinPatterns)
@@ -627,20 +419,72 @@ public class ProceduralSpawner : MonoBehaviour
         return coinPatterns[0];
     }
 
-    GameObject DecideCollectiblePrefab(CoinSpawnPattern pattern)
+    /// <summary>
+    /// ✅ CRITICAL: Dynamic collectible decision (coin/star/fragment)
+    /// </summary>
+    GameObject DecideCollectiblePrefab()
     {
+        float progress = GetFragmentProgress();
         float roll = Random.Range(0f, 100f);
 
-        // Fragment
-        if (roll < pattern.fragmentSubstituteChance)
+        // ✅ CHECK 1: Star spawn (progress-based chance)
+        if (CanSpawnStar(progress))
         {
-            GameObject fragmentPrefab = GetRequiredFragmentPrefab();
-            if (fragmentPrefab != null)
-                return fragmentPrefab;
+            float adjustedStarChance = GetAdjustedStarChance(progress);
+
+            if (roll < adjustedStarChance)
+            {
+                if (enableDebugLogs)
+                {
+                    Log($"⭐ Spawning STAR (roll: {roll:F1}%, chance: {adjustedStarChance:F1}%, progress: {progress:P0})");
+                }
+                return starPrefab;
+            }
+
+            roll -= adjustedStarChance; // Adjust roll for next check
         }
 
-        // Default: Coin
+        // ✅ CHECK 2: Fragment spawn
+        if (levelRequirements != null && levelRequirements.Length > 0)
+        {
+            if (roll < fragmentSpawnChance)
+            {
+                GameObject fragmentPrefab = GetRequiredFragmentPrefab();
+                if (fragmentPrefab != null)
+                {
+                    if (enableDebugLogs)
+                    {
+                        Log($"🔷 Spawning FRAGMENT (roll: {roll:F1}%, chance: {fragmentSpawnChance:F1}%)");
+                    }
+                    return fragmentPrefab;
+                }
+            }
+        }
+
+        // ✅ DEFAULT: Coin
         return coinPrefab;
+    }
+
+    bool CanSpawnStar(float progress)
+    {
+        // Max 3 stars per level
+        if (starsSpawnedCount >= totalStarsAllowed)
+            return false;
+
+        // Progress must be within range
+        if (progress < starProgressRange.x || progress > starProgressRange.y)
+            return false;
+
+        return true;
+    }
+
+    float GetAdjustedStarChance(float progress)
+    {
+        // Star spawn chance increases with progress
+        float progressNormalized = Mathf.InverseLerp(starProgressRange.x, starProgressRange.y, progress);
+        float multiplier = starProgressCurve.Evaluate(progressNormalized);
+
+        return starSpawnChance * multiplier;
     }
 
     GameObject GetRequiredFragmentPrefab()
@@ -648,23 +492,50 @@ public class ProceduralSpawner : MonoBehaviour
         if (levelRequirements == null || levelRequirements.Length == 0) return null;
         if (fragmentRegistry == null) return null;
 
+        // Pick random requirement
         var req = levelRequirements[Random.Range(0, levelRequirements.Length)];
         return fragmentRegistry.GetPrefab(req.type, req.colorVariant);
     }
 
+    void SetupCollectibleMover(GameObject collectible, float speed)
+    {
+        // Try existing mover components
+        var coinMover = collectible.GetComponent<CoinMover>();
+        if (coinMover != null)
+        {
+            coinMover.SetSpeed(speed);
+            return;
+        }
+
+        var fragmentMover = collectible.GetComponent<FragmentMover>();
+        if (fragmentMover != null)
+        {
+            fragmentMover.SetSpeed(speed);
+            return;
+        }
+
+        // Fallback: add CoinMover
+        coinMover = collectible.AddComponent<CoinMover>();
+        coinMover.SetSpeed(speed);
+    }
+
     void SetupCollectibleComponent(GameObject spawned, GameObject originalPrefab)
     {
-        if (originalPrefab == coinPrefab || originalPrefab == starPrefab) return;
+        // Skip if coin or star
+        if (originalPrefab == coinPrefab || originalPrefab == starPrefab)
+            return;
 
+        // Setup fragment collectible
         var collectible = spawned.GetComponent<FragmentCollectible>();
         if (collectible == null)
             collectible = spawned.AddComponent<FragmentCollectible>();
 
-        if (levelRequirements != null)
+        // Find matching requirement
+        if (levelRequirements != null && fragmentRegistry != null)
         {
             foreach (var req in levelRequirements)
             {
-                var prefab = fragmentRegistry?.GetPrefab(req.type, req.colorVariant);
+                var prefab = fragmentRegistry.GetPrefab(req.type, req.colorVariant);
                 if (prefab != null && prefab.name == originalPrefab.name)
                 {
                     collectible.Initialize(req.type, req.colorVariant);
@@ -675,72 +546,31 @@ public class ProceduralSpawner : MonoBehaviour
     }
     #endregion
 
-    #region STAR SPAWNING
-    IEnumerator StarSpawnLoop()
+    #region UTILITY
+    float GetCurrentSpeed()
     {
-        yield return new WaitForSeconds(2f);
-
-        while (starSpawned < 3)
-        {
-            yield return new WaitForSeconds(0.5f);
-
-            float progress = GetFragmentProgress();
-
-            // Star 1: Random time
-            if (!starSpawned_Flags[0] && Time.time >= star1ScheduledTime)
-            {
-                yield return StartCoroutine(TrySpawnStar(0));
-            }
-
-            // Star 2: Fragment progress 30-60%
-            if (!starSpawned_Flags[1] && starSpawned_Flags[0] &&
-                progress >= star2ProgressRange.x && progress <= star2ProgressRange.y)
-            {
-                yield return StartCoroutine(TrySpawnStar(1));
-            }
-
-            // Star 3: Fragment progress 85-95%
-            if (!starSpawned_Flags[2] && starSpawned_Flags[1] &&
-                progress >= star3ProgressRange.x && progress <= star3ProgressRange.y)
-            {
-                yield return StartCoroutine(TrySpawnStar(2));
-            }
-        }
-
-        Log("✅ All 3 stars spawned!");
+        if (difficultyManager != null)
+            return difficultyManager.CurrentSpeed;
+        return 3f;
     }
 
-    IEnumerator TrySpawnStar(int starIndex)
+    float GetSpeedModifier()
     {
-        int maxAttempts = 20;
-        int attempts = 0;
-
-        while (attempts < maxAttempts)
+        // SpeedBoost affects spawn rate
+        if (BoosterManager.Instance != null && BoosterManager.Instance.speedBoostActive)
         {
-            List<int> freeLanes = GetFreeLanesForCollectibles();
-
-            if (freeLanes.Count > 0)
-            {
-                int lane = freeLanes[Random.Range(0, freeLanes.Count)];
-                Vector3 pos = new Vector3(GetLaneWorldX(lane), spawnY, 0f);
-                GameObject star = Instantiate(starPrefab, pos, Quaternion.identity, spawnParent);
-
-                float speed = GetCurrentSpeed();
-                SetupMover(star, speed);
-
-                starSpawned_Flags[starIndex] = true;
-                starSpawned++;
-                totalSpawned++;
-
-                Log($"⭐ Star {starIndex + 1} spawned in lane {lane} (progress: {GetFragmentProgress():P0})");
-                yield break;
-            }
-
-            attempts++;
-            yield return new WaitForSeconds(0.3f);
+            return 0.7f; // Spawn faster during speed boost
         }
+        return 1f;
+    }
 
-        LogWarning($"Failed to spawn star {starIndex + 1} after {maxAttempts} attempts");
+    float GetLaneWorldX(int lane)
+    {
+        if (lanesManager != null)
+            return lanesManager.LaneToWorldX(lane);
+
+        float center = (laneCount - 1) / 2f;
+        return (lane - center) * laneOffset;
     }
 
     float GetFragmentProgress()
@@ -760,61 +590,6 @@ public class ProceduralSpawner : MonoBehaviour
 
         if (totalRequired == 0) return 0f;
         return (float)totalCollected / totalRequired;
-    }
-    #endregion
-
-    #region UTILITY
-    void SetupMover(GameObject obj, float speed)
-    {
-        var planetMover = obj.GetComponent<PlanetMover>();
-        if (planetMover != null)
-        {
-            planetMover.SetSpeed(speed);
-            return;
-        }
-
-        var coinMover = obj.GetComponent<CoinMover>();
-        if (coinMover != null)
-        {
-            coinMover.SetSpeed(speed);
-            return;
-        }
-
-        var fragmentMover = obj.GetComponent<FragmentMover>();
-        if (fragmentMover != null)
-        {
-            fragmentMover.SetSpeed(speed);
-            return;
-        }
-
-        var mover = obj.AddComponent<PlanetMover>();
-        mover.SetSpeed(speed);
-    }
-
-    float GetCurrentSpeed()
-    {
-        if (difficultyManager != null)
-            return difficultyManager.CurrentSpeed;
-        return 3f;
-    }
-
-    float GetSpeedModifier()
-    {
-        // SpeedBoost affects spawn rate
-        if (BoosterManager.Instance != null && BoosterManager.Instance.speedBoostActive)
-        {
-            return speedBoostSpawnMultiplier;
-        }
-        return 1f;
-    }
-
-    float GetLaneWorldX(int lane)
-    {
-        if (lanesManager != null)
-            return lanesManager.LaneToWorldX(lane);
-
-        float center = (laneCount - 1) / 2f;
-        return (lane - center) * laneOffset;
     }
 
     void Log(string msg)
@@ -844,39 +619,27 @@ public class ProceduralSpawner : MonoBehaviour
         Gizmos.color = Color.cyan;
         Gizmos.DrawLine(new Vector3(-10, spawnY, 0), new Vector3(10, spawnY, 0));
 
-        // Draw lane states
+        // Draw lanes
         for (int i = 0; i < laneCount; i++)
         {
-            if (lanes == null || i >= lanes.Length) continue;
-
             float x = GetLaneWorldX(i);
-            Gizmos.color = lanes[i].isBlocked ? Color.red : Color.green;
-            Gizmos.DrawLine(new Vector3(x, spawnY - 2, 0), new Vector3(x, spawnY + 2, 0));
-
-            // Draw blocked until Y
-            if (lanes[i].isBlocked)
-            {
-                Gizmos.color = new Color(1f, 0f, 0f, 0.3f);
-                float y = lanes[i].blockedUntilY;
-                Gizmos.DrawCube(new Vector3(x, y, 0), new Vector3(0.5f, 0.5f, 0.5f));
-            }
+            Gizmos.color = Color.green;
+            Gizmos.DrawLine(new Vector3(x, spawnY - 15, 0), new Vector3(x, spawnY + 2, 0));
         }
 
 #if UNITY_EDITOR
         // Draw status text
         float progress = GetFragmentProgress();
-        string status = $"Total: {totalSpawned} | Planets: {planetSpawned} | Coins: {coinSpawned}\n";
-        status += $"Fragments: {fragmentSpawned} | Stars: {starSpawned}/3\n";
+        string status = $"Total: {totalSpawned} | Obstacles: {obstacleSpawned}\n";
+        status += $"Coins: {coinSpawned} | Fragments: {fragmentSpawned} | Stars: {starsSpawnedCount}/3\n";
         status += $"Progress: {progress:P0}";
 
-        if (BoosterManager.Instance != null && BoosterManager.Instance.timeFreezeActive)
+        if (BoosterManager.Instance != null)
         {
-            status += "\n⏸️ TIME FREEZE ACTIVE";
-        }
-
-        if (BoosterManager.Instance != null && BoosterManager.Instance.speedBoostActive)
-        {
-            status += "\n⚡ SPEED BOOST ACTIVE";
+            if (BoosterManager.Instance.timeFreezeActive)
+                status += "\n⏸️ TIME FREEZE";
+            if (BoosterManager.Instance.speedBoostActive)
+                status += "\n⚡ SPEED BOOST";
         }
 
         UnityEditor.Handles.Label(
@@ -893,45 +656,28 @@ public class ProceduralSpawner : MonoBehaviour
         Debug.Log("========== PROCEDURAL SPAWNER STATUS ==========");
         Debug.Log($"Initialized: {isInitialized}");
         Debug.Log($"Total Spawned: {totalSpawned}");
-        Debug.Log($"Planets: {planetSpawned} | Coins: {coinSpawned}");
-        Debug.Log($"Fragments: {fragmentSpawned} | Stars: {starSpawned}/3");
+        Debug.Log($"Obstacles: {obstacleSpawned} | Coins: {coinSpawned}");
+        Debug.Log($"Fragments: {fragmentSpawned} | Stars: {starsSpawnedCount}/3");
         Debug.Log($"Fragment Progress: {GetFragmentProgress():P0}");
         Debug.Log($"Current Speed: {GetCurrentSpeed():F2}");
         Debug.Log($"Speed Modifier: {GetSpeedModifier():F2}");
-        Debug.Log("\n--- Lane States ---");
-        for (int i = 0; i < laneCount; i++)
-        {
-            if (lanes != null && i < lanes.Length)
-            {
-                string status = lanes[i].isBlocked ? "BLOCKED" : "FREE";
-                Debug.Log($"Lane {i}: {status} | Reason: {lanes[i].blockReason} | BlockedY: {lanes[i].blockedUntilY:F1}");
-            }
-        }
         Debug.Log("===============================================");
     }
 
-    [ContextMenu("⭐ Debug: Force Spawn Star")]
-    void Debug_ForceSpawnStar()
+    [ContextMenu("⭐ Debug: Check Star Spawn Chance")]
+    void Debug_CheckStarChance()
     {
-        if (starSpawned >= 3)
-        {
-            Debug.LogWarning("All 3 stars already spawned!");
-            return;
-        }
+        float progress = GetFragmentProgress();
+        float chance = GetAdjustedStarChance(progress);
+        bool canSpawn = CanSpawnStar(progress);
 
-        StartCoroutine(TrySpawnStar(starSpawned));
-    }
-
-    [ContextMenu("🌍 Debug: Force Spawn Planet Pattern")]
-    void Debug_ForceSpawnPlanet()
-    {
-        TrySpawnPlanetPattern();
-    }
-
-    [ContextMenu("💰 Debug: Force Spawn Coin Pattern")]
-    void Debug_ForceSpawnCoin()
-    {
-        TrySpawnCoinPattern();
+        Debug.Log("========== STAR SPAWN CHANCE ==========");
+        Debug.Log($"Progress: {progress:P0}");
+        Debug.Log($"Base Chance: {starSpawnChance}%");
+        Debug.Log($"Adjusted Chance: {chance:F2}%");
+        Debug.Log($"Can Spawn: {canSpawn}");
+        Debug.Log($"Stars Spawned: {starsSpawnedCount}/{totalStarsAllowed}");
+        Debug.Log("========================================");
     }
     #endregion
 }

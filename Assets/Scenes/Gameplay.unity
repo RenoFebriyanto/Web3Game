@@ -1404,7 +1404,7 @@ Transform:
   m_GameObject: {fileID: 486920325}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: -3.03, z: 0}
+  m_LocalPosition: {x: 0, y: -2.5, z: 0}
   m_LocalScale: {x: 0.15, y: 0.15, z: 0.15}
   m_ConstrainProportionsScale: 1
   m_Children:
@@ -11873,29 +11873,18 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   lanesManager: {fileID: 1029806403}
   difficultyManager: {fileID: 1255187841}
-  planetPrefabs:
-  - {fileID: 4859472085069953281, guid: 10e4436b3fbad98428c49d4f85793e83, type: 3}
-  - {fileID: 4825297902986891353, guid: ce5ae273cec03d74b8772a3fd141a0a7, type: 3}
-  - {fileID: 8623831437168411947, guid: e906ba9e2e47f6a42a08f9f44541746c, type: 3}
-  - {fileID: 2056561710091816579, guid: b9f6e8b717273aa4480dde025b6bb14f, type: 3}
-  - {fileID: 2317271719180236776, guid: 4a1ec864f631c0e4299804c6045325d5, type: 3}
-  - {fileID: 5113602838793485311, guid: c570131ca4cf3484eacf07cb9266a5b5, type: 3}
-  - {fileID: 3506641348122442430, guid: ce82491f370c9064280ca3dad29fd2e9, type: 3}
-  - {fileID: 4960012264651991130, guid: e86a1585bd4ac85469bd4daa8002b48f, type: 3}
-  - {fileID: 279141384901392389, guid: cf974aa6032c6e84980003a86d6b4bcf, type: 3}
-  - {fileID: 8546903855206273715, guid: e759f487421ef004bbfff58c97702927, type: 3}
-  - {fileID: 1301558441701477298, guid: d159d928021a8004ca9f11b89e967767, type: 3}
-  - {fileID: 1574119638395825906, guid: 136b4cdf50fea674b84a1e4734461572, type: 3}
-  - {fileID: 8214930018854636928, guid: 7618488fc1f01cb4eb3d3b9416b8a6aa, type: 3}
+  obstaclePrefabs:
+  - {fileID: 6578890714608622562, guid: cbcf92aeaaa969d43a7a862a4ff60ac9, type: 3}
+  - {fileID: 6167349456269208002, guid: 434deb26c022e2e4c8fb63765a39df80, type: 3}
+  - {fileID: 8955789702039589778, guid: 254369dcd0a2ee64cb4286d79735f864, type: 3}
+  - {fileID: 2553975070387681859, guid: 52fc6393d73f92e42964281b4dafdbd7, type: 3}
+  - {fileID: 5404550627098372201, guid: f6aadf7d6bc56574999801447db0c1f7, type: 3}
+  - {fileID: 605665352668762460, guid: 9c92b18f988f7ea429706718127b112c, type: 3}
+  - {fileID: 2346849030041590933, guid: 88fdc44e4a646c9479d27b551305c3e5, type: 3}
   coinPrefab: {fileID: 8204258798340378091, guid: b7fb0df391297bb47a410c9ef6a278ad, type: 3}
   starPrefab: {fileID: 1303944969474664622, guid: 0dfa52ff868e79540a42b1dcd501025a, type: 3}
   fragmentRegistry: {fileID: 11400000, guid: 325c8016bc09c84428f9f8b2db5675db, type: 2}
   levelDatabase: {fileID: 11400000, guid: 9d11e391857961a4d8bbf24bbab802f9, type: 2}
-  planetPatterns:
-  - {fileID: 11400000, guid: 3c51f1ad1dcde3f47b821c3518861869, type: 2}
-  - {fileID: 11400000, guid: 7790146f63b63be40b56da05b369baba, type: 2}
-  - {fileID: 11400000, guid: 8d537e3b5b86b3e4195bfdccda2e7506, type: 2}
-  - {fileID: 11400000, guid: 48a8af72655da6048a252d9ac28a121f, type: 2}
   coinPatterns:
   - {fileID: 11400000, guid: 1831c1d834a196147af62b15ce790cf6, type: 2}
   - {fileID: 11400000, guid: 8c76eb4b5ad35884494a0518692ecc6f, type: 2}
@@ -11905,20 +11894,42 @@ MonoBehaviour:
   - {fileID: 11400000, guid: c17b34447aebd1c4cb20617bc9c81b0f, type: 2}
   spawnParent: {fileID: 1830271083}
   spawnY: 10
-  planetVerticalSpacing: 2.5
   coinVerticalSpacing: 2
-  minSafeDistance: 3
-  basePlanetInterval: 1.5
+  obstacleMinDistance: 8
+  baseObstacleInterval: 3
   baseCoinInterval: 2
-  speedBoostSpawnMultiplier: 0.7
-  star1TimeRange: {x: 8, y: 15}
-  star2ProgressRange: {x: 0.3, y: 0.6}
-  star3ProgressRange: {x: 0.85, y: 0.95}
+  fragmentSpawnChance: 5
+  starSpawnChance: 4
+  starProgressMultiplier: 3
+  starProgressRange: {x: 0.1, y: 0.95}
+  starProgressCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 1
+      value: 3
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
   enableDebugLogs: 0
   showGizmos: 1
-  enableDetailedLogs: 0
   totalSpawned: 0
-  planetSpawned: 0
+  obstacleSpawned: 0
   coinSpawned: 0
   fragmentSpawned: 0
   starSpawned: 0

@@ -23,5 +23,5 @@ MonoBehaviour:
   movementStartDelay: 0.5
   selectionWeight: 50
   obstacleHeight: 6
-  extraSpacing: 0
+  extraSpacing: 1
   previewImage: {fileID: 0}

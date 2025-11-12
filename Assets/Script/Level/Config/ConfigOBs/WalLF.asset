@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 848d19a6f9917ad42bb8fc003a2f4f38, type: 3}
+  m_Name: WalLF
+  m_EditorClassIdentifier: 
+  obstacleId: obs_wallf
+  displayName: WallLF
+  prefab: {fileID: 8819301280676542006, guid: 2945cb3387365cc44b1d331fcb6906dd, type: 3}
+  blockedLanes: 000000000100000002000000
+  freeLanes: 
+  isDynamicObstacle: 0
+  movementLane: 1
+  dynamicSpeedMultiplier: 1.5
+  movementStartDelay: 0.5
+  selectionWeight: 50
+  obstacleHeight: 5
+  extraSpacing: 0
+  previewImage: {fileID: 0}

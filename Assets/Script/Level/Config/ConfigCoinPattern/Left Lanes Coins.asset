@@ -15,7 +15,7 @@ MonoBehaviour:
   patternName: Left Lanes Coins
   compatibleObstacleId: obs_linearright
   spawnLanes: 0000000001000000
-  coinsPerLane: 6
+  coinsPerLane: 4
   verticalSpacing: 1.2
   selectionWeight: 50
   onlySpawnInFreeLanes: 1

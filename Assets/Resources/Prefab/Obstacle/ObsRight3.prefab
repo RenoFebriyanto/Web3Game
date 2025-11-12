@@ -11,7 +11,7 @@ GameObject:
   - component: {fileID: 4672645872005688598}
   - component: {fileID: -1294919441051132969}
   m_Layer: 0
-  m_Name: Obs3
+  m_Name: ObsRight3
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

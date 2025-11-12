@@ -88,5 +88,5 @@ MonoBehaviour:
     m_PostInfinity: 2
     m_RotationOrder: 4
   randomSeed: 0
-  rareFragmentChance: 0.3
+  rareFragmentChance: 0.2
   targetDatabase: {fileID: 11400000, guid: 9d11e391857961a4d8bbf24bbab802f9, type: 2}

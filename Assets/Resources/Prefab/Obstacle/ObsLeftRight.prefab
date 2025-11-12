@@ -11,7 +11,7 @@ GameObject:
   - component: {fileID: 7047375635766684497}
   - component: {fileID: -6758280327968997838}
   m_Layer: 0
-  m_Name: Obs2Line
+  m_Name: ObsLeftRight
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

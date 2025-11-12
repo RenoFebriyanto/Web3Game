@@ -11,7 +11,7 @@ GameObject:
   - component: {fileID: 6426613264498139941}
   - component: {fileID: 5121068869520552826}
   m_Layer: 0
-  m_Name: Obs2n
+  m_Name: ObsGapCenter
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

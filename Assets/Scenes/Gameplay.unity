@@ -3164,7 +3164,6 @@ GameObject:
   m_Component:
   - component: {fileID: 1029806404}
   - component: {fileID: 1029806403}
-  - component: {fileID: 1029806405}
   m_Layer: 0
   m_Name: GameBootstrapp
   m_TagString: Untagged
@@ -3202,18 +3201,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1029806405
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1029806400}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: ea69de319e4cfea4d803f9fcb086a94f, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!1 &1057190540
 GameObject:
   m_ObjectHideFlags: 0
@@ -6440,14 +6427,14 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_Padding:
     m_Left: 10
-    m_Right: 20
-    m_Top: 35
+    m_Right: 30
+    m_Top: 30
     m_Bottom: 10
   m_ChildAlignment: 2
   m_StartCorner: 1
   m_StartAxis: 0
   m_CellSize: {x: 120, y: 120}
-  m_Spacing: {x: 50, y: 30}
+  m_Spacing: {x: 20, y: 20}
   m_Constraint: 1
   m_ConstraintCount: 2
 --- !u!114 &1697713404
@@ -11897,34 +11884,24 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   lanesManager: {fileID: 1029806403}
   difficultyManager: {fileID: 1255187841}
-  obstaclePrefabs:
-  - {fileID: 6578890714608622562, guid: cbcf92aeaaa969d43a7a862a4ff60ac9, type: 3}
-  - {fileID: 6167349456269208002, guid: 434deb26c022e2e4c8fb63765a39df80, type: 3}
-  - {fileID: 8955789702039589778, guid: 254369dcd0a2ee64cb4286d79735f864, type: 3}
-  - {fileID: 2553975070387681859, guid: 52fc6393d73f92e42964281b4dafdbd7, type: 3}
-  - {fileID: 5404550627098372201, guid: f6aadf7d6bc56574999801447db0c1f7, type: 3}
-  - {fileID: 605665352668762460, guid: 9c92b18f988f7ea429706718127b112c, type: 3}
-  - {fileID: 2346849030041590933, guid: 88fdc44e4a646c9479d27b551305c3e5, type: 3}
   coinPrefab: {fileID: 8204258798340378091, guid: b7fb0df391297bb47a410c9ef6a278ad, type: 3}
   starPrefab: {fileID: 1303944969474664622, guid: 0dfa52ff868e79540a42b1dcd501025a, type: 3}
   fragmentRegistry: {fileID: 11400000, guid: 325c8016bc09c84428f9f8b2db5675db, type: 2}
   levelDatabase: {fileID: 11400000, guid: 9d11e391857961a4d8bbf24bbab802f9, type: 2}
-  obstaclePatterns:
-  - {fileID: 11400000, guid: bcc6b49abc31af14c97937d2359cbc3e, type: 2}
-  - {fileID: 11400000, guid: e178c9666718550418ef754cd8b04ccd, type: 2}
-  - {fileID: 11400000, guid: bf2a433c939e6b947a5c3c9cf9254dd2, type: 2}
+  obstacleConfigs:
+  - {fileID: 11400000, guid: 46dcbdfcbb975c44c9d3c57499f1fb35, type: 2}
+  - {fileID: 11400000, guid: 001d86bc9f3632d41a89e39daa11be1f, type: 2}
+  - {fileID: 11400000, guid: f094615e09e18654ea61744fa7d77458, type: 2}
   coinPatterns:
-  - {fileID: 11400000, guid: 24ab2309c7874f146b228fa99698d0a8, type: 2}
-  - {fileID: 11400000, guid: a3dd6f2a45cb6ff44b5e769ac18ae3ac, type: 2}
-  - {fileID: 11400000, guid: 149bead3d5b8d034eb328f7fd0b46760, type: 2}
+  - {fileID: 11400000, guid: 14184d67f0d4dbe45a63b259a6315b0c, type: 2}
+  - {fileID: 11400000, guid: d090f0d66a936574683e9e8ac830b513, type: 2}
+  - {fileID: 11400000, guid: a19ae35a0deb49c47ba5706aff87f902, type: 2}
   spawnParent: {fileID: 1830271083}
   spawnY: 10
-  obstacleVerticalSpacing: 2.5
-  coinVerticalSpacing: 2
+  minSafeDistance: 6
   baseObstacleInterval: 3
   baseCoinInterval: 2
   speedBoostSpawnMultiplier: 0.7
-  minSafeDistance: 4
   star1TimeRange: {x: 10, y: 20}
   star2ProgressRange: {x: 0.35, y: 0.55}
   star3ProgressRange: {x: 0.8, y: 0.95}
@@ -11935,7 +11912,7 @@ MonoBehaviour:
   coinSpawned: 0
   fragmentSpawned: 0
   starSpawned: 0
-  currentObstaclePattern: 
+  currentObstacleId: 
   currentCoinPattern: 
 --- !u!1 &1860471498
 GameObject:
@@ -13722,6 +13699,22 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7549513057323071809, guid: 907b466010d521b41b2d4e63512dffb0, type: 3}
       propertyPath: m_AnchorMax.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7979939465145778649, guid: 907b466010d521b41b2d4e63512dffb0, type: 3}
+      propertyPath: m_AnchorMax.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7979939465145778649, guid: 907b466010d521b41b2d4e63512dffb0, type: 3}
+      propertyPath: m_AnchorMin.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7979939465145778649, guid: 907b466010d521b41b2d4e63512dffb0, type: 3}
+      propertyPath: m_AnchoredPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7979939465145778649, guid: 907b466010d521b41b2d4e63512dffb0, type: 3}
+      propertyPath: m_AnchoredPosition.y
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 8874717011339423597, guid: 907b466010d521b41b2d4e63512dffb0, type: 3}

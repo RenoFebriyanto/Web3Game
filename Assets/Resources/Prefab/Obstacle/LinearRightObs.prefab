@@ -11,7 +11,7 @@ GameObject:
   - component: {fileID: 7871340518006230770}
   - component: {fileID: 1097836018283836160}
   m_Layer: 0
-  m_Name: ObsRight
+  m_Name: LinearRightObs
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

@@ -13740,7 +13740,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: 100/100
+  m_text: 0/100
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -14640,7 +14640,7 @@ MonoBehaviour:
   Level: {fileID: 899492595}
   Quest: {fileID: 1839927779}
   Shop: {fileID: 812974244}
-  exitURL: https://your-game-website.com
+  exitURL: https://game.kulinohouse.com
   showExitConfirmation: 1
 --- !u!1 &1962771964
 GameObject:

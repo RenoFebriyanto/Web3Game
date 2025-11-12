@@ -2,8 +2,12 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// ✅ SIMPLIFIED Obstacle Config - untuk prefab yang sudah memiliki child positioning
-/// Prefab spawn di X=0, child objects handle lane placement
+/// ✅ UPDATED: ObstacleConfig dengan support untuk Dynamic Movement
+/// FEATURES:
+/// - Static obstacles (normal spawn)
+/// - Dynamic obstacles (moving toward player - subway surf style)
+/// - Auto-calculate free lanes
+/// - Validation system
 /// </summary>
 [CreateAssetMenu(fileName = "ObstacleConfig", menuName = "Kulino/Spawn Patterns/Obstacle Config")]
 public class ObstacleConfig : ScriptableObject
@@ -26,6 +30,20 @@ public class ObstacleConfig : ScriptableObject
     [Tooltip("Which lanes are FREE for coin spawning")]
     public List<int> freeLanes = new List<int>();
     
+    [Header("🚂 DYNAMIC MOVEMENT (Subway Surf Style)")]
+    [Tooltip("Apakah obstacle ini bergerak kearah player?")]
+    public bool isDynamicObstacle = false;
+    
+    [Tooltip("Lane yang akan digunakan untuk movement (0=left, 1=center, 2=right)")]
+    public int movementLane = 1;
+    
+    [Tooltip("Speed multiplier untuk dynamic obstacle (relatif terhadap base speed)")]
+    [Range(0.5f, 3f)]
+    public float dynamicSpeedMultiplier = 1.5f;
+    
+    [Tooltip("Delay sebelum mulai bergerak (detik)")]
+    public float movementStartDelay = 0.5f;
+    
     [Header("Spawn Settings")]
     [Tooltip("Selection weight (higher = more common)")]
     [Range(1, 100)]
@@ -34,14 +52,26 @@ public class ObstacleConfig : ScriptableObject
     [Tooltip("Vertical height of obstacle (untuk spacing calculation)")]
     public float obstacleHeight = 5f;
     
+    [Tooltip("Extra spacing setelah obstacle ini (untuk dynamic obstacles yang butuh ruang lebih)")]
+    public float extraSpacing = 0f;
+    
     [Header("Preview")]
     public Texture2D previewImage;
     
     /// <summary>
     /// Auto-calculate free lanes from blocked lanes
     /// </summary>
-    public void AutoCalculateFreeLanes(int totalLanes)
+    [ContextMenu("Auto Calculate Free Lanes")]
+    public void AutoCalculateFreeLanes()
     {
+        int totalLanes = 3; // Default lane count
+        
+        // Try get from LanesManager
+        if (LanesManager.Instance != null)
+        {
+            totalLanes = LanesManager.Instance.laneCount;
+        }
+        
         freeLanes.Clear();
         
         for (int i = 0; i < totalLanes; i++)
@@ -51,6 +81,8 @@ public class ObstacleConfig : ScriptableObject
                 freeLanes.Add(i);
             }
         }
+        
+        Debug.Log($"[{displayName}] Auto-calculated free lanes: [{string.Join(", ", freeLanes)}]");
     }
     
     /// <summary>
@@ -67,6 +99,14 @@ public class ObstacleConfig : ScriptableObject
     public bool IsLaneFree(int lane)
     {
         return freeLanes.Contains(lane);
+    }
+    
+    /// <summary>
+    /// Get total spacing (height + extra spacing)
+    /// </summary>
+    public float GetTotalSpacing()
+    {
+        return obstacleHeight + extraSpacing;
     }
     
     /// <summary>
@@ -91,6 +131,34 @@ public class ObstacleConfig : ScriptableObject
             Debug.LogWarning($"[{displayName}] No blocked/free lanes defined!");
         }
         
+        // Dynamic obstacle validation
+        if (isDynamicObstacle)
+        {
+            if (movementLane < 0 || movementLane > 2)
+            {
+                Debug.LogError($"[{displayName}] Invalid movement lane: {movementLane}!");
+                return false;
+            }
+        }
+        
         return true;
+    }
+    
+    /// <summary>
+    /// Get info summary untuk debugging
+    /// </summary>
+    public string GetInfoSummary()
+    {
+        string info = $"<b>{displayName}</b> (ID: {obstacleId})\n";
+        info += $"Blocked: [{string.Join(", ", blockedLanes)}]\n";
+        info += $"Free: [{string.Join(", ", freeLanes)}]\n";
+        info += $"Height: {obstacleHeight}m\n";
+        
+        if (isDynamicObstacle)
+        {
+            info += $"<color=yellow>⚡ DYNAMIC</color> - Lane {movementLane} - Speed x{dynamicSpeedMultiplier}\n";
+        }
+        
+        return info;
     }
 }

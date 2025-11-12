@@ -46,11 +46,11 @@ public class ProceduralSpawner : MonoBehaviour
 
     #region SPAWN TIMING
     [Header("⏱️ SPAWN INTERVALS")]
-    [Tooltip("Base obstacle interval (detik)")]
-    public float baseObstacleInterval = 2.5f;
+[Tooltip("Base obstacle interval (detik) - INCREASED for better spacing")]
+public float baseObstacleInterval = 3.5f; // ✅ INCREASED from 2.5f to 3.5f
 
-    [Tooltip("Base coin interval (detik)")]
-    public float baseCoinInterval = 1.8f;
+[Tooltip("Base coin interval (detik)")]
+public float baseCoinInterval = 1.8f;
 
     [Tooltip("SpeedBoost spawn rate multiplier")]
     public float speedBoostSpawnMultiplier = 0.7f;
@@ -256,6 +256,7 @@ public class ProceduralSpawner : MonoBehaviour
         while (true)
         {
             // Check TimeFreeze
+
             if (CanSpawnObstacles())
             {
                 yield return StartCoroutine(SpawnObstacleWave());
@@ -281,36 +282,39 @@ public class ProceduralSpawner : MonoBehaviour
     }
 
     IEnumerator SpawnObstacleWave()
+{
+    // Select obstacle
+    ObstacleConfig config = SelectObstacleConfig();
+    if (config == null)
     {
-        // Select obstacle
-        ObstacleConfig config = SelectObstacleConfig();
-        if (config == null)
-        {
-            LogWarning("No valid obstacle config!");
-            yield break;
-        }
-
-        // ✅ SPAWN AT X=0 (prefab handles child positioning)
-        Vector3 spawnPos = new Vector3(0f, spawnY, 0f);
-        GameObject obstacle = Instantiate(config.prefab, spawnPos, Quaternion.identity, spawnParent);
-
-        // Setup mover for parent
-        float currentSpeed = GetCurrentSpeed();
-        SetupMoverFixed(obstacle, currentSpeed);
-
-        // Update tracking
-        currentObstacle = config;
-        currentObstacleId = config.obstacleId;
-        lastObstacleSpawnY = spawnY;
-        obstacleBlockedUntilY = spawnY - config.obstacleHeight - minSafeDistance;
-
-        obstacleSpawned++;
-        totalSpawned++;
-
-        Log($"🌍 Spawned obstacle: {config.displayName} (ID: {config.obstacleId}) at Y={spawnY:F1}");
-
-        yield return null;
+        LogWarning("No valid obstacle config!");
+        yield break;
     }
+
+    // ✅ SPAWN AT X=0 (prefab handles child positioning)
+    Vector3 spawnPos = new Vector3(0f, spawnY, 0f);
+    GameObject obstacle = Instantiate(config.prefab, spawnPos, Quaternion.identity, spawnParent);
+
+    // ✅ UPDATED: Setup obstacle (dengan dynamic support)
+    float currentSpeed = GetCurrentSpeed();
+    SetupObstacle(obstacle, config, currentSpeed);
+
+    // Update tracking
+    currentObstacle = config;
+    currentObstacleId = config.obstacleId;
+    lastObstacleSpawnY = spawnY;
+    
+    // ✅ UPDATED: Calculate blocked distance (termasuk extra spacing)
+    float totalSpacing = config.GetTotalSpacing() + minSafeDistance;
+    obstacleBlockedUntilY = spawnY - totalSpacing;
+
+    obstacleSpawned++;
+    totalSpawned++;
+
+    Log($"🌍 Spawned obstacle: {config.displayName} (ID: {config.obstacleId}) - Total spacing: {totalSpacing:F1}");
+
+    yield return null;
+}
 
     ObstacleConfig SelectObstacleConfig()
     {
@@ -588,6 +592,42 @@ public class ProceduralSpawner : MonoBehaviour
 
         LogWarning($"Failed to spawn star {starIndex + 1} after {maxAttempts} attempts");
     }
+
+    // ✅ ADD THIS METHOD AFTER SpawnObstacleWave()
+
+/// <summary>
+/// ✅ UPDATED: Setup obstacle dengan support untuk dynamic movement
+/// </summary>
+void SetupObstacle(GameObject obstacle, ObstacleConfig config, float currentSpeed)
+{
+    // Setup vertical mover (normal downward movement)
+    SetupMoverFixed(obstacle, currentSpeed);
+    
+    // ✅ CHECK: Apakah ini dynamic obstacle?
+    if (config.isDynamicObstacle)
+    {
+        // Add dynamic mover component
+        var dynamicMover = obstacle.GetComponent<DynamicObstacleMover>();
+        
+        if (dynamicMover == null)
+        {
+            dynamicMover = obstacle.AddComponent<DynamicObstacleMover>();
+        }
+        
+        // Calculate horizontal speed (faster = more aggressive)
+        float horizontalSpeed = currentSpeed * config.dynamicSpeedMultiplier;
+        
+        // Initialize dynamic movement
+        dynamicMover.Initialize(
+            config.movementLane,
+            horizontalSpeed,
+            currentSpeed,
+            config.movementStartDelay
+        );
+        
+        Log($"⚡ Dynamic obstacle initialized: {config.displayName} → Lane {config.movementLane} @ speed x{config.dynamicSpeedMultiplier}");
+    }
+}
 
     float GetFragmentProgress()
     {

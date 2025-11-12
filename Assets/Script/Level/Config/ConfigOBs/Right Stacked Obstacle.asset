@@ -10,13 +10,18 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 848d19a6f9917ad42bb8fc003a2f4f38, type: 3}
-  m_Name: ObstacleConfig_LeftRight
+  m_Name: Right Stacked Obstacle
   m_EditorClassIdentifier: 
-  obstacleId: obs_leftright
-  displayName: Left-Right Obstacles
-  prefab: {fileID: 6578890714608622562, guid: cbcf92aeaaa969d43a7a862a4ff60ac9, type: 3}
-  blockedLanes: 0000000002000000
-  freeLanes: 01000000
+  obstacleId: obs_right3
+  displayName: Right Stacked Obstacle
+  prefab: {fileID: 8955789702039589778, guid: 254369dcd0a2ee64cb4286d79735f864, type: 3}
+  blockedLanes: 0100000002000000
+  freeLanes: 00000000
+  isDynamicObstacle: 0
+  movementLane: 1
+  dynamicSpeedMultiplier: 1.5
+  movementStartDelay: 0.5
   selectionWeight: 50
-  obstacleHeight: 5
+  obstacleHeight: 8
+  extraSpacing: 2
   previewImage: {fileID: 0}

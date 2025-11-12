@@ -10,13 +10,18 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 848d19a6f9917ad42bb8fc003a2f4f38, type: 3}
-  m_Name: ObstacleConfig_Center
+  m_Name: Gap Center Obstacle
   m_EditorClassIdentifier: 
-  obstacleId: obs_center
-  displayName: Obstacle Center
+  obstacleId: obs_gapcenter
+  displayName: Gap Center Obstacle
   prefab: {fileID: 6167349456269208002, guid: 434deb26c022e2e4c8fb63765a39df80, type: 3}
   blockedLanes: 01000000
   freeLanes: 0000000002000000
+  isDynamicObstacle: 0
+  movementLane: 1
+  dynamicSpeedMultiplier: 1.5
+  movementStartDelay: 0.5
   selectionWeight: 50
-  obstacleHeight: 5
+  obstacleHeight: 6
+  extraSpacing: 0
   previewImage: {fileID: 0}

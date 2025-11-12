@@ -10,13 +10,18 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 848d19a6f9917ad42bb8fc003a2f4f38, type: 3}
-  m_Name: ObstacleConfig_Diagonal
+  m_Name: Linear Left Obstacle
   m_EditorClassIdentifier: 
-  obstacleId: obs_diagonal
-  displayName: Diagonal Obstacles
-  prefab: {fileID: 8955789702039589778, guid: 254369dcd0a2ee64cb4286d79735f864, type: 3}
-  blockedLanes: 000000000100000002000000
-  freeLanes: 
-  selectionWeight: 30
-  obstacleHeight: 6
+  obstacleId: obs_linearleft
+  displayName: Linear Left Obstacle
+  prefab: {fileID: 2553975070387681859, guid: 52fc6393d73f92e42964281b4dafdbd7, type: 3}
+  blockedLanes: 00000000
+  freeLanes: 0100000002000000
+  isDynamicObstacle: 1
+  movementLane: 1
+  dynamicSpeedMultiplier: 1.5
+  movementStartDelay: 0.3
+  selectionWeight: 50
+  obstacleHeight: 5
+  extraSpacing: 3
   previewImage: {fileID: 0}

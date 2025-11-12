@@ -11889,9 +11889,13 @@ MonoBehaviour:
   fragmentRegistry: {fileID: 11400000, guid: 325c8016bc09c84428f9f8b2db5675db, type: 2}
   levelDatabase: {fileID: 11400000, guid: 9d11e391857961a4d8bbf24bbab802f9, type: 2}
   obstacleConfigs:
-  - {fileID: 11400000, guid: 46dcbdfcbb975c44c9d3c57499f1fb35, type: 2}
-  - {fileID: 11400000, guid: 001d86bc9f3632d41a89e39daa11be1f, type: 2}
+  - {fileID: 11400000, guid: 89e2d5acd3482fb4db9b434978e4043a, type: 2}
+  - {fileID: 11400000, guid: 7cbdd4bbe298fdd4a8ebec12555b4ae9, type: 2}
   - {fileID: 11400000, guid: f094615e09e18654ea61744fa7d77458, type: 2}
+  - {fileID: 11400000, guid: 283c6f55134a9184b9ad05ecf671ca34, type: 2}
+  - {fileID: 11400000, guid: 02ac8564a552c494ca2b8f4bcb19285d, type: 2}
+  - {fileID: 11400000, guid: 87954ae699c5a114d9bc1d76823b4f41, type: 2}
+  - {fileID: 11400000, guid: 7543140ce129a5644b7146c5a70396bb, type: 2}
   coinPatterns:
   - {fileID: 11400000, guid: 14184d67f0d4dbe45a63b259a6315b0c, type: 2}
   - {fileID: 11400000, guid: d090f0d66a936574683e9e8ac830b513, type: 2}

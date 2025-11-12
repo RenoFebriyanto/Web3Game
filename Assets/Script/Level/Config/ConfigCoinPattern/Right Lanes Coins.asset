@@ -10,13 +10,13 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 890e982ed6a84424f98a260de51d9d7a, type: 3}
-  m_Name: CoinPattern_CenterLine
+  m_Name: Right Lanes Coins
   m_EditorClassIdentifier: 
-  patternName: Center Line
-  compatibleObstacleId: obs_leftright
-  spawnLanes: 01000000
+  patternName: Right Lanes Coins
+  compatibleObstacleId: obs_linearleft
+  spawnLanes: 0100000002000000
   coinsPerLane: 6
-  verticalSpacing: 1
+  verticalSpacing: 1.2
   selectionWeight: 50
   onlySpawnInFreeLanes: 1
   fragmentChance: 1

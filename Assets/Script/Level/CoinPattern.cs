@@ -32,11 +32,6 @@ public class CoinPattern : ScriptableObject
     [Tooltip("Only spawn in FREE lanes?")]
     public bool onlySpawnInFreeLanes = true;
     
-    [Header("Fragment Substitution")]
-    [Tooltip("Chance to spawn fragment instead of coin (0-100%)")]
-    [Range(0f, 100f)]
-    public float fragmentChance = 15f;
-    
     [Header("Preview")]
     public Texture2D previewImage;
     

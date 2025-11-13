@@ -11898,20 +11898,17 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 7543140ce129a5644b7146c5a70396bb, type: 2}
   - {fileID: 11400000, guid: 59f5e974cdbcf6e499d184a87e5afe21, type: 2}
   - {fileID: 11400000, guid: 7a5be30d1d9fa674fb750ca84f8fee0a, type: 2}
-  - {fileID: 11400000, guid: fe388ec5eb58e174ca6f2e3ee7e56712, type: 2}
   coinPatterns:
-  - {fileID: 11400000, guid: 16293f0cd83f59941a202a9e77e18e75, type: 2}
-  - {fileID: 11400000, guid: 3cb207cf3845dd145bb660993139d8f5, type: 2}
-  - {fileID: 11400000, guid: 08f6fd0193349ea479761ea00944bbcd, type: 2}
+  - {fileID: 11400000, guid: 36ff0d34e8db48243a0aff72fae8ea70, type: 2}
   spawnParent: {fileID: 1830271083}
-  spawnY: 10
-  minSafeDistance: 6
+  spawnY: 15
   baseObstacleInterval: 3
-  baseCoinInterval: 2
+  baseCoinInterval: 3
   speedBoostSpawnMultiplier: 0.7
-  star1TimeRange: {x: 10, y: 20}
-  star2ProgressRange: {x: 0.35, y: 0.55}
-  star3ProgressRange: {x: 0.8, y: 0.95}
+  minSafeSpacing: 2.5
+  fragmentChance: 10
+  starChance: 5
+  totalStarsPerLevel: 3
   enableDebugLogs: 0
   showGizmos: 1
   totalSpawned: 0

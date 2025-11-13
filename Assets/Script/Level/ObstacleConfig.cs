@@ -2,12 +2,13 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// ✅ UPDATED: ObstacleConfig dengan support untuk Dynamic Movement
+/// ✅ COMPLETE FIXED: ObstacleConfig dengan support untuk Dynamic Movement
 /// FEATURES:
 /// - Static obstacles (normal spawn)
 /// - Dynamic obstacles (moving toward player - subway surf style)
 /// - Auto-calculate free lanes
 /// - Validation system
+/// - STRICT CHECK untuk dynamic movement
 /// </summary>
 [CreateAssetMenu(fileName = "ObstacleConfig", menuName = "Kulino/Spawn Patterns/Obstacle Config")]
 public class ObstacleConfig : ScriptableObject
@@ -52,8 +53,8 @@ public class ObstacleConfig : ScriptableObject
     [Tooltip("Vertical height of obstacle (untuk spacing calculation)")]
     public float obstacleHeight = 5f;
     
-    [Tooltip("Extra spacing setelah obstacle ini (untuk dynamic obstacles yang butuh ruang lebih)")]
-    public float extraSpacing = 0f;
+    [Tooltip("Extra spacing setelah obstacle ini (2.5 = safe, 4 = dynamic)")]
+    public float extraSpacing = 2.5f;
     
     [Header("Preview")]
     public Texture2D previewImage;
@@ -110,7 +111,7 @@ public class ObstacleConfig : ScriptableObject
     }
     
     /// <summary>
-    /// Validate config
+    /// ✅ FIXED: Validate config dengan STRICT dynamic check
     /// </summary>
     public bool IsValid()
     {
@@ -131,7 +132,7 @@ public class ObstacleConfig : ScriptableObject
             Debug.LogWarning($"[{displayName}] No blocked/free lanes defined!");
         }
         
-        // Dynamic obstacle validation
+        // ✅ CRITICAL: Dynamic obstacle validation
         if (isDynamicObstacle)
         {
             if (movementLane < 0 || movementLane > 2)
@@ -139,6 +140,14 @@ public class ObstacleConfig : ScriptableObject
                 Debug.LogError($"[{displayName}] Invalid movement lane: {movementLane}!");
                 return false;
             }
+            
+            // Log untuk debugging
+            Debug.Log($"[{displayName}] ⚡ DYNAMIC OBSTACLE - Will move to lane {movementLane}");
+        }
+        else
+        {
+            // Log static obstacle
+            Debug.Log($"[{displayName}] 🔵 STATIC OBSTACLE - No movement");
         }
         
         return true;
@@ -152,11 +161,15 @@ public class ObstacleConfig : ScriptableObject
         string info = $"<b>{displayName}</b> (ID: {obstacleId})\n";
         info += $"Blocked: [{string.Join(", ", blockedLanes)}]\n";
         info += $"Free: [{string.Join(", ", freeLanes)}]\n";
-        info += $"Height: {obstacleHeight}m\n";
+        info += $"Height: {obstacleHeight}m + Extra: {extraSpacing}m\n";
         
         if (isDynamicObstacle)
         {
             info += $"<color=yellow>⚡ DYNAMIC</color> - Lane {movementLane} - Speed x{dynamicSpeedMultiplier}\n";
+        }
+        else
+        {
+            info += $"<color=cyan>🔵 STATIC</color> - No movement\n";
         }
         
         return info;

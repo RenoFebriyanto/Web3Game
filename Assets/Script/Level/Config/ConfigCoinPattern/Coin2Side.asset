@@ -10,14 +10,13 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 890e982ed6a84424f98a260de51d9d7a, type: 3}
-  m_Name: Left Lanes Coins
+  m_Name: Coin2Side
   m_EditorClassIdentifier: 
-  patternName: Left Lanes Coins
-  compatibleObstacleId: obs_linearright
-  spawnLanes: 0000000001000000
-  coinsPerLane: 4
-  verticalSpacing: 1.2
-  selectionWeight: 50
+  patternName: Coin2Side
+  compatibleObstacleId: obs_gapcenter
+  spawnLanes: 0000000002000000
+  coinsPerLane: 5
+  verticalSpacing: 1
+  selectionWeight: 30
   onlySpawnInFreeLanes: 1
-  fragmentChance: 1
   previewImage: {fileID: 0}

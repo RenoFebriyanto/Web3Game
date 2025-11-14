@@ -11889,7 +11889,6 @@ MonoBehaviour:
   fragmentRegistry: {fileID: 11400000, guid: 325c8016bc09c84428f9f8b2db5675db, type: 2}
   levelDatabase: {fileID: 11400000, guid: 9d11e391857961a4d8bbf24bbab802f9, type: 2}
   obstacleConfigs:
-  - {fileID: 11400000, guid: 89e2d5acd3482fb4db9b434978e4043a, type: 2}
   - {fileID: 11400000, guid: 7cbdd4bbe298fdd4a8ebec12555b4ae9, type: 2}
   - {fileID: 11400000, guid: f094615e09e18654ea61744fa7d77458, type: 2}
   - {fileID: 11400000, guid: 283c6f55134a9184b9ad05ecf671ca34, type: 2}
@@ -11898,26 +11897,40 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 7543140ce129a5644b7146c5a70396bb, type: 2}
   - {fileID: 11400000, guid: 59f5e974cdbcf6e499d184a87e5afe21, type: 2}
   - {fileID: 11400000, guid: 7a5be30d1d9fa674fb750ca84f8fee0a, type: 2}
+  - {fileID: 11400000, guid: 90881351a28c42d498c8cddca6791d56, type: 2}
+  - {fileID: 11400000, guid: 592e3903434aad24fb00e23554af6c85, type: 2}
+  - {fileID: 11400000, guid: 0e70b4d57cf81fe4fa9ec3d71dff119c, type: 2}
+  - {fileID: 11400000, guid: b98e5c65f338bb3459db62cebae6f397, type: 2}
+  - {fileID: 11400000, guid: 800c74cea9020e04a98f7b0849454f25, type: 2}
   coinPatterns:
   - {fileID: 11400000, guid: 36ff0d34e8db48243a0aff72fae8ea70, type: 2}
+  - {fileID: 11400000, guid: 052855fb52ef815408d65d71da21d28e, type: 2}
+  - {fileID: 11400000, guid: b0cd389ca137ca54b98d9c6688a05fa2, type: 2}
+  - {fileID: 11400000, guid: ec3f83f9399e03d408805a13901f2778, type: 2}
+  - {fileID: 11400000, guid: 243be3052577e9340aa23cdc35a7c100, type: 2}
+  - {fileID: 11400000, guid: 56cf625f57c4c7d4bbfec278f3665a88, type: 2}
+  - {fileID: 11400000, guid: 26a46032c0ef0124bba7968e795415da, type: 2}
+  - {fileID: 11400000, guid: eea700f3153f52449b99274bd67e7ca8, type: 2}
+  - {fileID: 11400000, guid: c26ac005b96e4c24c83115c28d9e5d2b, type: 2}
+  - {fileID: 11400000, guid: 2452a973d0322ee4b91c21e584642d56, type: 2}
   spawnParent: {fileID: 1830271083}
   spawnY: 15
   baseObstacleInterval: 3
   baseCoinInterval: 3
   speedBoostSpawnMultiplier: 0.7
   minSafeSpacing: 2.5
-  fragmentChance: 10
-  starChance: 5
+  fragmentChance: 5
+  starChance: 2
   totalStarsPerLevel: 3
-  enableDebugLogs: 0
+  enableDebugLogs: 1
   showGizmos: 1
   totalSpawned: 0
   obstacleSpawned: 0
   coinSpawned: 0
   fragmentSpawned: 0
   starSpawned: 0
-  currentObstacleId: 
-  currentCoinPattern: 
+  currentObstacleId: obs_wallleftdynamic
+  currentCoinPattern: CoinFree
 --- !u!1 &1860471498
 GameObject:
   m_ObjectHideFlags: 0

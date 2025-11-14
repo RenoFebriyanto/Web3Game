@@ -4,13 +4,13 @@ using System.Linq;
 using UnityEngine;
 
 /// <summary>
-/// ✅ FINAL FIXED VERSION - ALL BUGS RESOLVED
+/// ✅ FINAL FIXED VERSION - Coin Alignment + Dynamic Movement Fix
 /// 
 /// FIXES:
-/// 1. Coin pattern HANYA spawn untuk compatible obstacle
-/// 2. Dynamic obstacle STRICT check (hanya LinearLeft yang bergerak)
-/// 3. Star TIDAK spawn sendiri - replace coin seperti fragment (dengan chance lebih rendah)
-/// 4. Spacing fix: minSafeSpacing = 2.5
+/// 1. ✅ Coin spawn sejajar dengan obstacle (tengah-tengah obstacle height)
+/// 2. ✅ Dynamic movement sesuai config (LinearLeft bergerak, bukan LinearRight)
+/// 3. Star spawn dengan limit
+/// 4. Proper spacing
 /// 
 /// REPLACE: Assets/Script/Level/ProceduralSpawner.cs
 /// </summary>
@@ -63,7 +63,7 @@ public class ProceduralSpawner : MonoBehaviour
     [Range(0f, 100f)]
     public float fragmentChance = 15f;
     
-    [Tooltip("Chance untuk spawn star instead of coin (%) - LEBIH RENDAH dari fragment")]
+    [Tooltip("Chance untuk spawn star instead of coin (%)")]
     [Range(0f, 100f)]
     public float starChance = 5f;
     
@@ -91,6 +91,10 @@ public class ProceduralSpawner : MonoBehaviour
     private int laneCount = 3;
     private float laneOffset = 2.5f;
 
+    // ✅ NEW: Track current obstacle spawn position
+    private float currentObstacleSpawnY = 0f;
+    private float currentObstacleHeight = 0f;
+
     // Current active obstacle
     private ObstacleConfig currentObstacle = null;
 
@@ -103,16 +107,13 @@ public class ProceduralSpawner : MonoBehaviour
 
     // Coroutines
     private Coroutine obstacleCoroutine;
-    private Coroutine coinCoroutine;
-
-    private bool isInitialized = false;
     private bool isPaused = false;
 
     // Obstacle tracking
     private float lastObstacleSpawnY = 0f;
     private float obstacleBlockedUntilY = 0f;
     
-    // ✅ NEW: Track spawned stars
+    // Track spawned stars
     private int starsSpawnedThisLevel = 0;
     #endregion
 
@@ -179,14 +180,9 @@ public class ProceduralSpawner : MonoBehaviour
         lastObstacleSpawnY = spawnY - 10f;
         obstacleBlockedUntilY = spawnY - 10f;
         
-        // ✅ Reset star counter
         starsSpawnedThisLevel = 0;
 
-        // ✅ CRITICAL: Start HANYA obstacle spawner
-        // Coin spawner akan di-trigger DARI obstacle spawner
         obstacleCoroutine = StartCoroutine(ObstacleSpawnerLoop());
-
-        isInitialized = true;
         Log("✅ PROCEDURAL SPAWNER INITIALIZED");
     }
 
@@ -218,7 +214,6 @@ public class ProceduralSpawner : MonoBehaviour
             valid = false;
         }
 
-        // Validate configs
         if (obstacleConfigs != null)
         {
             foreach (var cfg in obstacleConfigs)
@@ -259,10 +254,9 @@ public class ProceduralSpawner : MonoBehaviour
         {
             if (CanSpawnObstacles())
             {
-                // ✅ CRITICAL: Spawn obstacle LALU spawn coin pattern yang compatible
                 yield return StartCoroutine(SpawnObstacleWave());
                 
-                // ✅ CRITICAL: Spawn coin pattern HANYA untuk obstacle yang baru di-spawn
+                // ✅ CRITICAL: Spawn coin wave SETELAH obstacle spawn
                 yield return StartCoroutine(SpawnCoinWaveForCurrentObstacle());
 
                 float speedMod = GetSpeedModifier();
@@ -287,7 +281,6 @@ public class ProceduralSpawner : MonoBehaviour
 
     IEnumerator SpawnObstacleWave()
     {
-        // Select obstacle
         ObstacleConfig config = SelectObstacleConfig();
         if (config == null)
         {
@@ -295,27 +288,27 @@ public class ProceduralSpawner : MonoBehaviour
             yield break;
         }
 
-        // Spawn AT X=0 (prefab handles child positioning)
-        Vector3 spawnPos = new Vector3(0f, spawnY, 0f);
+        // ✅ FIX 1: Store obstacle spawn position & height
+        currentObstacleSpawnY = spawnY;
+        currentObstacleHeight = config.obstacleHeight;
+
+        Vector3 spawnPos = new Vector3(0f, currentObstacleSpawnY, 0f);
         GameObject obstacle = Instantiate(config.prefab, spawnPos, Quaternion.identity, spawnParent);
 
-        // ✅ CRITICAL FIX: Setup obstacle dengan strict dynamic check
         float currentSpeed = GetCurrentSpeed();
         SetupObstacle(obstacle, config, currentSpeed);
 
-        // Update tracking
         currentObstacle = config;
         currentObstacleId = config.obstacleId;
         lastObstacleSpawnY = spawnY;
         
-        // Calculate blocked distance
         float totalSpacing = config.obstacleHeight + config.extraSpacing + minSafeSpacing;
         obstacleBlockedUntilY = spawnY - totalSpacing;
 
         obstacleSpawned++;
         totalSpawned++;
 
-        Log($"🌍 Spawned: {config.displayName} (ID: {config.obstacleId}) | Dynamic: {config.isDynamicObstacle} | Spacing: {totalSpacing:F1}");
+        Log($"🌍 Spawned: {config.displayName} (ID: {config.obstacleId}) | Dynamic: {config.isDynamicObstacle} | Height: {config.obstacleHeight}");
 
         yield return null;
     }
@@ -324,12 +317,10 @@ public class ProceduralSpawner : MonoBehaviour
     {
         if (obstacleConfigs == null || obstacleConfigs.Count == 0) return null;
 
-        // Filter valid configs
         List<ObstacleConfig> validConfigs = obstacleConfigs.Where(c => c != null && c.IsValid()).ToList();
 
         if (validConfigs.Count == 0) return null;
 
-        // Weighted selection
         int totalWeight = validConfigs.Sum(c => c.selectionWeight);
         int rand = Random.Range(0, totalWeight);
         int cumulative = 0;
@@ -345,82 +336,74 @@ public class ProceduralSpawner : MonoBehaviour
     }
 
     /// <summary>
-    /// ✅ CRITICAL FIX: Setup obstacle - STRICT check untuk dynamic movement
-    /// </summary>
-    void SetupObstacle(GameObject obstacle, ObstacleConfig config, float currentSpeed)
+/// ✅ ALTERNATIVE: Track obstacle reference to prevent wrong assignment
+/// </summary>
+void SetupObstacle(GameObject obstacle, ObstacleConfig config, float currentSpeed)
+{
+    // 1. Setup vertical mover
+    SetupMoverFixed(obstacle, currentSpeed);
+    
+    // 2. Clean existing components
+    var existingMovers = obstacle.GetComponents<DynamicObstacleMover>();
+    if (existingMovers != null && existingMovers.Length > 0)
     {
-        // 1. Setup vertical mover (normal downward movement) - SEMUA obstacle punya ini
-        SetupMoverFixed(obstacle, currentSpeed);
-        
-        // 2. ✅ STRICT CHECK: HANYA add dynamic mover jika isDynamicObstacle == true
-        if (config.isDynamicObstacle)
+        foreach (var mover in existingMovers)
         {
-            // Check apakah sudah ada component (prevent duplicate)
-            var existingMover = obstacle.GetComponent<DynamicObstacleMover>();
-            
-            if (existingMover != null)
-            {
-                // Already has component (prefab might have it)
-                LogWarning($"{config.displayName} already has DynamicObstacleMover component!");
-                
-                // ✅ CRITICAL: Re-initialize even if exists
-                float horizontalSpeed = currentSpeed * config.dynamicSpeedMultiplier;
-                existingMover.Initialize(
-                    config.movementLane,
-                    horizontalSpeed,
-                    currentSpeed,
-                    config.movementStartDelay
-                );
-            }
-            else
-            {
-                // Add dynamic mover component
-                var dynamicMover = obstacle.AddComponent<DynamicObstacleMover>();
-                
-                // Calculate horizontal speed
-                float horizontalSpeed = currentSpeed * config.dynamicSpeedMultiplier;
-                
-                // Initialize dynamic movement
-                dynamicMover.Initialize(
-                    config.movementLane,
-                    horizontalSpeed,
-                    currentSpeed,
-                    config.movementStartDelay
-                );
-                
-                Log($"⚡ DYNAMIC OBSTACLE ADDED: {config.displayName} → Lane {config.movementLane}");
-            }
-        }
-        else
-        {
-            // ✅ CRITICAL: DESTROY any existing DynamicObstacleMover component
-            var existingMover = obstacle.GetComponent<DynamicObstacleMover>();
-            if (existingMover != null)
-            {
-                LogWarning($"🗑️ DESTROYING unwanted DynamicObstacleMover from STATIC obstacle: {config.displayName}");
-                Destroy(existingMover);
-            }
-            
-            Log($"🔵 STATIC OBSTACLE: {config.displayName} - No dynamic movement");
+            DestroyImmediate(mover); // ✅ Use DestroyImmediate
         }
     }
+    
+    // 3. Debug logging
+    Log($"Setting up: {config.displayName} (Dynamic: {config.isDynamicObstacle})");
+    
+    // 4. ✅ Add component with validation
+    if (config.isDynamicObstacle)
+    {
+        // Double-check no existing component
+        if (obstacle.GetComponent<DynamicObstacleMover>() != null)
+        {
+            LogWarning($"⚠️ DynamicMover still exists after cleanup! Skipping add.");
+            return;
+        }
+        
+        var dynamicMover = obstacle.AddComponent<DynamicObstacleMover>();
+        
+        // ✅ CRITICAL: Set obstacle name as identifier
+        obstacle.name = $"{config.displayName}(Clone-DYNAMIC)";
+        
+        float horizontalSpeed = currentSpeed * config.dynamicSpeedMultiplier;
+        
+        dynamicMover.Initialize(
+            config.movementLane,
+            horizontalSpeed,
+            currentSpeed,
+            config.movementStartDelay
+        );
+        
+        Log($"⚡ ADDED DYNAMIC: {obstacle.name} → Lane {config.movementLane}");
+    }
+    else
+    {
+        // ✅ Mark as static in name
+        obstacle.name = $"{config.displayName}(Clone-STATIC)";
+        Log($"🔵 STATIC: {obstacle.name}");
+    }
+}
+
     #endregion
 
     #region COIN SPAWNER
     /// <summary>
-    /// ✅ CRITICAL FIX: Spawn coin wave HANYA untuk obstacle yang baru di-spawn
-    /// Dipanggil dari ObstacleSpawnerLoop SETELAH obstacle spawn
+    /// ✅ FIX 1: Spawn coin ALIGNED dengan obstacle (tengah-tengah obstacle height)
     /// </summary>
     IEnumerator SpawnCoinWaveForCurrentObstacle()
     {
-        // ✅ CRITICAL: Check apakah ada obstacle yang active
         if (currentObstacle == null)
         {
             LogWarning("No current obstacle! Skipping coin spawn.");
             yield break;
         }
         
-        // Select coin pattern yang COMPATIBLE dengan obstacle ini
         CoinPattern pattern = SelectCompatibleCoinPattern(currentObstacle.obstacleId);
         
         if (pattern == null)
@@ -429,7 +412,6 @@ public class ProceduralSpawner : MonoBehaviour
             yield break;
         }
 
-        // Get valid spawn lanes (based on current obstacle's free lanes)
         List<int> freeLanes = GetCurrentFreeLanes();
         List<int> validLanes = pattern.GetValidSpawnLanes(freeLanes);
 
@@ -441,26 +423,29 @@ public class ProceduralSpawner : MonoBehaviour
 
         currentCoinPattern = pattern.patternName;
 
-        // Spawn coins
         float currentSpeed = GetCurrentSpeed();
         float spacing = pattern.verticalSpacing;
 
-        // Adjust spacing untuk SpeedBoost
         if (BoosterManager.Instance != null && BoosterManager.Instance.speedBoostActive)
         {
             spacing *= 1.5f;
         }
 
+        // ✅ FIX 1: Calculate coin start position (TENGAH-TENGAH obstacle)
+        float totalPatternHeight = pattern.coinsPerLane * spacing;
+        
+        // Start dari tengah obstacle, lalu spawn ke atas dan bawah
+        float coinStartY = currentObstacleSpawnY - (currentObstacleHeight / 3f) + (totalPatternHeight / 3f);
+
+        Log($"💰 Coin alignment: Obstacle Y={currentObstacleSpawnY:F1}, Height={currentObstacleHeight:F1}, Coin Start Y={coinStartY:F1}");
+
         foreach (int lane in validLanes)
         {
             float laneX = GetLaneWorldX(lane);
-            float currentY = spawnY;
+            float currentY = coinStartY;
 
             for (int i = 0; i < pattern.coinsPerLane; i++)
             {
-                currentY -= spacing;
-
-                // ✅ CRITICAL: Decide collectible type (coin/fragment/star)
                 GameObject prefab = DecideCollectiblePrefab();
 
                 if (prefab != null)
@@ -470,12 +455,11 @@ public class ProceduralSpawner : MonoBehaviour
 
                     SetupMoverFixed(spawned, currentSpeed);
 
-                    // Setup component based on prefab type
                     if (prefab == starPrefab)
                     {
                         starSpawned++;
                         starsSpawnedThisLevel++;
-                        Log($"⭐ Star spawned (replaced coin) - Total: {starsSpawnedThisLevel}/{totalStarsPerLevel}");
+                        Log($"⭐ Star spawned - Total: {starsSpawnedThisLevel}/{totalStarsPerLevel}");
                     }
                     else if (prefab != coinPrefab)
                     {
@@ -490,21 +474,20 @@ public class ProceduralSpawner : MonoBehaviour
                     totalSpawned++;
                 }
 
+                // Move DOWN untuk coin berikutnya
+                currentY -= spacing;
+
                 yield return null;
             }
         }
 
-        Log($"💰 Spawned coin pattern: {pattern.patternName} (compatible: {currentObstacle.obstacleId}) in {validLanes.Count} lanes");
+        Log($"✓ Spawned pattern: {pattern.patternName} in {validLanes.Count} lanes (aligned with {currentObstacle.displayName})");
     }
 
-    /// <summary>
-    /// ✅ CRITICAL FIX: Select coin pattern yang COMPATIBLE dengan obstacle ID
-    /// </summary>
     CoinPattern SelectCompatibleCoinPattern(string obstacleId)
     {
         if (coinPatterns == null || coinPatterns.Count == 0) return null;
 
-        // ✅ CRITICAL: Filter HANYA pattern yang compatible dengan obstacle ID ini
         List<CoinPattern> compatiblePatterns = coinPatterns
             .Where(p => p != null && p.IsValid() && p.IsCompatibleWith(obstacleId))
             .ToList();
@@ -515,7 +498,6 @@ public class ProceduralSpawner : MonoBehaviour
             return null;
         }
 
-        // Weighted selection
         int totalWeight = compatiblePatterns.Sum(p => p.selectionWeight);
         int rand = Random.Range(0, totalWeight);
         int cumulative = 0;
@@ -525,7 +507,6 @@ public class ProceduralSpawner : MonoBehaviour
             cumulative += p.selectionWeight;
             if (rand < cumulative)
             {
-                Log($"✓ Selected compatible pattern: {p.patternName} for obstacle: {obstacleId}");
                 return p;
             }
         }
@@ -540,7 +521,6 @@ public class ProceduralSpawner : MonoBehaviour
             return new List<int>(currentObstacle.freeLanes);
         }
 
-        // Fallback: all lanes
         List<int> allLanes = new List<int>();
         for (int i = 0; i < laneCount; i++)
         {
@@ -549,21 +529,15 @@ public class ProceduralSpawner : MonoBehaviour
         return allLanes;
     }
 
-    /// <summary>
-    /// ✅ CRITICAL FIX: Decide collectible type dengan priority: Star > Fragment > Coin
-    /// Star hanya spawn jika belum mencapai limit
-    /// </summary>
     GameObject DecideCollectiblePrefab()
     {
         float roll = Random.Range(0f, 100f);
 
-        // ✅ PRIORITY 1: Star (HANYA jika belum mencapai limit)
         if (starsSpawnedThisLevel < totalStarsPerLevel && roll < starChance)
         {
             return starPrefab;
         }
 
-        // ✅ PRIORITY 2: Fragment
         if (roll < fragmentChance)
         {
             GameObject fragmentPrefab = GetRequiredFragmentPrefab();
@@ -571,7 +545,6 @@ public class ProceduralSpawner : MonoBehaviour
                 return fragmentPrefab;
         }
 
-        // ✅ PRIORITY 3: Coin (default)
         return coinPrefab;
     }
 
@@ -629,7 +602,6 @@ public class ProceduralSpawner : MonoBehaviour
             return;
         }
 
-        // Fallback
         var mover = obj.AddComponent<PlanetMover>();
         mover.SetFixedSpeed(speed);
     }
@@ -704,16 +676,13 @@ public class ProceduralSpawner : MonoBehaviour
     {
         if (!showGizmos || !Application.isPlaying) return;
         
-        // Draw spawn line
         Gizmos.color = Color.cyan;
         Gizmos.DrawLine(new Vector3(-10, spawnY, 0), new Vector3(10, spawnY, 0));
         
-        // Draw lane markers
         for (int i = 0; i < laneCount; i++)
         {
             float x = GetLaneWorldX(i);
             
-            // Check if lane is free
             bool isFree = true;
             if (currentObstacle != null)
             {
@@ -724,12 +693,22 @@ public class ProceduralSpawner : MonoBehaviour
             Gizmos.DrawLine(new Vector3(x, spawnY - 3, 0), new Vector3(x, spawnY + 3, 0));
         }
         
+        // ✅ NEW: Draw obstacle height range
+        if (currentObstacle != null && currentObstacleHeight > 0)
+        {
+            Gizmos.color = Color.yellow;
+            float topY = currentObstacleSpawnY;
+            float bottomY = currentObstacleSpawnY - currentObstacleHeight;
+            
+            Gizmos.DrawLine(new Vector3(-5, topY, 0), new Vector3(5, topY, 0));
+            Gizmos.DrawLine(new Vector3(-5, bottomY, 0), new Vector3(5, bottomY, 0));
+        }
+        
 #if UNITY_EDITOR
-        // Draw status text
         string status = $"Obstacles: {obstacleSpawned} | Coins: {coinSpawned} | Fragments: {fragmentSpawned}\n";
         status += $"Stars: {starsSpawnedThisLevel}/{totalStarsPerLevel}\n";
-        status += $"Current Obstacle: {currentObstacleId}\n";
-        status += $"Current Coin Pattern: {currentCoinPattern}";
+        status += $"Current: {currentObstacleId} (H: {currentObstacleHeight:F1})\n";
+        status += $"Pattern: {currentCoinPattern}";
         
         if (BoosterManager.Instance != null)
         {
@@ -752,67 +731,44 @@ public class ProceduralSpawner : MonoBehaviour
     void Debug_PrintStatus()
     {
         Debug.Log("========== PROCEDURAL SPAWNER STATUS ==========");
-        Debug.Log($"Initialized: {isInitialized}");
         Debug.Log($"Total Spawned: {totalSpawned}");
         Debug.Log($"Obstacles: {obstacleSpawned} | Coins: {coinSpawned}");
         Debug.Log($"Fragments: {fragmentSpawned} | Stars: {starsSpawnedThisLevel}/{totalStarsPerLevel}");
-        Debug.Log($"Current Obstacle: {currentObstacleId}");
-        Debug.Log($"Current Coin Pattern: {currentCoinPattern}");
+        Debug.Log($"Current Obstacle: {currentObstacleId} (Height: {currentObstacleHeight})");
+        Debug.Log($"Current Pattern: {currentCoinPattern}");
         
         if (currentObstacle != null)
         {
-            Debug.Log($"\n--- Current Obstacle Info ---");
+            Debug.Log($"\n--- Obstacle Info ---");
             Debug.Log($"Name: {currentObstacle.displayName}");
             Debug.Log($"ID: {currentObstacle.obstacleId}");
-            Debug.Log($"Dynamic: {currentObstacle.isDynamicObstacle}");
-            Debug.Log($"Blocked Lanes: {string.Join(", ", currentObstacle.blockedLanes)}");
-            Debug.Log($"Free Lanes: {string.Join(", ", currentObstacle.freeLanes)}");
+            Debug.Log($"isDynamicObstacle: {currentObstacle.isDynamicObstacle}");
+            Debug.Log($"Movement Lane: {currentObstacle.movementLane}");
+            Debug.Log($"Blocked: [{string.Join(", ", currentObstacle.blockedLanes)}]");
+            Debug.Log($"Free: [{string.Join(", ", currentObstacle.freeLanes)}]");
         }
         
         Debug.Log("===============================================");
     }
     
-    [ContextMenu("Debug: Force Spawn Obstacle + Coin")]
-    void Debug_ForceSpawnObstacle()
-    {
-        if (!Application.isPlaying) return;
-        StartCoroutine(DebugSpawnWave());
-    }
-    
-    IEnumerator DebugSpawnWave()
-    {
-        yield return StartCoroutine(SpawnObstacleWave());
-        yield return StartCoroutine(SpawnCoinWaveForCurrentObstacle());
-    }
-    
-    [ContextMenu("Debug: List All Patterns")]
-    void Debug_ListPatterns()
+    [ContextMenu("Debug: List Obstacle Configs")]
+    void Debug_ListObstacleConfigs()
     {
         Debug.Log("========== OBSTACLE CONFIGS ==========");
         if (obstacleConfigs != null)
         {
-            for (int i = 0; i < obstacleConfigs.Count; i++)
+            foreach (var cfg in obstacleConfigs)
             {
-                var cfg = obstacleConfigs[i];
                 if (cfg != null)
                 {
-                    Debug.Log($"[{i}] ID: {cfg.obstacleId} | Name: {cfg.displayName} | Dynamic: {cfg.isDynamicObstacle} | Spacing: {cfg.extraSpacing}");
+                    Debug.Log($"ID: {cfg.obstacleId} | Name: {cfg.displayName}");
+                    Debug.Log($"  → isDynamicObstacle: {cfg.isDynamicObstacle}");
+                    Debug.Log($"  → movementLane: {cfg.movementLane}");
+                    Debug.Log($"  → Height: {cfg.obstacleHeight}");
                 }
             }
         }
-        
-        Debug.Log("\n========== COIN PATTERNS ==========");
-        if (coinPatterns != null)
-        {
-            for (int i = 0; i < coinPatterns.Count; i++)
-            {
-                var pattern = coinPatterns[i];
-                if (pattern != null)
-                {
-                    Debug.Log($"[{i}] Name: {pattern.patternName} | Compatible: {pattern.compatibleObstacleId} | Lanes: [{string.Join(",", pattern.spawnLanes)}]");
-                }
-            }
-        }
+        Debug.Log("======================================");
     }
     #endregion
 }

@@ -2,13 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// ✅ COMPLETE FIXED: ObstacleConfig dengan support untuk Dynamic Movement
-/// FEATURES:
-/// - Static obstacles (normal spawn)
-/// - Dynamic obstacles (moving toward player - subway surf style)
-/// - Auto-calculate free lanes
-/// - Validation system
-/// - STRICT CHECK untuk dynamic movement
+/// ✅ FIXED: ObstacleConfig dengan validation & force serialization
 /// </summary>
 [CreateAssetMenu(fileName = "ObstacleConfig", menuName = "Kulino/Spawn Patterns/Obstacle Config")]
 public class ObstacleConfig : ScriptableObject
@@ -32,8 +26,22 @@ public class ObstacleConfig : ScriptableObject
     public List<int> freeLanes = new List<int>();
     
     [Header("🚂 DYNAMIC MOVEMENT (Subway Surf Style)")]
+    [SerializeField] // ✅ CRITICAL: Ensure serialization
     [Tooltip("Apakah obstacle ini bergerak kearah player?")]
-    public bool isDynamicObstacle = false;
+    private bool _isDynamicObstacle = false;
+    
+    // ✅ NEW: Public property with validation
+    public bool isDynamicObstacle
+    {
+        get { return _isDynamicObstacle; }
+        set 
+        { 
+            _isDynamicObstacle = value;
+            #if UNITY_EDITOR
+            UnityEditor.EditorUtility.SetDirty(this);
+            #endif
+        }
+    }
     
     [Tooltip("Lane yang akan digunakan untuk movement (0=left, 1=center, 2=right)")]
     public int movementLane = 1;
@@ -59,15 +67,11 @@ public class ObstacleConfig : ScriptableObject
     [Header("Preview")]
     public Texture2D previewImage;
     
-    /// <summary>
-    /// Auto-calculate free lanes from blocked lanes
-    /// </summary>
     [ContextMenu("Auto Calculate Free Lanes")]
     public void AutoCalculateFreeLanes()
     {
-        int totalLanes = 3; // Default lane count
+        int totalLanes = 3;
         
-        // Try get from LanesManager
         if (LanesManager.Instance != null)
         {
             totalLanes = LanesManager.Instance.laneCount;
@@ -84,34 +88,30 @@ public class ObstacleConfig : ScriptableObject
         }
         
         Debug.Log($"[{displayName}] Auto-calculated free lanes: [{string.Join(", ", freeLanes)}]");
+        
+        #if UNITY_EDITOR
+        UnityEditor.EditorUtility.SetDirty(this);
+        UnityEditor.AssetDatabase.SaveAssets();
+        #endif
     }
     
-    /// <summary>
-    /// Check if lane is blocked
-    /// </summary>
     public bool IsLaneBlocked(int lane)
     {
         return blockedLanes.Contains(lane);
     }
     
-    /// <summary>
-    /// Check if lane is free
-    /// </summary>
     public bool IsLaneFree(int lane)
     {
         return freeLanes.Contains(lane);
     }
     
-    /// <summary>
-    /// Get total spacing (height + extra spacing)
-    /// </summary>
     public float GetTotalSpacing()
     {
         return obstacleHeight + extraSpacing;
     }
     
     /// <summary>
-    /// ✅ FIXED: Validate config dengan STRICT dynamic check
+    /// ✅ FIXED: Validate dengan proper dynamic check
     /// </summary>
     public bool IsValid()
     {
@@ -132,8 +132,8 @@ public class ObstacleConfig : ScriptableObject
             Debug.LogWarning($"[{displayName}] No blocked/free lanes defined!");
         }
         
-        // ✅ CRITICAL: Dynamic obstacle validation
-        if (isDynamicObstacle)
+        // ✅ Log dynamic status
+        if (_isDynamicObstacle)
         {
             if (movementLane < 0 || movementLane > 2)
             {
@@ -141,21 +141,16 @@ public class ObstacleConfig : ScriptableObject
                 return false;
             }
             
-            // Log untuk debugging
-            Debug.Log($"[{displayName}] ⚡ DYNAMIC OBSTACLE - Will move to lane {movementLane}");
+            Debug.Log($"[{displayName}] ⚡ DYNAMIC OBSTACLE - Lane {movementLane}");
         }
         else
         {
-            // Log static obstacle
             Debug.Log($"[{displayName}] 🔵 STATIC OBSTACLE - No movement");
         }
         
         return true;
     }
     
-    /// <summary>
-    /// Get info summary untuk debugging
-    /// </summary>
     public string GetInfoSummary()
     {
         string info = $"<b>{displayName}</b> (ID: {obstacleId})\n";
@@ -163,7 +158,7 @@ public class ObstacleConfig : ScriptableObject
         info += $"Free: [{string.Join(", ", freeLanes)}]\n";
         info += $"Height: {obstacleHeight}m + Extra: {extraSpacing}m\n";
         
-        if (isDynamicObstacle)
+        if (_isDynamicObstacle)
         {
             info += $"<color=yellow>⚡ DYNAMIC</color> - Lane {movementLane} - Speed x{dynamicSpeedMultiplier}\n";
         }
@@ -174,4 +169,101 @@ public class ObstacleConfig : ScriptableObject
         
         return info;
     }
+    
+    #if UNITY_EDITOR
+    /// <summary>
+    /// ✅ NEW: Force validate saat save
+    /// </summary>
+    void OnValidate()
+    {
+        // Auto-mark dirty saat ada perubahan
+        UnityEditor.EditorUtility.SetDirty(this);
+    }
+    
+    [ContextMenu("Force Save Asset")]
+    void ForceSave()
+    {
+        UnityEditor.EditorUtility.SetDirty(this);
+        UnityEditor.AssetDatabase.SaveAssets();
+        Debug.Log($"[{displayName}] ✓ Asset saved! isDynamic={_isDynamicObstacle}");
+    }
+    
+    [ContextMenu("Debug: Print Config")]
+    void DebugPrintConfig()
+    {
+        Debug.Log("========================================");
+        Debug.Log($"Obstacle: {displayName}");
+        Debug.Log($"ID: {obstacleId}");
+        Debug.Log($"isDynamicObstacle: {_isDynamicObstacle}");
+        Debug.Log($"Movement Lane: {movementLane}");
+        Debug.Log($"Prefab: {(prefab != null ? prefab.name : "NULL")}");
+        Debug.Log("========================================");
+    }
+    #endif
+    
+    #if UNITY_EDITOR
+[ContextMenu("Debug: Check Prefab Components")]
+void DebugCheckPrefabComponents()
+{
+    if (prefab == null)
+    {
+        Debug.LogError($"[{displayName}] Prefab is NULL!");
+        return;
+    }
+    
+    Debug.Log("========================================");
+    Debug.Log($"Checking prefab: {prefab.name}");
+    
+    // Check for DynamicObstacleMover
+    var dynamicMover = prefab.GetComponent<DynamicObstacleMover>();
+    if (dynamicMover != null)
+    {
+        Debug.LogWarning($"⚠️ PREFAB HAS DynamicObstacleMover component!");
+        Debug.LogWarning($"  → This will override config settings!");
+        Debug.LogWarning($"  → REMOVE this component from prefab!");
+    }
+    else
+    {
+        Debug.Log("✓ Prefab is clean (no DynamicObstacleMover)");
+    }
+    
+    // Check for movers
+    var planetMover = prefab.GetComponent<PlanetMover>();
+    var coinMover = prefab.GetComponent<CoinMover>();
+    var fragmentMover = prefab.GetComponent<FragmentMover>();
+    
+    Debug.Log($"PlanetMover: {(planetMover != null ? "YES" : "NO")}");
+    Debug.Log($"CoinMover: {(coinMover != null ? "YES" : "NO")}");
+    Debug.Log($"FragmentMover: {(fragmentMover != null ? "YES" : "NO")}");
+    
+    Debug.Log("========================================");
+}
+
+[ContextMenu("Auto-Fix: Remove DynamicMover from Prefab")]
+void AutoFixRemoveDynamicMover()
+{
+    if (prefab == null)
+    {
+        Debug.LogError($"[{displayName}] Prefab is NULL!");
+        return;
+    }
+    
+    var dynamicMover = prefab.GetComponent<DynamicObstacleMover>();
+    
+    if (dynamicMover != null)
+    {
+        Debug.Log($"Removing DynamicObstacleMover from prefab: {prefab.name}");
+        DestroyImmediate(dynamicMover);
+        
+        UnityEditor.EditorUtility.SetDirty(prefab);
+        UnityEditor.AssetDatabase.SaveAssets();
+        
+        Debug.Log("✓ Component removed and prefab saved!");
+    }
+    else
+    {
+        Debug.Log("✓ Prefab already clean!");
+    }
+}
+#endif
 }

@@ -17,11 +17,11 @@ MonoBehaviour:
   prefab: {fileID: 605665352668762460, guid: 9c92b18f988f7ea429706718127b112c, type: 3}
   blockedLanes: 02000000
   freeLanes: 0000000001000000
-  isDynamicObstacle: 0
+  _isDynamicObstacle: 0
   movementLane: 1
   dynamicSpeedMultiplier: 1.5
   movementStartDelay: 0.5
-  selectionWeight: 50
+  selectionWeight: 40
   obstacleHeight: 5
   extraSpacing: 2.5
   previewImage: {fileID: 0}

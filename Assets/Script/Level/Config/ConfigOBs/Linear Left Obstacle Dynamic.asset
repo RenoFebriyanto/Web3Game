@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 848d19a6f9917ad42bb8fc003a2f4f38, type: 3}
+  m_Name: Linear Left Obstacle Dynamic
+  m_EditorClassIdentifier: 
+  obstacleId: obs_linearleftdynamic
+  displayName: Linear Left Obstacle Dynamic
+  prefab: {fileID: 2553975070387681859, guid: 52fc6393d73f92e42964281b4dafdbd7, type: 3}
+  blockedLanes: 00000000
+  freeLanes: 0100000002000000
+  _isDynamicObstacle: 1
+  movementLane: 1
+  dynamicSpeedMultiplier: 1
+  movementStartDelay: 0.3
+  selectionWeight: 50
+  obstacleHeight: 5
+  extraSpacing: 4
+  previewImage: {fileID: 0}

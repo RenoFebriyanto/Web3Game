@@ -75,8 +75,9 @@ public class PlayerHealth : MonoBehaviour
 
     IEnumerator DieRoutine()
     {
+        // ✅ FIX: Changed plMove to laneMove
         var laneMove = GetComponent<PlayerLaneMovement>();
-        if (plMove != null) plMove.enabled = false;
+        if (laneMove != null) laneMove.enabled = false;
 
         yield return new WaitForSeconds(deathDelay);
 

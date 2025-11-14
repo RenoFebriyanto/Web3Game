@@ -10,6 +10,9 @@ using UnityEngine.UI;
 /// </summary>
 public class QuestChestController : MonoBehaviour
 {
+    // ✅ CRITICAL: Add missing Instance property
+    public static QuestChestController Instance { get; private set; }
+
     [Header("UI")]
     public Image[] crateImages;
     public Slider progressSlider;
@@ -49,7 +52,7 @@ public class QuestChestController : MonoBehaviour
 
     void Awake()
     {
-        // ✅ NEW: Singleton pattern
+        // ✅ Singleton pattern with Instance property
         if (Instance != null && Instance != this)
         {
             Destroy(gameObject);

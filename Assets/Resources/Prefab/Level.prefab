@@ -469,6 +469,7 @@ MonoBehaviour:
   star1: {fileID: 3177266138146541539}
   star2: {fileID: 1429729690359624281}
   star3: {fileID: 8811757789038405231}
+  energyCostPerLevel: 10
 --- !u!114 &780902149667121718
 MonoBehaviour:
   m_ObjectHideFlags: 0

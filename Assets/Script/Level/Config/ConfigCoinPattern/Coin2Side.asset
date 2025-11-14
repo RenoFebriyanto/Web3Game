@@ -16,7 +16,7 @@ MonoBehaviour:
   compatibleObstacleId: obs_gapcenter
   spawnLanes: 0000000002000000
   coinsPerLane: 5
-  verticalSpacing: 1
+  verticalSpacing: 1.5
   selectionWeight: 30
   onlySpawnInFreeLanes: 1
   previewImage: {fileID: 0}

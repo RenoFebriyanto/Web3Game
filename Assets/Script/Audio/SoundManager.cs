@@ -19,6 +19,8 @@ public class SoundManager : MonoBehaviour
     public AudioClip purchaseSuccessSound;
     public AudioClip purchaseFailSound;
 
+    public AudioClip cannotPlaySound;
+
     [Header("=== GAMEPLAY SOUNDS ===")]
 
     [Header("Level Complete")]
@@ -329,6 +331,22 @@ public class SoundManager : MonoBehaviour
             PlaySFX(planetDestroySound);
         }
     }
+
+    public void PlayCannotPlay()
+{
+    if (cannotPlaySound != null)
+    {
+        PlaySFX(cannotPlaySound);
+        Debug.Log("[SoundManager] Playing cannot play sound");
+    }
+    else
+    {
+        // Fallback ke fail sound
+        PlayPurchaseFail();
+    }
+}
+
+
 
     // ========================================
     // STATIC HELPERS

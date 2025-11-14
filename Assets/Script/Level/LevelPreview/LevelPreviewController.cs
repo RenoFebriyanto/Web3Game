@@ -558,30 +558,73 @@ public class LevelPreviewController : MonoBehaviour
         }
     }
 
-    void OnPlayButtonClicked()
+    public void OnPlayButtonClicked()
+{
+    if (currentLevel == null)
     {
-        if (currentLevel == null)
+        LogError("No level selected!");
+        return;
+    }
+
+    // ✅ DOUBLE-CHECK ENERGY BEFORE LOADING SCENE
+    if (PlayerEconomy.Instance != null)
+    {
+        int requiredEnergy = 10; // Energy cost per level
+        int currentEnergy = PlayerEconomy.Instance.Energy;
+
+        if (currentEnergy < requiredEnergy)
         {
-            LogError("No level selected!");
+            LogWarning($"Not enough energy! Need {requiredEnergy}, have {currentEnergy}");
+
+            // Show popup
+            if (PopUpAlert.Instance != null)
+            {
+                PopUpAlert.Instance.ShowNotEnoughEnergy();
+            }
+
+            // Play fail sound
+            if (SoundManager.Instance != null)
+            {
+                SoundManager.Instance.PlayPurchaseFail();
+            }
+
+            return; // STOP
+        }
+
+        // ✅ CONSUME ENERGY
+        bool consumed = PlayerEconomy.Instance.ConsumeEnergy(requiredEnergy);
+
+        if (!consumed)
+        {
+            LogError("Failed to consume energy!");
             return;
         }
 
-        PlayerPrefs.SetString("SelectedLevelId", currentLevel.id);
-        PlayerPrefs.SetInt("SelectedLevelNumber", currentLevel.number);
-
-        SaveGeneratedRewards();
-
-        PlayerPrefs.Save();
-
-        if (SoundManager.Instance != null)
-        {
-            SoundManager.Instance.PlayButtonClick();
-        }
-
-        Log($"Starting level {currentLevel.number}...");
-
-        SceneManager.LoadScene(gameplaySceneName);
+        Log($"✓ Energy consumed: {requiredEnergy} (Remaining: {PlayerEconomy.Instance.Energy})");
     }
+    else
+    {
+        LogWarning("PlayerEconomy not found! Playing without energy check.");
+    }
+
+    // Save level data
+    PlayerPrefs.SetString("SelectedLevelId", currentLevel.id);
+    PlayerPrefs.SetInt("SelectedLevelNumber", currentLevel.number);
+
+    SaveGeneratedRewards();
+
+    PlayerPrefs.Save();
+
+    // Play click sound
+    if (SoundManager.Instance != null)
+    {
+        SoundManager.Instance.PlayButtonClick();
+    }
+
+    Log($"Starting level {currentLevel.number}...");
+
+    SceneManager.LoadScene(gameplaySceneName);
+}
 
     void SaveGeneratedRewards()
     {

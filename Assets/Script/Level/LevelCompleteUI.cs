@@ -16,6 +16,7 @@ using TMPro;
 /// - Text "Already Complete" dijamin muncul saat replay
 /// 
 /// ✅ NOW USES GLOBAL RewardData from RewardData.cs
+/// ✅ LVLDONE GameObject support added
 /// </summary>
 public class LevelCompleteUI : MonoBehaviour
 {
@@ -54,6 +55,10 @@ public class LevelCompleteUI : MonoBehaviour
     public TMP_Text alreadyCompletedText;
     [Tooltip("Text yang akan ditampilkan")]
     public string alreadyCompletedMessage = "Level Already Completed";
+
+    [Header("🎯 LVLDONE GameObject")]
+    [Tooltip("GameObject LVLDONE yang akan active saat tidak ada reward")]
+    public GameObject lvlDoneObject;
 
     [Header("⚙️ Improved Reward Settings")]
     [Tooltip("Chance untuk 1 reward (Coin saja) - 90%")]
@@ -116,6 +121,10 @@ public class LevelCompleteUI : MonoBehaviour
 
         if (rewardsContainer != null)
             rewardsContainer.SetActive(false);
+
+        // ✅ HIDE LVLDONE initially
+        if (lvlDoneObject != null)
+            lvlDoneObject.SetActive(false);
 
         if (alreadyCompletedText != null)
             alreadyCompletedText.gameObject.SetActive(false);
@@ -238,46 +247,40 @@ public class LevelCompleteUI : MonoBehaviour
     }
 
     void StopAllSpawners()
-{
-    Log("Stopping all spawners...");
-
-    // Method 1: Via SpawnerController (recommended)
-    if (SpawnerController.Instance != null)
     {
-        SpawnerController.Instance.StopSpawner();
-        Log("✓ Stopped spawner via SpawnerController");
-    }
+        Log("Stopping all spawners...");
 
-    // Method 2: Find and disable ProceduralSpawner directly
-    var proceduralSpawner = FindFirstObjectByType<ProceduralSpawner>();
-    if (proceduralSpawner != null)
-    {
-        proceduralSpawner.enabled = false;
-        proceduralSpawner.StopAllCoroutines();
-        Log("✓ Disabled ProceduralSpawner");
-    }
-
-    // Method 3: Find any remaining spawner scripts (fallback)
-    var allSpawners = FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None);
-    foreach (var spawner in allSpawners)
-    {
-        if (spawner != null && spawner.GetType().Name.Contains("Spawner"))
+        if (SpawnerController.Instance != null)
         {
-            spawner.StopAllCoroutines();
-            spawner.enabled = false;
+            SpawnerController.Instance.StopSpawner();
+            Log("✓ Stopped spawner via SpawnerController");
         }
+
+        var proceduralSpawner = FindFirstObjectByType<ProceduralSpawner>();
+        if (proceduralSpawner != null)
+        {
+            proceduralSpawner.enabled = false;
+            proceduralSpawner.StopAllCoroutines();
+            Log("✓ Disabled ProceduralSpawner");
+        }
+
+        var allSpawners = FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None);
+        foreach (var spawner in allSpawners)
+        {
+            if (spawner != null && spawner.GetType().Name.Contains("Spawner"))
+            {
+                spawner.StopAllCoroutines();
+                spawner.enabled = false;
+            }
+        }
+
+        Log("✓ All spawners stopped");
     }
 
-    Log("✓ All spawners stopped");
-}
-    /// <summary>
-    /// ✅ Generate rewards menggunakan GLOBAL RewardData
-    /// </summary>
     void GenerateImprovedRewards()
     {
         generatedRewards.Clear();
 
-        // Check for saved rewards from LevelPreview
         string savedRewardsJson = PlayerPrefs.GetString($"LevelRewards_{currentLevelId}", "");
         
         if (!string.IsNullOrEmpty(savedRewardsJson))
@@ -302,12 +305,10 @@ public class LevelCompleteUI : MonoBehaviour
             }
         }
 
-        // Fallback: Generate random rewards
         float roll = Random.Range(0f, 100f);
 
         if (roll < singleRewardChance)
         {
-            // Single reward: Coin only
             int coinAmount = Random.Range(coinRewardRange.x, coinRewardRange.y + 1);
             generatedRewards.Add(new RewardData(
                 RewardType.Coin, 
@@ -319,7 +320,6 @@ public class LevelCompleteUI : MonoBehaviour
         }
         else
         {
-            // Double reward: Coin + Energy
             int coinAmount = Random.Range(coinRewardRange.x, coinRewardRange.y + 1);
             generatedRewards.Add(new RewardData(
                 RewardType.Coin,
@@ -340,9 +340,6 @@ public class LevelCompleteUI : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// ✅ Apply rewards menggunakan GLOBAL RewardData
-    /// </summary>
     void ApplyRewards()
     {
         if (PlayerEconomy.Instance == null)
@@ -592,6 +589,12 @@ public class LevelCompleteUI : MonoBehaviour
 
         rewardsContainer.SetActive(true);
 
+        // ✅ HIDE LVLDONE saat ada reward
+        if (lvlDoneObject != null)
+        {
+            lvlDoneObject.SetActive(false);
+        }
+
         if (alreadyCompletedText != null)
         {
             alreadyCompletedText.gameObject.SetActive(false);
@@ -623,6 +626,17 @@ public class LevelCompleteUI : MonoBehaviour
     void ShowAlreadyCompletedMessage()
     {
         Log("Showing 'Already Completed' message");
+
+        // ✅ SHOW LVLDONE GameObject
+        if (lvlDoneObject != null)
+        {
+            lvlDoneObject.SetActive(true);
+            Log("✓ LVLDONE object shown");
+        }
+        else
+        {
+            LogWarning("lvlDoneObject not assigned!");
+        }
 
         if (alreadyCompletedText != null)
         {
@@ -865,6 +879,12 @@ public class LevelCompleteUI : MonoBehaviour
         PlayerPrefs.Save();
         Debug.Log("[LevelCompleteUI] Reward history cleared");
     }
-}
 
-// ✅ REMOVED: Duplicate enum/class definitions (sekarang di RewardData.cs global)
+    [ContextMenu("Debug: Test Already Complete Message")]
+    void Debug_TestAlreadyComplete()
+    {
+        generatedRewards.Clear();
+        isFirstCompletion = false;
+        ShowAlreadyCompletedMessage();
+    }
+}

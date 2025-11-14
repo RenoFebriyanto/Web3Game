@@ -49,6 +49,14 @@ public class QuestChestController : MonoBehaviour
 
     void Awake()
     {
+        // ✅ NEW: Singleton pattern
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+        Instance = this;
+
         if (crateImages.Length != thresholds.Length)
         {
             Debug.LogWarning($"[QuestChestController] Adjusting array sizes to match");
@@ -70,7 +78,6 @@ public class QuestChestController : MonoBehaviour
     {
         LoadProgress();
         
-        // ✅ CRITICAL FIX: Subscribe ONCE dan NEVER unsubscribe sampai destroy
         SubscribeToQuestEventsPersistent();
         
         UpdateVisuals();
@@ -81,17 +88,15 @@ public class QuestChestController : MonoBehaviour
 
     void OnDestroy()
     {
-        // ✅ ONLY unsubscribe on destroy
         UnsubscribeFromQuestEvents();
+        
+        // ✅ Clear singleton reference
+        if (Instance == this)
+        {
+            Instance = null;
+        }
     }
 
-    // ========================================
-    // ✅✅✅ PERSISTENT EVENT SUBSCRIPTION
-    // ========================================
-
-    /// <summary>
-    /// ✅ Subscribe ONCE dan PERSISTENT (never unsubscribe except destroy)
-    /// </summary>
     void SubscribeToQuestEventsPersistent()
     {
         if (isSubscribed)
@@ -107,9 +112,7 @@ public class QuestChestController : MonoBehaviour
             return;
         }
 
-        // ✅ Remove dulu untuk ensure tidak double-subscribe
         QuestManager.Instance.OnQuestClaimed.RemoveListener(OnQuestClaimedHandler);
-        // ✅ Subscribe
         QuestManager.Instance.OnQuestClaimed.AddListener(OnQuestClaimedHandler);
 
         isSubscribed = true;
@@ -137,9 +140,6 @@ public class QuestChestController : MonoBehaviour
         isSubscribed = false;
     }
 
-    /// <summary>
-    /// ✅✅✅ EVENT HANDLER: Called when quest claimed (dari mana saja)
-    /// </summary>
     void OnQuestClaimedHandler(string questId, QuestData questData)
     {
         Log($"========================================");
@@ -157,7 +157,6 @@ public class QuestChestController : MonoBehaviour
         Log($"  Quest Type: {(questData.isDaily ? "DAILY" : "WEEKLY")}");
         Log($"  Count Mode: {(countOnlyDailyQuests ? "DAILY ONLY" : "ALL QUESTS")}");
 
-        // ✅ Check filter
         if (countOnlyDailyQuests && !questData.isDaily)
         {
             Log($"❌ FILTERED OUT: Quest is WEEKLY but countOnlyDailyQuests=true");
@@ -168,7 +167,6 @@ public class QuestChestController : MonoBehaviour
         string questType = questData.isDaily ? "DAILY" : "WEEKLY";
         Log($"✅ PASSED FILTER: Processing {questType} quest");
 
-        // ✅ Increment crate progress
         int oldCount = claimedCount;
         claimedCount++;
         
@@ -182,10 +180,6 @@ public class QuestChestController : MonoBehaviour
         Log($"✓✓✓ CRATE PROGRESS UPDATED SUCCESSFULLY");
         Log($"========================================");
     }
-
-    // ========================================
-    // LOAD / SAVE PROGRESS
-    // ========================================
 
     void LoadProgress()
     {
@@ -213,10 +207,6 @@ public class QuestChestController : MonoBehaviour
         PlayerPrefs.Save();
         Log($"✓ Saved progress: claimedCount={claimedCount}");
     }
-
-    // ========================================
-    // VISUAL UPDATE
-    // ========================================
 
     void UpdateVisuals()
     {
@@ -252,10 +242,6 @@ public class QuestChestController : MonoBehaviour
 
         Log($"✓ Visuals updated: progress={claimedCount}/{max}");
     }
-
-    // ========================================
-    // CRATE CLAIM
-    // ========================================
 
     public void TryClaimCrate(int index)
     {
@@ -327,9 +313,28 @@ public class QuestChestController : MonoBehaviour
         );
     }
 
-    // ========================================
-    // REWARD HELPERS
-    // ========================================
+    // ✅ NEW: Reset crate progress (called from QuestResetManager)
+    public void ResetCrateProgress()
+    {
+        Log("========================================");
+        Log("🔄 RESETTING CRATE PROGRESS");
+        Log("========================================");
+
+        claimedCount = 0;
+        
+        for (int i = 0; i < claimedCrates.Length; i++)
+        {
+            claimedCrates[i] = false;
+        }
+
+        SaveProgress();
+        UpdateVisuals();
+
+        Log("✅ CRATE PROGRESS RESET COMPLETE");
+        Log($"  Claimed count: 0");
+        Log($"  All crates reset to locked");
+        Log("========================================");
+    }
 
     Sprite GetRewardIcon(QuestRewardGenerator.RewardData reward)
     {
@@ -394,10 +399,6 @@ public class QuestChestController : MonoBehaviour
         }
     }
 
-    // ========================================
-    // LOGGING
-    // ========================================
-
     void Log(string message)
     {
         if (enableDebugLogs)
@@ -414,10 +415,6 @@ public class QuestChestController : MonoBehaviour
         Debug.LogError($"[QuestChestController] ❌ {message}");
     }
 
-    // ========================================
-    // CONTEXT MENU DEBUG
-    // ========================================
-
     [ContextMenu("Debug: Add Quest Progress")]
     void DebugAddProgress()
     {
@@ -430,14 +427,7 @@ public class QuestChestController : MonoBehaviour
     [ContextMenu("Debug: Reset All Crates")]
     void DebugResetCrates()
     {
-        claimedCount = 0;
-        for (int i = 0; i < claimedCrates.Length; i++)
-        {
-            claimedCrates[i] = false;
-        }
-        SaveProgress();
-        UpdateVisuals();
-        Debug.Log("[DEBUG] All crates reset");
+        ResetCrateProgress();
     }
 
     [ContextMenu("Debug: Print Status")]
@@ -479,20 +469,6 @@ public class QuestChestController : MonoBehaviour
             Debug.Log($"  Crate {i}: {status}");
         }
         Debug.Log("====================================");
-    }
-
-    [ContextMenu("Debug: Toggle Count Mode")]
-    void DebugToggleCountMode()
-    {
-        countOnlyDailyQuests = !countOnlyDailyQuests;
-        Debug.Log($"[DEBUG] Count mode changed to: {(countOnlyDailyQuests ? "DAILY ONLY" : "ALL QUESTS")}");
-    }
-
-    [ContextMenu("Debug: Force Resubscribe")]
-    void DebugForceResubscribe()
-    {
-        isSubscribed = false;
-        SubscribeToQuestEventsPersistent();
     }
 
     [ContextMenu("Debug: Clear Saved Progress")]

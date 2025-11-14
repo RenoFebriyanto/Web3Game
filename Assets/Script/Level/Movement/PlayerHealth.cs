@@ -1,4 +1,4 @@
-// PlayerHealth.cs
+// PlayerHealth.cs - UPDATED: Tambah game over trigger
 using System.Collections;
 using UnityEngine;
 using UnityEngine.Events;
@@ -16,8 +16,8 @@ public class PlayerHealth : MonoBehaviour
     public float blinkFrequency = 10f;
 
     [Header("Death")]
-    public float deathDelay = 0.9f; // delay before calling OnPlayerDeath
-    public bool disableOnDeath = true; // apakah disable object saat benar2 mati
+    public float deathDelay = 0.9f;
+    public bool disableOnDeath = true;
 
     [Header("Visual")]
     public SpriteRenderer[] renderersToBlink;
@@ -49,7 +49,6 @@ public class PlayerHealth : MonoBehaviour
 
         if (currentLives <= 0)
         {
-            // begin death routine (don't immediately destroy)
             StartCoroutine(DieRoutine());
         }
         else
@@ -76,16 +75,14 @@ public class PlayerHealth : MonoBehaviour
 
     IEnumerator DieRoutine()
     {
-        // immediately disable player input/movement if any
-        var laneMove = GetComponent<MonoBehaviour>(); // fallback: try to disable known script names
-        var plMove = GetComponent<PlayerLaneMovement>();
+        var laneMove = GetComponent<PlayerLaneMovement>();
         if (plMove != null) plMove.enabled = false;
-
-        // optionally play death FX here
 
         yield return new WaitForSeconds(deathDelay);
 
-        // fire death event so UI/manager can handle game over
+        // ✅ NEW: Trigger Game Over
+        TriggerGameOver();
+
         OnPlayerDeath?.Invoke();
 
         if (disableOnDeath)
@@ -100,6 +97,35 @@ public class PlayerHealth : MonoBehaviour
         foreach (var r in renderersToBlink) if (r != null) r.enabled = visible;
     }
 
+    // ✅ NEW: Trigger Game Over
+    void TriggerGameOver()
+    {
+        Debug.Log("[PlayerHealth] ⚠️ GAME OVER - Player died!");
+
+        // Stop all spawners
+        if (SpawnerController.Instance != null)
+        {
+            SpawnerController.Instance.StopSpawner();
+        }
+
+        // Show game over UI (using LevelCompleteUI in game over mode)
+        if (LevelCompleteUI.Instance != null)
+        {
+            LevelCompleteUI.Instance.ShowGameOver();
+        }
+        else
+        {
+            Debug.LogError("[PlayerHealth] LevelCompleteUI.Instance is NULL!");
+        }
+    }
+
     [ContextMenu("Debug Damage")]
     public void DebugDamage() => TakeDamage(1);
+    
+    [ContextMenu("Debug Kill Player")]
+    public void DebugKillPlayer()
+    {
+        currentLives = 1;
+        TakeDamage(1);
+    }
 }

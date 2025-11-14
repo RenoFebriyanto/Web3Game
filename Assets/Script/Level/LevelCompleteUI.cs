@@ -1,6 +1,4 @@
-﻿// ✅ CRITICAL FIX: Hapus duplicate RewardType & RewardData definitions
-// Sekarang menggunakan GLOBAL RewardData dari RewardData.cs
-
+﻿// LevelCompleteUI.cs - UPDATED: Game Over Mode + Particle Effects
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -8,16 +6,6 @@ using UnityEngine.UI;
 using UnityEngine.SceneManagement;
 using TMPro;
 
-/// <summary>
-/// FIXED: Level Complete UI dengan reward 1x per level & improved reward system
-/// - Single reward (90%): HANYA Coin
-/// - Double reward (10%): SELALU Coin + Energy (NEVER duplicate)
-/// - Energy dikecilkan: 3-10 (dari 5-20)
-/// - Text "Already Complete" dijamin muncul saat replay
-/// 
-/// ✅ NOW USES GLOBAL RewardData from RewardData.cs
-/// ✅ LVLDONE GameObject support added
-/// </summary>
 public class LevelCompleteUI : MonoBehaviour
 {
     public static LevelCompleteUI Instance { get; private set; }
@@ -37,6 +25,10 @@ public class LevelCompleteUI : MonoBehaviour
     public Sprite starFilled;
     public Sprite starEmpty;
 
+    [Header("✨ NEW: Star Particle Effects")]
+    [Tooltip("Particle effect yang muncul saat star terisi (level complete)")]
+    public GameObject[] starParticleEffects; // Array untuk 3 stars
+
     [Header("🎉 LEVEL COMPLETE Popup")]
     public GameObject lvlPopup;
     public RectTransform lvlPopupBackground;
@@ -49,30 +41,25 @@ public class LevelCompleteUI : MonoBehaviour
     public GameObject rewardItemPrefab;
     public Sprite coinIcon;
     public Sprite energyIcon;
+    public Sprite speedBoostIcon;
+    public Sprite timeFreezeIcon;
+    public Sprite shieldIcon;
+    public Sprite coin2xIcon;
+    public Sprite magnetIcon;
 
     [Header("✨ Already Completed Text")]
-    [Tooltip("Text yang akan muncul jika level sudah pernah diselesaikan")]
     public TMP_Text alreadyCompletedText;
-    [Tooltip("Text yang akan ditampilkan")]
     public string alreadyCompletedMessage = "Level Already Completed";
 
     [Header("🎯 LVLDONE GameObject")]
-    [Tooltip("GameObject LVLDONE yang akan active saat tidak ada reward")]
     public GameObject lvlDoneObject;
 
     [Header("⚙️ Improved Reward Settings")]
-    [Tooltip("Chance untuk 1 reward (Coin saja) - 90%")]
     [Range(0, 100)]
     public float singleRewardChance = 90f;
-
-    [Tooltip("Chance untuk 2 rewards (Coin + Energy) - 10% VERY RARE")]
     [Range(0, 100)]
     public float doubleRewardChance = 10f;
-
-    [Tooltip("Range coin reward")]
     public Vector2Int coinRewardRange = new Vector2Int(500, 3000);
-
-    [Tooltip("Range energy reward (DIKECILKAN: 3-10)")]
     public Vector2Int energyRewardRange = new Vector2Int(3, 10);
 
     [Header("Fade Settings")]
@@ -91,6 +78,9 @@ public class LevelCompleteUI : MonoBehaviour
 
     [Header("Debug")]
     public bool enableDebugLogs = true;
+
+    // ✅ NEW: Game Over Mode
+    private bool isGameOverMode = false;
 
     private const string PREF_REWARDED_LEVELS = "Kulino_RewardedLevels_v1";
 
@@ -122,7 +112,6 @@ public class LevelCompleteUI : MonoBehaviour
         if (rewardsContainer != null)
             rewardsContainer.SetActive(false);
 
-        // ✅ HIDE LVLDONE initially
         if (lvlDoneObject != null)
             lvlDoneObject.SetActive(false);
 
@@ -164,6 +153,18 @@ public class LevelCompleteUI : MonoBehaviour
             }
         }
 
+        // ✅ Validate particle effects
+        if (starParticleEffects != null && starParticleEffects.Length > 0)
+        {
+            foreach (var fx in starParticleEffects)
+            {
+                if (fx != null)
+                {
+                    fx.SetActive(false);
+                }
+            }
+        }
+
         if (LevelGameSession.Instance != null)
         {
             LevelGameSession.Instance.OnLevelCompleted.AddListener(OnLevelComplete);
@@ -201,11 +202,14 @@ public class LevelCompleteUI : MonoBehaviour
         }
     }
 
+    // ✅ EXISTING: Normal level complete
     public void OnLevelComplete()
     {
         if (isTransitioning) return;
 
         Log("🎉 Level Complete triggered!");
+
+        isGameOverMode = false; // Normal mode
 
         StopAllSpawners();
 
@@ -242,6 +246,26 @@ public class LevelCompleteUI : MonoBehaviour
             generatedRewards.Clear();
             Log("⚠️ Level already completed - no rewards");
         }
+
+        StartCoroutine(ShowLevelCompleteUI());
+    }
+
+    // ✅ NEW: Game Over Method
+    public void ShowGameOver()
+    {
+        if (isTransitioning) return;
+
+        Log("💀 Game Over triggered!");
+
+        isGameOverMode = true; // Game Over mode
+        earnedStars = 0; // NO STARS on game over
+
+        StopAllSpawners();
+
+        currentLevelId = PlayerPrefs.GetString("SelectedLevelId", "level_1");
+        currentLevelNumber = PlayerPrefs.GetInt("SelectedLevelNumber", 1);
+
+        generatedRewards.Clear(); // No rewards on game over
 
         StartCoroutine(ShowLevelCompleteUI());
     }
@@ -396,13 +420,16 @@ public class LevelCompleteUI : MonoBehaviour
 
         ResetStars();
 
+        // ✅ Show popup dengan text sesuai mode
         yield return StartCoroutine(AnimateLevelCompletePopup());
 
         SetLinoCharacter();
 
+        // ✅ Animate stars (dengan atau tanpa particle tergantung mode)
         yield return StartCoroutine(AnimateStars());
 
-        if (isFirstCompletion && generatedRewards.Count > 0)
+        // ✅ Show rewards atau "already completed" message
+        if (!isGameOverMode && isFirstCompletion && generatedRewards.Count > 0)
         {
             yield return StartCoroutine(ShowRewards());
         }
@@ -424,7 +451,13 @@ public class LevelCompleteUI : MonoBehaviour
             yield break;
         }
 
-        Log("Animating LEVEL COMPLETE popup...");
+        // ✅ Set text berdasarkan mode
+        if (lvlPopupText != null)
+        {
+            lvlPopupText.text = isGameOverMode ? "GAME OVER" : "LEVEL COMPLETE";
+        }
+
+        Log($"Animating popup: {(isGameOverMode ? "GAME OVER" : "LEVEL COMPLETE")}");
 
         lvlPopup.SetActive(true);
 
@@ -455,7 +488,7 @@ public class LevelCompleteUI : MonoBehaviour
 
         lvlPopup.SetActive(false);
 
-        Log("✓ LEVEL COMPLETE popup animation complete");
+        Log($"✓ Popup animation complete: {(isGameOverMode ? "GAME OVER" : "LEVEL COMPLETE")}");
     }
 
     float EaseOutBack(float t)
@@ -473,11 +506,12 @@ public class LevelCompleteUI : MonoBehaviour
             return;
         }
 
-        if (earnedStars == 0)
+        // ✅ Game Over = always sad, Level Complete = check stars
+        if (isGameOverMode || earnedStars == 0)
         {
             linoHappy.SetActive(false);
             linoSad.SetActive(true);
-            Log("✓ Showing Sad Lino (0 stars)");
+            Log($"✓ Showing Sad Lino ({(isGameOverMode ? "Game Over" : "0 stars")})");
         }
         else
         {
@@ -505,6 +539,18 @@ public class LevelCompleteUI : MonoBehaviour
             }
         }
 
+        // ✅ Hide all particle effects initially
+        if (starParticleEffects != null)
+        {
+            for (int i = 0; i < starParticleEffects.Length; i++)
+            {
+                if (starParticleEffects[i] != null)
+                {
+                    starParticleEffects[i].SetActive(false);
+                }
+            }
+        }
+
         Log("✓ Stars reset to empty");
     }
 
@@ -516,7 +562,10 @@ public class LevelCompleteUI : MonoBehaviour
             yield break;
         }
 
-        for (int i = 0; i < earnedStars && i < starImages.Length; i++)
+        // ✅ Game Over mode = no stars earned
+        int starsToShow = isGameOverMode ? 0 : earnedStars;
+
+        for (int i = 0; i < starsToShow && i < starImages.Length; i++)
         {
             if (starImages[i] == null) continue;
 
@@ -526,15 +575,41 @@ public class LevelCompleteUI : MonoBehaviour
 
             StartCoroutine(PunchScale(starImages[i].transform));
 
+            // ✅ Play star pickup sound
             if (SoundManager.Instance != null)
             {
                 SoundManager.Instance.PlayStarPickup();
             }
 
+            // ✅ NEW: Play particle effect (ONLY on level complete, NOT game over)
+            if (!isGameOverMode && starParticleEffects != null && i < starParticleEffects.Length)
+            {
+                if (starParticleEffects[i] != null)
+                {
+                    starParticleEffects[i].SetActive(true);
+                    
+                    // Auto-disable after particle duration
+                    StartCoroutine(DisableParticleAfterDelay(starParticleEffects[i], 2f));
+                    
+                    Log($"✓ Star {i + 1} particle effect played");
+                }
+            }
+
             Log($"✓ Star {i + 1} animated");
         }
 
-        Log($"✓ All {earnedStars} stars animated");
+        Log($"✓ All {starsToShow} stars animated");
+    }
+
+    // ✅ NEW: Disable particle effect after delay
+    IEnumerator DisableParticleAfterDelay(GameObject particleFX, float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        
+        if (particleFX != null)
+        {
+            particleFX.SetActive(false);
+        }
     }
 
     IEnumerator PunchScale(Transform target)
@@ -589,7 +664,6 @@ public class LevelCompleteUI : MonoBehaviour
 
         rewardsContainer.SetActive(true);
 
-        // ✅ HIDE LVLDONE saat ada reward
         if (lvlDoneObject != null)
         {
             lvlDoneObject.SetActive(false);
@@ -627,26 +701,18 @@ public class LevelCompleteUI : MonoBehaviour
     {
         Log("Showing 'Already Completed' message");
 
-        // ✅ SHOW LVLDONE GameObject
         if (lvlDoneObject != null)
         {
             lvlDoneObject.SetActive(true);
             Log("✓ LVLDONE object shown");
         }
-        else
-        {
-            LogWarning("lvlDoneObject not assigned!");
-        }
 
         if (alreadyCompletedText != null)
         {
-            alreadyCompletedText.text = alreadyCompletedMessage;
+            // ✅ Change message for game over
+            alreadyCompletedText.text = isGameOverMode ? "Try Again!" : alreadyCompletedMessage;
             alreadyCompletedText.gameObject.SetActive(true);
-            Log("✓ Already completed text shown");
-        }
-        else
-        {
-            LogWarning("alreadyCompletedText not assigned!");
+            Log($"✓ Already completed text shown: {alreadyCompletedText.text}");
         }
 
         if (rewardsContainer != null)
@@ -705,7 +771,15 @@ public class LevelCompleteUI : MonoBehaviour
             SoundManager.Instance.PlayButtonClick();
         }
 
-        StartCoroutine(TransitionToNextLevel());
+        // ✅ Game Over = retry same level, Level Complete = next level
+        if (isGameOverMode)
+        {
+            StartCoroutine(TransitionToRetryLevel());
+        }
+        else
+        {
+            StartCoroutine(TransitionToNextLevel());
+        }
     }
 
     public void OnHomeClicked()
@@ -720,6 +794,25 @@ public class LevelCompleteUI : MonoBehaviour
         }
 
         StartCoroutine(TransitionToMainMenu());
+    }
+
+    // ✅ NEW: Retry same level (game over)
+    IEnumerator TransitionToRetryLevel()
+    {
+        isTransitioning = true;
+
+        Time.timeScale = 1f;
+
+        yield return StartCoroutine(FadeOut());
+
+        Log($"Retrying level: {currentLevelNumber}");
+
+        // Keep same level
+        PlayerPrefs.SetString("SelectedLevelId", currentLevelId);
+        PlayerPrefs.SetInt("SelectedLevelNumber", currentLevelNumber);
+        PlayerPrefs.Save();
+
+        SceneManager.LoadScene(gameplaySceneName);
     }
 
     IEnumerator TransitionToNextLevel()
@@ -880,11 +973,15 @@ public class LevelCompleteUI : MonoBehaviour
         Debug.Log("[LevelCompleteUI] Reward history cleared");
     }
 
-    [ContextMenu("Debug: Test Already Complete Message")]
-    void Debug_TestAlreadyComplete()
+    [ContextMenu("Debug: Test Game Over")]
+    void Debug_TestGameOver()
     {
-        generatedRewards.Clear();
-        isFirstCompletion = false;
-        ShowAlreadyCompletedMessage();
+        ShowGameOver();
+    }
+
+    [ContextMenu("Debug: Test Level Complete")]
+    void Debug_TestLevelComplete()
+    {
+        OnLevelComplete();
     }
 }

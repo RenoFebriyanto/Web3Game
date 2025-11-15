@@ -14,13 +14,15 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   itemId: shard_100
   displayName: Shard
-  iconGrid: {fileID: 0}
-  iconPreview: {fileID: 0}
+  iconGrid: {fileID: -486243948266769818, guid: 6e23fa84af635fd4082d891336455b69, type: 3}
+  iconPreview: {fileID: -4101916017452507219, guid: 17c51150cca33ca46bb76c4c0df5bffd, type: 3}
   coinPrice: 0
   shardPrice: 0
-  allowBuyWithCoins: 1
+  allowBuyWithCoins: 0
   allowBuyWithShards: 0
-  rewardType: 0
-  rewardAmount: 0
+  kulinoCoinPrice: 0.00001
+  allowBuyWithKulinoCoin: 1
+  rewardType: 2
+  rewardAmount: 100
   bundleItems: []
   description: 

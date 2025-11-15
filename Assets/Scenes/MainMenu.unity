@@ -2321,9 +2321,9 @@ RectTransform:
   - {fileID: 8046252}
   m_Father: {fileID: 1197092497}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 132.5, y: -346.66675}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 200, y: 80}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &315564005
@@ -3663,9 +3663,9 @@ RectTransform:
   - {fileID: 1982998471}
   m_Father: {fileID: 1197092497}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 132.5, y: -90}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 200, y: 80}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &484970214
@@ -4470,9 +4470,9 @@ RectTransform:
   - {fileID: 494457380}
   m_Father: {fileID: 1197092497}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 132.5, y: -218.33337}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 200, y: 80}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &548139752
@@ -6998,7 +6998,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!224 &812974245
 RectTransform:
   m_ObjectHideFlags: 0
@@ -7453,7 +7453,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &899492596
 RectTransform:
   m_ObjectHideFlags: 0
@@ -7827,6 +7827,57 @@ MonoBehaviour:
   m_ChildScaleWidth: 0
   m_ChildScaleHeight: 0
   m_ReverseArrangement: 0
+--- !u!1 &959775997
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 959775999}
+  - component: {fileID: 959775998}
+  m_Layer: 0
+  m_Name: KulinoCoinManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &959775998
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 959775997}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 63df510430142aa45b05e70d62e4d800, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  testWalletAddress: 
+  mockBalance: 100.5
+  useMockData: 1
+  kulinoCoinMintAddress: 2tWC4JAdL4AxEFJXGKjPqPkLJZqfvxzHmBdWVBBc9TmL
+  solanaRpcUrl: https://api.mainnet-beta.solana.com
+  kulinoCoinBalance: 0
+  enableDebugLogs: 1
+--- !u!4 &959775999
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 959775997}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 890.98895, y: 661.42084, z: -3.834502}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &962559654
 GameObject:
   m_ObjectHideFlags: 0
@@ -8875,15 +8926,15 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4983517055877798003, guid: dbd0c957a656d4647aab49a62cb769f9, type: 3}
       propertyPath: m_AnchorMin.y
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 4983517055877798003, guid: dbd0c957a656d4647aab49a62cb769f9, type: 3}
       propertyPath: m_SizeDelta.x
-      value: 100
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 4983517055877798003, guid: dbd0c957a656d4647aab49a62cb769f9, type: 3}
       propertyPath: m_SizeDelta.y
-      value: 100
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 4983517055877798003, guid: dbd0c957a656d4647aab49a62cb769f9, type: 3}
       propertyPath: m_LocalPosition.x
@@ -8915,11 +8966,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4983517055877798003, guid: dbd0c957a656d4647aab49a62cb769f9, type: 3}
       propertyPath: m_AnchoredPosition.x
-      value: 514
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 4983517055877798003, guid: dbd0c957a656d4647aab49a62cb769f9, type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: -190
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 4983517055877798003, guid: dbd0c957a656d4647aab49a62cb769f9, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
@@ -12719,6 +12770,7 @@ GameObject:
   - component: {fileID: 1692826205}
   - component: {fileID: 1692826204}
   - component: {fileID: 1692826203}
+  - component: {fileID: 1692826206}
   m_Layer: 5
   m_Name: KulinoCoin
   m_TagString: Untagged
@@ -12840,6 +12892,22 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1692826201}
   m_CullTransparentMesh: 1
+--- !u!114 &1692826206
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1692826201}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ae29e2eda309aea47aa55c1624c15e35, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  kulinoCoinText: {fileID: 962559656}
+  kulinoCoinIcon: {fileID: 1692826204}
+  autoRefreshInterval: 30
+  animateOnUpdate: 1
 --- !u!1 &1708780680
 GameObject:
   m_ObjectHideFlags: 0
@@ -13487,12 +13555,16 @@ MonoBehaviour:
   descText: {fileID: 156506145}
   coinPriceText: {fileID: 131348162}
   shardPriceText: {fileID: 1204163592}
+  kulinoCoinPriceText: {fileID: 0}
   coinPriceGroup: {fileID: 1258368945}
   shardPriceGroup: {fileID: 1891990266}
+  kulinoCoinPriceGroup: {fileID: 0}
   buyWithCoinsBtn: {fileID: 613907890}
   buyWithShardsBtn: {fileID: 1249715107}
+  buyWithKulinoCoinBtn: {fileID: 0}
   buyWithCoinsBtnText: {fileID: 131348162}
   buyWithShardsBtnText: {fileID: 1204163592}
+  buyWithKulinoCoinBtnText: {fileID: 0}
   closeBtn: {fileID: 705683646}
   scrollRect: {fileID: 561662169}
   maxVisibleItems: 5
@@ -17119,6 +17191,7 @@ SceneRoots:
   - {fileID: 519420032}
   - {fileID: 619394802}
   - {fileID: 2545425199311499502}
+  - {fileID: 959775999}
   - {fileID: 1806553397}
   - {fileID: 1857859920}
   - {fileID: 191072603}

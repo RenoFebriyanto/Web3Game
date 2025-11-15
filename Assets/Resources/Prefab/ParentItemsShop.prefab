@@ -225,7 +225,7 @@ GameObject:
   m_Component:
   - component: {fileID: 4716219977836683960}
   m_Layer: 5
-  m_Name: Shard
+  m_Name: Shard/KulinoCoin
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

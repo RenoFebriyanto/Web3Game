@@ -313,6 +313,24 @@ public class BuyPreviewController : MonoBehaviour
             }
         }
 
+        // ✅ BARU: Buy with Kulino Coin button
+    if (buyWithKulinoCoinBtn != null)
+    {
+        buyWithKulinoCoinBtn.onClick.RemoveAllListeners();
+        buyWithKulinoCoinBtn.gameObject.SetActive(data.allowBuyWithKulinoCoin && data.kulinoCoinPrice > 0);
+        
+        if (data.allowBuyWithKulinoCoin && data.kulinoCoinPrice > 0)
+        {
+            buyWithKulinoCoinBtn.onClick.AddListener(() =>
+            {
+                if (manager != null)
+                {
+                    manager.TryBuy(data, Currency.KulinoCoin);
+                }
+            });
+        }
+    }
+
         // Buy with Shards button
         if (buyWithShardsBtn != null)
         {

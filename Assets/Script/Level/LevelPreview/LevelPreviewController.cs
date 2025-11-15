@@ -451,32 +451,30 @@ public class LevelPreviewController : MonoBehaviour
         Log($"✅ Generated {generatedRewards.Count} NEW rewards for {currentLevel.id}");
     }
 
-    /// <summary>
-    /// ✅ Save generated rewards ke PlayerPrefs
-    /// </summary>
     void SaveGeneratedRewards()
+{
+    if (generatedRewards == null || generatedRewards.Count == 0 || currentLevel == null)
     {
-        if (generatedRewards == null || generatedRewards.Count == 0 || currentLevel == null)
-        {
-            return;
-        }
-
-        try
-        {
-            RewardDataList rewardList = new RewardDataList { rewards = generatedRewards };
-            string json = JsonUtility.ToJson(rewardList);
-
-            string key = PREF_LEVEL_REWARDS + currentLevel.id;
-            PlayerPrefs.SetString(key, json);
-            PlayerPrefs.Save();
-
-            Log($"✅ Saved {generatedRewards.Count} rewards to PlayerPrefs (key: {key})");
-        }
-        catch (System.Exception e)
-        {
-            LogError($"Failed to save rewards: {e.Message}");
-        }
+        return;
     }
+
+    try
+    {
+        RewardDataList rewardList = new RewardDataList { rewards = generatedRewards };
+        string json = JsonUtility.ToJson(rewardList);
+
+        // ✅ CRITICAL: Pastikan key SAMA dengan yang digunakan di LevelCompleteUI
+        string key = "Kulino_LevelRewards_" + currentLevel.id;
+        PlayerPrefs.SetString(key, json);
+        PlayerPrefs.Save();
+
+        Log($"✅ Saved {generatedRewards.Count} rewards to PlayerPrefs (key: {key})");
+    }
+    catch (System.Exception e)
+    {
+        LogError($"Failed to save rewards: {e.Message}");
+    }
+}
 
     RewardData GenerateRandomReward(LevelRewardTier tier)
     {

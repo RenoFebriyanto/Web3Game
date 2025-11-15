@@ -3,7 +3,12 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-public enum Currency { Coins, Shards }
+public enum Currency 
+{ 
+    Coins,      // In-game coins
+    Shards,     // In-game shards
+    KulinoCoin  // ✅ BARU: Kulino Coin dari wallet
+}
 
 /// <summary>
 /// FIXED: PlayerEconomy null check dengan auto-create
@@ -11,6 +16,13 @@ public enum Currency { Coins, Shards }
 /// </summary>
 public class ShopManager : MonoBehaviour
 {
+    [Header("💎 Kulino Coin Pricing")]
+[Tooltip("Harga dalam Kulino Coin (0 = tidak bisa beli dengan Kulino Coin)")]
+public double kulinoCoinPrice = 0;
+
+[Tooltip("Boleh dibeli dengan Kulino Coin?")]
+public bool allowBuyWithKulinoCoin = false;
+
     [Header("Prefabs & UI")]
     [Tooltip("Prefab for one shop entry (BackgroundItem). Must have ShopItemUI component.")]
     public GameObject itemUIPrefab;
@@ -198,73 +210,87 @@ public class ShopManager : MonoBehaviour
     // ========================================
 
     public bool TryBuy(ShopItemData data, Currency currency)
-    {
-        if (data == null) return false;
+{
+    if (data == null) return false;
 
-        // ✅ CRITICAL FIX: Ensure PlayerEconomy exists before checking
+    // ✅ Ensure PlayerEconomy exists
+    if (PlayerEconomy.Instance == null)
+    {
+        Debug.LogError("[ShopManager] PlayerEconomy.Instance is null!");
+        EnsurePlayerEconomy();
+        
         if (PlayerEconomy.Instance == null)
         {
-            Debug.LogError("[ShopManager] PlayerEconomy.Instance is null. Attempting to create...");
-            EnsurePlayerEconomy();
-
-            // Check again after ensure
-            if (PlayerEconomy.Instance == null)
-            {
-                Debug.LogError("[ShopManager] Failed to create PlayerEconomy! Cannot proceed with purchase.");
-
-                // Play fail sound
-                if (SoundManager.Instance != null)
-                {
-                    SoundManager.Instance.PlayPurchaseFail();
-                }
-
-                return false;
-            }
-        }
-
-        // Check if player has enough currency
-        bool canAfford = false;
-        long price = 0;
-
-        if (currency == Currency.Coins)
-        {
-            if (!data.allowBuyWithCoins) return false;
-            price = data.coinPrice;
-            canAfford = PlayerEconomy.Instance.Coins >= price;
-
-            Debug.Log($"[ShopManager] TryBuy with Coins: has={PlayerEconomy.Instance.Coins}, need={price}, canAfford={canAfford}");
-        }
-        else if (currency == Currency.Shards)
-        {
-            if (!data.allowBuyWithShards) return false;
-            price = data.shardPrice;
-            canAfford = PlayerEconomy.Instance.Shards >= price;
-
-            Debug.Log($"[ShopManager] TryBuy with Shards: has={PlayerEconomy.Instance.Shards}, need={price}, canAfford={canAfford}");
-        }
-
-        if (!canAfford)
-        {
-            Debug.Log($"[ShopManager] Not enough {currency}. Need {price}");
-
-            // Play fail sound
+            Debug.LogError("[ShopManager] Failed to create PlayerEconomy!");
             if (SoundManager.Instance != null)
             {
                 SoundManager.Instance.PlayPurchaseFail();
             }
-
             return false;
         }
-
-        // PURCHASE FLOW: BuyPreview → PopupClaimQuest → Grant Reward
-        // Close BuyPreview first
-        buyPreviewUI?.Close();
-
-        // Show PopupClaimQuest dengan items yang akan didapat
-        ShowPurchasePopup(data, currency);
-
-        return true;
     }
+
+    // Check affordability berdasarkan currency
+    bool canAfford = false;
+    double price = 0;
+
+    switch (currency)
+    {
+        case Currency.Coins:
+            if (!data.allowBuyWithCoins) return false;
+            price = data.coinPrice;
+            canAfford = PlayerEconomy.Instance.Coins >= price;
+            Debug.Log($"[ShopManager] Coins: has={PlayerEconomy.Instance.Coins}, need={price}");
+            break;
+
+        case Currency.Shards:
+            if (!data.allowBuyWithShards) return false;
+            price = data.shardPrice;
+            canAfford = PlayerEconomy.Instance.Shards >= price;
+            Debug.Log($"[ShopManager] Shards: has={PlayerEconomy.Instance.Shards}, need={price}");
+            break;
+
+        case Currency.KulinoCoin:
+            // ✅ BARU: Check Kulino Coin balance
+            if (!data.allowBuyWithKulinoCoin) 
+            {
+                Debug.LogWarning("[ShopManager] Item ini tidak bisa dibeli dengan Kulino Coin!");
+                return false;
+            }
+            
+            if (KulinoCoinManager.Instance == null)
+            {
+                Debug.LogError("[ShopManager] KulinoCoinManager.Instance is null!");
+                return false;
+            }
+
+            price = data.kulinoCoinPrice;
+            canAfford = KulinoCoinManager.Instance.HasEnoughBalance(price);
+            Debug.Log($"[ShopManager] Kulino Coin: has={KulinoCoinManager.Instance.GetBalance():F6}, need={price:F6}");
+            break;
+    }
+
+    // Cek apakah cukup balance
+    if (!canAfford)
+    {
+        Debug.Log($"[ShopManager] ✗ Tidak cukup {currency}. Butuh {price}");
+        
+        if (SoundManager.Instance != null)
+        {
+            SoundManager.Instance.PlayPurchaseFail();
+        }
+        
+        return false;
+    }
+
+    // ✅ Close BuyPreview
+    buyPreviewUI?.Close();
+
+    // ✅ Show popup purchase confirmation
+    ShowPurchasePopup(data, currency);
+
+    return true;
+}
 
     /// <summary>
     /// Show PopupClaimQuest dengan items yang dibeli
@@ -421,58 +447,88 @@ public class ShopManager : MonoBehaviour
         return data.rewardAmount.ToString("N0");
     }
 
-    /// <summary>
-    /// Complete purchase: deduct currency & grant reward
-    /// Called from PopupClaimQuest confirm button
-    /// </summary>
-    void CompletePurchase(ShopItemData data, Currency currency)
+    public bool TryBuy(ShopItemData data, Currency currency)
+{
+    if (data == null) return false;
+
+    // ✅ Ensure PlayerEconomy exists
+    if (PlayerEconomy.Instance == null)
     {
-        // ✅ Double-check PlayerEconomy exists
+        Debug.LogError("[ShopManager] PlayerEconomy.Instance is null!");
+        EnsurePlayerEconomy();
+        
         if (PlayerEconomy.Instance == null)
         {
-            Debug.LogError("[ShopManager] PlayerEconomy.Instance is null in CompletePurchase!");
-            EnsurePlayerEconomy();
-
-            if (PlayerEconomy.Instance == null)
+            Debug.LogError("[ShopManager] Failed to create PlayerEconomy!");
+            if (SoundManager.Instance != null)
             {
-                Debug.LogError("[ShopManager] Failed to create PlayerEconomy! Cannot complete purchase.");
-                return;
+                SoundManager.Instance.PlayPurchaseFail();
             }
+            return false;
         }
-
-        // Deduct currency
-        if (currency == Currency.Coins)
-        {
-            bool ok = PlayerEconomy.Instance.SpendCoins(data.coinPrice);
-            if (!ok)
-            {
-                Debug.LogError("[ShopManager] Failed to spend coins!");
-                if (SoundManager.Instance != null)
-                {
-                    SoundManager.Instance.PlayPurchaseFail();
-                }
-                return;
-            }
-        }
-        else if (currency == Currency.Shards)
-        {
-            bool ok = PlayerEconomy.Instance.SpendShards(data.shardPrice);
-            if (!ok)
-            {
-                Debug.LogError("[ShopManager] Failed to spend shards!");
-                if (SoundManager.Instance != null)
-                {
-                    SoundManager.Instance.PlayPurchaseFail();
-                }
-                return;
-            }
-        }
-
-        // Grant reward
-        GrantReward(data);
-
-        Debug.Log($"[ShopManager] Purchase completed: {data.displayName}");
     }
+
+    // Check affordability berdasarkan currency
+    bool canAfford = false;
+    double price = 0;
+
+    switch (currency)
+    {
+        case Currency.Coins:
+            if (!data.allowBuyWithCoins) return false;
+            price = data.coinPrice;
+            canAfford = PlayerEconomy.Instance.Coins >= price;
+            Debug.Log($"[ShopManager] Coins: has={PlayerEconomy.Instance.Coins}, need={price}");
+            break;
+
+        case Currency.Shards:
+            if (!data.allowBuyWithShards) return false;
+            price = data.shardPrice;
+            canAfford = PlayerEconomy.Instance.Shards >= price;
+            Debug.Log($"[ShopManager] Shards: has={PlayerEconomy.Instance.Shards}, need={price}");
+            break;
+
+        case Currency.KulinoCoin:
+            // ✅ BARU: Check Kulino Coin balance
+            if (!data.allowBuyWithKulinoCoin) 
+            {
+                Debug.LogWarning("[ShopManager] Item ini tidak bisa dibeli dengan Kulino Coin!");
+                return false;
+            }
+            
+            if (KulinoCoinManager.Instance == null)
+            {
+                Debug.LogError("[ShopManager] KulinoCoinManager.Instance is null!");
+                return false;
+            }
+
+            price = data.kulinoCoinPrice;
+            canAfford = KulinoCoinManager.Instance.HasEnoughBalance(price);
+            Debug.Log($"[ShopManager] Kulino Coin: has={KulinoCoinManager.Instance.GetBalance():F6}, need={price:F6}");
+            break;
+    }
+
+    // Cek apakah cukup balance
+    if (!canAfford)
+    {
+        Debug.Log($"[ShopManager] ✗ Tidak cukup {currency}. Butuh {price}");
+        
+        if (SoundManager.Instance != null)
+        {
+            SoundManager.Instance.PlayPurchaseFail();
+        }
+        
+        return false;
+    }
+
+    // ✅ Close BuyPreview
+    buyPreviewUI?.Close();
+
+    // ✅ Show popup purchase confirmation
+    ShowPurchasePopup(data, currency);
+
+    return true;
+}
 
     // ========================================
     // Reward Granting

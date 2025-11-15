@@ -315,8 +315,8 @@ public class LevelCompleteUI : MonoBehaviour
 {
     generatedRewards.Clear();
 
-    // ✅ CRITICAL FIX: Load saved rewards dari LevelPreview
-    string savedRewardsJson = PlayerPrefs.GetString($"LevelRewards_{currentLevelId}", "");
+    // ✅ CRITICAL FIX: Gunakan key yang SAMA dengan LevelPreviewController
+    string savedRewardsJson = PlayerPrefs.GetString($"Kulino_LevelRewards_{currentLevelId}", "");
     
     if (!string.IsNullOrEmpty(savedRewardsJson))
     {
@@ -333,12 +333,12 @@ public class LevelCompleteUI : MonoBehaviour
                     AssignRewardIcon(reward);
                 }
                 
-                // ✅ IMPORTANT: Delete saved rewards setelah di-load
-                PlayerPrefs.DeleteKey($"LevelRewards_{currentLevelId}");
+                // ✅ IMPORTANT: Delete saved rewards setelah di-load (HANYA JIKA BERHASIL)
+                PlayerPrefs.DeleteKey($"Kulino_LevelRewards_{currentLevelId}");
                 PlayerPrefs.Save();
                 
                 Log($"✅ Loaded cached rewards from LevelPreview: {generatedRewards.Count} items");
-                return;
+                return; // ✅ CRITICAL: STOP disini, jangan generate random!
             }
         }
         catch (System.Exception e)
@@ -347,34 +347,9 @@ public class LevelCompleteUI : MonoBehaviour
         }
     }
 
-    // ✅ FALLBACK: Generate new rewards (jika tidak ada cache)
-    Log($"⚠️ No cached rewards found - generating new rewards");
+    // ✅ FALLBACK: Generate new rewards HANYA jika tidak ada cache
+    Log($"⚠️ No cached rewards found - generating FALLBACK rewards");
 
-    // string savedRewardsJson = PlayerPrefs.GetString($"LevelRewards_{currentLevelId}", "");
-    
-    if (!string.IsNullOrEmpty(savedRewardsJson))
-    {
-        try
-        {
-            RewardDataList rewardList = JsonUtility.FromJson<RewardDataList>(savedRewardsJson);
-            if (rewardList != null && rewardList.rewards != null)
-            {
-                generatedRewards.AddRange(rewardList.rewards);
-                
-                PlayerPrefs.DeleteKey($"LevelRewards_{currentLevelId}");
-                PlayerPrefs.Save();
-                
-                Log($"✓ Using saved rewards from preview: {generatedRewards.Count} items");
-                return;
-            }
-        }
-        catch (System.Exception e)
-        {
-            LogWarning($"Failed to parse saved rewards: {e.Message}");
-        }
-    }
-
-    // FALLBACK: Generate random rewards
     float roll = Random.Range(0f, 100f);
 
     if (roll < singleRewardChance)
@@ -386,7 +361,7 @@ public class LevelCompleteUI : MonoBehaviour
             coinIcon,
             "Coins"
         ));
-        Log($"✓ Single reward: Coin x{coinAmount}");
+        Log($"✓ Fallback reward: Coin x{coinAmount}");
     }
     else
     {
@@ -406,7 +381,7 @@ public class LevelCompleteUI : MonoBehaviour
             "Energy"
         ));
 
-        Log($"✓ Double reward: Coin x{coinAmount} + Energy x{energyAmount}");
+        Log($"✓ Fallback double reward: Coin x{coinAmount} + Energy x{energyAmount}");
     }
 }
 

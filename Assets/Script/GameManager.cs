@@ -199,6 +199,53 @@ public class GameManager : MonoBehaviour
         OnClaimResult(JsonUtility.ToJson(fake));
     }
 
+
+    // ============================================================
+// TAMBAHKAN CODE INI DI GameManager.cs YANG SUDAH ADA
+// ============================================================
+
+// Di bagian OnWalletConnected method, TAMBAHKAN:
+
+public void OnWalletConnected(string address) 
+{
+    walletAddress = address;
+    Debug.Log("Wallet connected: " + address);
+    
+    // Simpan ke PlayerPrefs
+    PlayerPrefs.SetString("WalletAddress", address);
+    
+    // ✅ TAMBAHAN BARU: Initialize KulinoCoinManager
+    if (KulinoCoinManager.Instance != null)
+    {
+        KulinoCoinManager.Instance.Initialize(address);
+        Debug.Log("[GameManager] ✓ KulinoCoinManager initialized");
+    }
+    else
+    {
+        Debug.LogError("[GameManager] ✗ KulinoCoinManager.Instance tidak ditemukan!");
+    }
+}
+
+// ============================================================
+// OPTIONAL: Tambahkan method untuk refresh Kulino Coin balance
+// ============================================================
+
+[ContextMenu("🔄 Refresh Kulino Coin Balance")]
+public void RefreshKulinoCoinBalance()
+{
+    if (KulinoCoinManager.Instance != null)
+    {
+        KulinoCoinManager.Instance.RefreshBalance();
+        Debug.Log("[GameManager] Refreshing Kulino Coin balance...");
+    }
+    else
+    {
+        Debug.LogError("[GameManager] KulinoCoinManager not found!");
+    }
+}
+
+
+
     // ========================================
     // HELPER CLASSES
     // ========================================

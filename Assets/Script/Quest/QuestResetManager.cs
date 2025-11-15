@@ -1,19 +1,25 @@
-// QuestResetManager.cs - NEW: Auto-reset untuk Daily/Weekly Quest & Crate Progress
 using System;
 using UnityEngine;
 
 /// <summary>
-/// ✅✅✅ Manages auto-reset untuk:
-/// - Daily Quest (1 hari)
-/// - Weekly Quest (7 hari)
-/// - Crate Progress (7 hari)
+/// ✅✅✅ FIXED: QuestResetManager yang TIDAK MERUSAK QuestManager GameObject
+/// - HARUS di GameObject TERPISAH (BUKAN di QuestManager GameObject!)
+/// - DontDestroyOnLoad untuk persistent
+/// - Auto-reset Daily/Weekly Quest & Crate Progress
 /// 
-/// Taruh di MainMenu scene
+/// CRITICAL SETUP:
+/// 1. Buat GameObject baru: "[QuestResetManager - PERSISTENT]"
+/// 2. Attach script INI ke GameObject tersebut
+/// 3. JANGAN attach ke GameObject QuestManager!
 /// </summary>
 [DefaultExecutionOrder(-950)]
 public class QuestResetManager : MonoBehaviour
 {
     public static QuestResetManager Instance { get; private set; }
+
+    [Header("⚠️ CRITICAL: Attach to SEPARATE GameObject!")]
+    [Tooltip("JANGAN attach ke QuestManager GameObject!")]
+    public bool acknowledgeWarning = false;
 
     [Header("Reset Intervals")]
     [Tooltip("Daily reset interval (jam)")]
@@ -31,16 +37,34 @@ public class QuestResetManager : MonoBehaviour
 
     void Awake()
     {
-        if (Instance != null && Instance != this)
+        // ✅ FIX: Singleton pattern yang AMAN
+        if (Instance != null)
         {
-            Destroy(gameObject);
-            return;
+            if (Instance != this)
+            {
+                Log($"⚠️ Duplicate QuestResetManager found - destroying duplicate only");
+                
+                // ✅ CRITICAL: Hanya destroy SCRIPT ini, BUKAN GameObject!
+                Destroy(this);
+                return;
+            }
         }
 
         Instance = this;
+        
+        // ✅ Mark GameObject as persistent
         DontDestroyOnLoad(gameObject);
+        
+        // ✅ Rename untuk identifikasi
+        if (gameObject.name != "[QuestResetManager - PERSISTENT]")
+        {
+            gameObject.name = "[QuestResetManager - PERSISTENT]";
+        }
 
-        Log("✅ QuestResetManager initialized");
+        Log("✅ QuestResetManager initialized (on separate GameObject)");
+        
+        // ✅ Validate setup
+        ValidateSetup();
     }
 
     void Start()
@@ -48,6 +72,46 @@ public class QuestResetManager : MonoBehaviour
         // Check resets on start
         CheckAndResetDaily();
         CheckAndResetWeekly();
+    }
+
+    void OnDestroy()
+    {
+        // ✅ Clear instance reference jika ini adalah instance aktif
+        if (Instance == this)
+        {
+            Log("⚠️ QuestResetManager destroyed - clearing instance reference");
+            Instance = null;
+        }
+    }
+
+    /// <summary>
+    /// ✅ NEW: Validate setup untuk prevent common mistakes
+    /// </summary>
+    void ValidateSetup()
+    {
+        // Check jika attached ke QuestManager GameObject
+        var questManager = GetComponent<QuestManager>();
+        if (questManager != null)
+        {
+            LogError("❌❌❌ CRITICAL ERROR!");
+            LogError("QuestResetManager is attached to QuestManager GameObject!");
+            LogError("This will cause QuestManager to be destroyed on scene change!");
+            LogError("");
+            LogError("FIX:");
+            LogError("1. Remove QuestResetManager from QuestManager GameObject");
+            LogError("2. Create NEW GameObject: [QuestResetManager - PERSISTENT]");
+            LogError("3. Attach QuestResetManager to that new GameObject");
+            LogError("");
+            
+            #if UNITY_EDITOR
+            // Pause editor untuk force user attention
+            Debug.Break();
+            #endif
+        }
+        else
+        {
+            Log("✅ Setup validation passed - QuestResetManager is on separate GameObject");
+        }
     }
 
     /// <summary>
@@ -148,19 +212,26 @@ public class QuestResetManager : MonoBehaviour
         Log("🔄 RESETTING DAILY QUEST");
         Log("========================================");
 
-        if (QuestManager.Instance != null)
+        // ✅ Wait for QuestManager jika belum ready
+        if (QuestManager.Instance == null)
         {
-            QuestManager.Instance.ResetDaily();
-            Log("✓ Daily quest reset via QuestManager");
+            LogWarning("QuestManager.Instance is null! Will retry in 1 second...");
+            Invoke(nameof(RetryResetDaily), 1f);
+            return;
         }
-        else
-        {
-            LogWarning("QuestManager.Instance is null!");
-        }
+
+        QuestManager.Instance.ResetDaily();
+        Log("✓ Daily quest reset via QuestManager");
 
         Log("========================================");
         Log("✅ DAILY RESET COMPLETE");
         Log("========================================");
+    }
+
+    void RetryResetDaily()
+    {
+        Log("Retrying daily reset...");
+        ResetDaily();
     }
 
     /// <summary>
@@ -172,16 +243,17 @@ public class QuestResetManager : MonoBehaviour
         Log("🔄 RESETTING WEEKLY QUEST & CRATE PROGRESS");
         Log("========================================");
 
+        // ✅ Wait for QuestManager jika belum ready
+        if (QuestManager.Instance == null)
+        {
+            LogWarning("QuestManager.Instance is null! Will retry in 1 second...");
+            Invoke(nameof(RetryResetWeekly), 1f);
+            return;
+        }
+
         // Reset weekly quest
-        if (QuestManager.Instance != null)
-        {
-            QuestManager.Instance.ResetWeekly();
-            Log("✓ Weekly quest reset via QuestManager");
-        }
-        else
-        {
-            LogWarning("QuestManager.Instance is null!");
-        }
+        QuestManager.Instance.ResetWeekly();
+        Log("✓ Weekly quest reset via QuestManager");
 
         // Reset crate progress
         if (QuestChestController.Instance != null)
@@ -200,13 +272,19 @@ public class QuestResetManager : MonoBehaviour
             }
             else
             {
-                LogWarning("QuestChestController not found!");
+                LogWarning("QuestChestController not found! Will try again later.");
             }
         }
 
         Log("========================================");
         Log("✅ WEEKLY RESET COMPLETE");
         Log("========================================");
+    }
+
+    void RetryResetWeekly()
+    {
+        Log("Retrying weekly reset...");
+        ResetWeekly();
     }
 
     void SaveDailyResetTime()
@@ -352,6 +430,12 @@ public class QuestResetManager : MonoBehaviour
         Debug.Log($"Weekly reset in: {(weeklyRemaining.TotalHours / 24):F1} days");
 
         Debug.Log("===================");
+    }
+
+    [ContextMenu("Validate Setup")]
+    void Context_ValidateSetup()
+    {
+        ValidateSetup();
     }
 
     [ContextMenu("Reset All Timers (Testing)")]

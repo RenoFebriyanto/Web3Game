@@ -3403,7 +3403,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7f02faca4f7ded442b4c2d450069d2fc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  rewardChancePerLevel: 0.1
+  rewardChancePerLevel: 1
   guaranteedRewardEveryNLevels: 30
   minimumLevelForReward: 1
   popupClaimCoin: {fileID: 6768678056661620766}
@@ -12161,9 +12161,10 @@ MonoBehaviour:
   starFilled: {fileID: -3451123637730162992, guid: db1a39f91ec4a3c4d825c93db50270ce, type: 3}
   starEmpty: {fileID: 878272429751785114, guid: fc59222370078b242860f63613429d7b, type: 3}
   starParticleEffects:
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
+  - {fileID: 1449242181322416601, guid: 052d5f6cf7d3ebc44bba49fbe653f9a8, type: 3}
+  - {fileID: 1449242181322416601, guid: 052d5f6cf7d3ebc44bba49fbe653f9a8, type: 3}
+  - {fileID: 8176850701479282271, guid: b219c04f384e7f345bb8ae1fef443965, type: 3}
+  targetCanvas: {fileID: 1254843959}
   lvlPopup: {fileID: 1057190540}
   lvlPopupBackground: {fileID: 448696575}
   lvlPopupText: {fileID: 1022824999}

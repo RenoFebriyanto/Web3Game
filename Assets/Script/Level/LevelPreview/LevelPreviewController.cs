@@ -5,22 +5,19 @@ using UnityEngine.SceneManagement;
 using TMPro;
 
 /// <summary>
-/// ✅✅✅ CRITICAL FIX: Static instance yang SELALU aktif
-/// - Panel bisa inactive, tapi script HARUS active
-/// - Taruh script di GameObject TERPISAH yang SELALU active
-/// - Panel cukup dijadikan child/reference
+/// ✅ FIXED: Reward system dengan persistence (tidak berubah-ubah)
+/// Reward di-generate SEKALI per level dan disimpan di PlayerPrefs
 /// </summary>
 public class LevelPreviewController : MonoBehaviour
 {
-    // ✅ CRITICAL: Static instance untuk akses dari mana saja
     public static LevelPreviewController Instance { get; private set; }
 
     [Header("Panel Reference")]
     public GameObject levelPreviewPanel;
 
     [Header("Level Info")]
-    public TMP_Text lvlText; // "Lvl. X"
-    public TMP_Text levelTitleText; // Optional
+    public TMP_Text lvlText;
+    public TMP_Text levelTitleText;
 
     [Header("Character Lino")]
     public Image linoCharacterImage;
@@ -28,12 +25,12 @@ public class LevelPreviewController : MonoBehaviour
     public Sprite linoSad;
 
     [Header("Stars Display")]
-    public GameObject[] stars; // 3 star GameObjects
+    public GameObject[] stars;
     public Sprite starFilled;
     public Sprite starEmpty;
 
     [Header("Mission Fragments")]
-    public Transform fragmentListContent; // Content di ScrollRect
+    public Transform fragmentListContent;
     public GameObject fragmentItemPrefab;
     public ScrollRect fragmentScrollRect;
 
@@ -67,15 +64,18 @@ public class LevelPreviewController : MonoBehaviour
     [Header("Debug")]
     public bool enableDebugLogs = true;
 
+    // ✅ NEW: PlayerPrefs key prefix untuk reward caching
+    private const string PREF_LEVEL_REWARDS = "Kulino_LevelRewards_";
+
     // Runtime
     private LevelConfig currentLevel;
     private List<RewardData> generatedRewards = new List<RewardData>();
     private List<GameObject> spawnedFragmentItems = new List<GameObject>();
     private List<GameObject> spawnedRewardItems = new List<GameObject>();
+    private Image[] starImages;
 
     void Awake()
     {
-        // ✅ CRITICAL: Setup singleton pattern
         if (Instance != null && Instance != this)
         {
             Destroy(gameObject);
@@ -88,7 +88,6 @@ public class LevelPreviewController : MonoBehaviour
 
     void Start()
     {
-        // Setup buttons
         if (playButton != null)
         {
             playButton.onClick.RemoveAllListeners();
@@ -101,7 +100,6 @@ public class LevelPreviewController : MonoBehaviour
             closeButton.onClick.AddListener(OnCloseButtonClicked);
         }
 
-        // ✅ CRITICAL: Hide panel initially
         if (levelPreviewPanel != null)
         {
             levelPreviewPanel.SetActive(false);
@@ -124,9 +122,6 @@ public class LevelPreviewController : MonoBehaviour
         Log("✓ LevelPreviewController initialized");
     }
 
-    // Stars cache
-    private Image[] starImages;
-
     /// <summary>
     /// ✅ Main method: Show preview
     /// </summary>
@@ -142,7 +137,6 @@ public class LevelPreviewController : MonoBehaviour
 
         Log($"=== SHOWING PREVIEW: {levelConfig.displayName} ===");
 
-        // ✅ CRITICAL: Show panel
         if (levelPreviewPanel != null)
         {
             levelPreviewPanel.SetActive(true);
@@ -153,12 +147,13 @@ public class LevelPreviewController : MonoBehaviour
             LogError("levelPreviewPanel is NULL!");
         }
 
-        // Update UI
         UpdateLevelNumberText();
         UpdateLinoCharacterSprite();
         UpdateStarsDisplay();
         UpdateMissionFragments();
-        GenerateAndDisplayRewards();
+        
+        // ✅ FIXED: Load or generate rewards (dengan caching)
+        LoadOrGenerateRewards();
 
         Log($"=== PREVIEW COMPLETE: {levelConfig.displayName} ===");
     }
@@ -265,7 +260,6 @@ public class LevelPreviewController : MonoBehaviour
             spawnedFragmentItems.Add(item);
         }
 
-        // ✅ Enable scroll if > 3 fragments
         if (fragmentScrollRect != null)
         {
             bool needScroll = reqCount > 3;
@@ -328,11 +322,112 @@ public class LevelPreviewController : MonoBehaviour
         return null;
     }
 
-    void GenerateAndDisplayRewards()
+    // ========================================
+    // ✅ FIXED: REWARD SYSTEM WITH CACHING
+    // ========================================
+
+    /// <summary>
+    /// ✅ CRITICAL FIX: Load saved rewards OR generate new ones (only once per level)
+    /// </summary>
+    void LoadOrGenerateRewards()
     {
         if (currentLevel == null) return;
 
         ClearSpawnedItems(spawnedRewardItems);
+        generatedRewards.Clear();
+
+        // ✅ Step 1: Try load from PlayerPrefs
+        string savedRewardsJson = GetSavedRewards(currentLevel.id);
+
+        if (!string.IsNullOrEmpty(savedRewardsJson))
+        {
+            // ✅ Rewards already exist - LOAD FROM CACHE
+            if (LoadRewardsFromJson(savedRewardsJson))
+            {
+                Log($"✅ Loaded CACHED rewards for {currentLevel.id}: {generatedRewards.Count} items");
+                DisplayRewards();
+                return;
+            }
+        }
+
+        // ✅ Step 2: No saved rewards - GENERATE NEW
+        Log($"No cached rewards found for {currentLevel.id} - generating new...");
+        GenerateNewRewards();
+        
+        // ✅ Step 3: Save generated rewards
+        SaveGeneratedRewards();
+        
+        DisplayRewards();
+    }
+
+    /// <summary>
+    /// ✅ Get saved rewards JSON dari PlayerPrefs
+    /// </summary>
+    string GetSavedRewards(string levelId)
+    {
+        string key = PREF_LEVEL_REWARDS + levelId;
+        return PlayerPrefs.GetString(key, "");
+    }
+
+    /// <summary>
+    /// ✅ Load rewards dari JSON string
+    /// </summary>
+    bool LoadRewardsFromJson(string json)
+    {
+        try
+        {
+            RewardDataList rewardList = JsonUtility.FromJson<RewardDataList>(json);
+            
+            if (rewardList != null && rewardList.rewards != null && rewardList.rewards.Count > 0)
+            {
+                generatedRewards.Clear();
+                generatedRewards.AddRange(rewardList.rewards);
+
+                // ✅ CRITICAL: Re-assign icons (karena Sprite tidak tersimpan di JSON)
+                foreach (var reward in generatedRewards)
+                {
+                    AssignRewardIcon(reward);
+                }
+
+                return true;
+            }
+        }
+        catch (System.Exception e)
+        {
+            LogError($"Failed to parse rewards JSON: {e.Message}");
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// ✅ Assign icon sprite ke reward data (karena Sprite tidak bisa disimpan di JSON)
+    /// </summary>
+    void AssignRewardIcon(RewardData reward)
+    {
+        if (reward == null) return;
+
+        switch (reward.type)
+        {
+            case RewardType.Coin:
+                reward.icon = coinIcon;
+                break;
+
+            case RewardType.Energy:
+                reward.icon = energyIcon;
+                break;
+
+            case RewardType.Booster:
+                reward.icon = GetBoosterIcon(reward.boosterId);
+                break;
+        }
+    }
+
+    /// <summary>
+    /// ✅ Generate rewards baru (hanya dipanggil jika belum ada cache)
+    /// </summary>
+    void GenerateNewRewards()
+    {
         generatedRewards.Clear();
 
         var tier = GetRewardTierForLevel(currentLevel.number);
@@ -353,9 +448,34 @@ public class LevelPreviewController : MonoBehaviour
             }
         }
 
-        DisplayRewards();
+        Log($"✅ Generated {generatedRewards.Count} NEW rewards for {currentLevel.id}");
+    }
 
-        Log($"✓ Generated {generatedRewards.Count} rewards");
+    /// <summary>
+    /// ✅ Save generated rewards ke PlayerPrefs
+    /// </summary>
+    void SaveGeneratedRewards()
+    {
+        if (generatedRewards == null || generatedRewards.Count == 0 || currentLevel == null)
+        {
+            return;
+        }
+
+        try
+        {
+            RewardDataList rewardList = new RewardDataList { rewards = generatedRewards };
+            string json = JsonUtility.ToJson(rewardList);
+
+            string key = PREF_LEVEL_REWARDS + currentLevel.id;
+            PlayerPrefs.SetString(key, json);
+            PlayerPrefs.Save();
+
+            Log($"✅ Saved {generatedRewards.Count} rewards to PlayerPrefs (key: {key})");
+        }
+        catch (System.Exception e)
+        {
+            LogError($"Failed to save rewards: {e.Message}");
+        }
     }
 
     RewardData GenerateRandomReward(LevelRewardTier tier)
@@ -429,6 +549,8 @@ public class LevelPreviewController : MonoBehaviour
 
     Sprite GetBoosterIcon(string boosterId)
     {
+        if (string.IsNullOrEmpty(boosterId)) return null;
+
         switch (boosterId.ToLower())
         {
             case "speedboost": return speedBoostIcon;
@@ -474,7 +596,19 @@ public class LevelPreviewController : MonoBehaviour
 
     void DisplayRewards()
     {
-        if (rewardItemsContainer == null || rewardItemPrefab == null) return;
+        if (rewardItemsContainer == null || rewardItemPrefab == null)
+        {
+            LogWarning("Rewards container or prefab not assigned!");
+            return;
+        }
+
+        if (generatedRewards.Count == 0)
+        {
+            LogWarning("No rewards to display!");
+            return;
+        }
+
+        Log($"Displaying {generatedRewards.Count} reward(s)...");
 
         foreach (var reward in generatedRewards)
         {
@@ -493,34 +627,26 @@ public class LevelPreviewController : MonoBehaviour
 
     void SetupRewardItem(GameObject item, RewardData reward)
     {
-        // ✅ CRITICAL FIX: Cari Icon yang BENAR (child, bukan parent)
-        // Hierarchy: RewardItem (border) > Icon (yang harus diganti sprite)
-        
         Transform iconTransform = item.transform.Find("Icon");
         Image iconImage = null;
         
         if (iconTransform != null)
         {
             iconImage = iconTransform.GetComponent<Image>();
-            Log($"✓ Found Icon child: {iconTransform.name}");
         }
         else
         {
-            // Fallback: cari Image di children (tapi SKIP yang parent/border)
             Image[] images = item.GetComponentsInChildren<Image>();
             foreach (var img in images)
             {
-                // Skip parent border (cek jika GameObject name adalah "Icon" atau bukan parent)
                 if (img.gameObject != item && img.gameObject.name.Contains("Icon"))
                 {
                     iconImage = img;
-                    Log($"✓ Found Icon via search: {img.gameObject.name}");
                     break;
                 }
             }
         }
 
-        // Find amount text
         TMP_Text amountText = null;
         Transform amountTransform = item.transform.Find("Amount");
         
@@ -531,30 +657,17 @@ public class LevelPreviewController : MonoBehaviour
         
         if (amountText == null)
         {
-            // Fallback: find any TMP_Text in children
             amountText = item.GetComponentInChildren<TMP_Text>();
         }
 
-        // ✅ Update icon (ONLY the Icon child, NOT the parent border)
         if (iconImage != null && reward.icon != null)
         {
             iconImage.sprite = reward.icon;
-            Log($"✓ Set icon sprite: {reward.icon.name}");
-        }
-        else
-        {
-            LogWarning($"Failed to set icon! iconImage={iconImage != null}, reward.icon={reward.icon != null}");
         }
 
-        // Update amount text
         if (amountText != null)
         {
             amountText.text = $"x{reward.amount}";
-            Log($"✓ Set amount text: x{reward.amount}");
-        }
-        else
-        {
-            LogWarning("Amount text not found!");
         }
     }
 
@@ -566,15 +679,23 @@ public class LevelPreviewController : MonoBehaviour
         return;
     }
 
-    // ✅ DOUBLE-CHECK ENERGY BEFORE LOADING SCENE
-    if (PlayerEconomy.Instance != null)
+    // ✅ NEW: Check energy cost (gratis jika sudah pernah dimainkan)
+    int energyCost = LevelProgressManager.Instance != null 
+        ? LevelProgressManager.Instance.GetEnergyCost(currentLevel.number) 
+        : 10;
+
+    bool needsEnergy = energyCost > 0;
+
+    Log($"Level {currentLevel.number} - Energy cost: {energyCost} (needs payment: {needsEnergy})");
+
+    // ✅ Check & consume energy (jika perlu)
+    if (needsEnergy && PlayerEconomy.Instance != null)
     {
-        int requiredEnergy = 10; // Energy cost per level
         int currentEnergy = PlayerEconomy.Instance.Energy;
 
-        if (currentEnergy < requiredEnergy)
+        if (currentEnergy < energyCost)
         {
-            LogWarning($"Not enough energy! Need {requiredEnergy}, have {currentEnergy}");
+            LogWarning($"Not enough energy! Need {energyCost}, have {currentEnergy}");
 
             // Show popup
             if (PopUpAlert.Instance != null)
@@ -585,14 +706,14 @@ public class LevelPreviewController : MonoBehaviour
             // Play fail sound
             if (SoundManager.Instance != null)
             {
-                SoundManager.Instance.PlayPurchaseFail();
+                SoundManager.Instance.PlayCannotPlay();
             }
 
-            return; // STOP
+            return; // STOP - tidak bisa main
         }
 
-        // ✅ CONSUME ENERGY
-        bool consumed = PlayerEconomy.Instance.ConsumeEnergy(requiredEnergy);
+        // ✅ Consume energy
+        bool consumed = PlayerEconomy.Instance.ConsumeEnergy(energyCost);
 
         if (!consumed)
         {
@@ -600,11 +721,18 @@ public class LevelPreviewController : MonoBehaviour
             return;
         }
 
-        Log($"✓ Energy consumed: {requiredEnergy} (Remaining: {PlayerEconomy.Instance.Energy})");
+        Log($"✓ Energy consumed: {energyCost} (Remaining: {PlayerEconomy.Instance.Energy})");
+
+        // ✅ CRITICAL: Mark level as played (agar next time gratis)
+        if (LevelProgressManager.Instance != null)
+        {
+            LevelProgressManager.Instance.MarkLevelAsPlayed(currentLevel.number);
+            Log($"✓ Level {currentLevel.number} marked as played");
+        }
     }
     else
     {
-        LogWarning("PlayerEconomy not found! Playing without energy check.");
+        Log($"✓ Level {currentLevel.number} is FREE (already played or level 1)");
     }
 
     // Save level data
@@ -626,17 +754,8 @@ public class LevelPreviewController : MonoBehaviour
     SceneManager.LoadScene(gameplaySceneName);
 }
 
-    void SaveGeneratedRewards()
-    {
-        if (generatedRewards == null || generatedRewards.Count == 0) return;
 
-        RewardDataList rewardList = new RewardDataList { rewards = generatedRewards };
-        string json = JsonUtility.ToJson(rewardList);
 
-        PlayerPrefs.SetString($"LevelRewards_{currentLevel.id}", json);
-
-        Log($"✓ Saved {generatedRewards.Count} rewards");
-    }
 
     void OnCloseButtonClicked()
     {
@@ -685,9 +804,6 @@ public class LevelPreviewController : MonoBehaviour
         Debug.LogError($"[LevelPreview] {message}");
     }
 
-    /// <summary>
-    /// ✅ Static helper
-    /// </summary>
     public static void ShowPreview(LevelConfig levelConfig)
     {
         if (Instance != null)
@@ -698,6 +814,63 @@ public class LevelPreviewController : MonoBehaviour
         {
             Debug.LogError("[LevelPreview] ❌ Instance is NULL!");
         }
+    }
+
+    // ========================================
+    // ✅ DEBUG HELPERS
+    // ========================================
+
+    [ContextMenu("Debug: Print Cached Rewards")]
+    void Debug_PrintCachedRewards()
+    {
+        if (currentLevel == null)
+        {
+            Debug.Log("No level selected!");
+            return;
+        }
+
+        string json = GetSavedRewards(currentLevel.id);
+        
+        if (string.IsNullOrEmpty(json))
+        {
+            Debug.Log($"No cached rewards for {currentLevel.id}");
+        }
+        else
+        {
+            Debug.Log($"=== CACHED REWARDS FOR {currentLevel.id} ===");
+            Debug.Log(json);
+            Debug.Log("========================================");
+        }
+    }
+
+    [ContextMenu("Debug: Clear Cached Rewards for Current Level")]
+    void Debug_ClearCurrentLevelRewards()
+    {
+        if (currentLevel == null)
+        {
+            Debug.Log("No level selected!");
+            return;
+        }
+
+        string key = PREF_LEVEL_REWARDS + currentLevel.id;
+        PlayerPrefs.DeleteKey(key);
+        PlayerPrefs.Save();
+
+        Debug.Log($"✓ Cleared cached rewards for {currentLevel.id}");
+    }
+
+    [ContextMenu("Debug: Clear ALL Cached Rewards")]
+    void Debug_ClearAllCachedRewards()
+    {
+        // This is a brute-force approach - you might want to keep a list of level IDs
+        for (int i = 1; i <= 100; i++)
+        {
+            string key = PREF_LEVEL_REWARDS + "level_" + i;
+            PlayerPrefs.DeleteKey(key);
+        }
+        
+        PlayerPrefs.Save();
+        Debug.Log("✓ Cleared all cached rewards (level_1 to level_100)");
     }
 }
 

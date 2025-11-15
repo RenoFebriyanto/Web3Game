@@ -29,6 +29,10 @@ public class LevelCompleteUI : MonoBehaviour
     [Tooltip("Particle effect yang muncul saat star terisi (level complete)")]
     public GameObject[] starParticleEffects; // Array untuk 3 stars
 
+    [Tooltip("Canvas tempat stars berada")]
+    public Canvas targetCanvas; // ✅ NEW: Reference ke Canvas
+
+
     [Header("🎉 LEVEL COMPLETE Popup")]
     public GameObject lvlPopup;
     public RectTransform lvlPopupBackground;
@@ -103,6 +107,12 @@ public class LevelCompleteUI : MonoBehaviour
 
     void Start()
     {
+        // ✅ Auto-find canvas if not assigned
+    if (targetCanvas == null)
+    {
+        targetCanvas = levelCompletePanel.GetComponentInParent<Canvas>();
+    }
+
         if (levelCompletePanel != null)
             levelCompletePanel.SetActive(false);
 
@@ -555,51 +565,145 @@ public class LevelCompleteUI : MonoBehaviour
     }
 
     IEnumerator AnimateStars()
+{
+    if (starImages == null || starFilled == null)
     {
-        if (starImages == null || starFilled == null)
-        {
-            LogWarning("Star images or starFilled sprite not assigned!");
-            yield break;
-        }
-
-        // ✅ Game Over mode = no stars earned
-        int starsToShow = isGameOverMode ? 0 : earnedStars;
-
-        for (int i = 0; i < starsToShow && i < starImages.Length; i++)
-        {
-            if (starImages[i] == null) continue;
-
-            yield return new WaitForSeconds(starAnimationDelay);
-
-            starImages[i].sprite = starFilled;
-
-            StartCoroutine(PunchScale(starImages[i].transform));
-
-            // ✅ Play star pickup sound
-            if (SoundManager.Instance != null)
-            {
-                SoundManager.Instance.PlayStarPickup();
-            }
-
-            // ✅ NEW: Play particle effect (ONLY on level complete, NOT game over)
-            if (!isGameOverMode && starParticleEffects != null && i < starParticleEffects.Length)
-            {
-                if (starParticleEffects[i] != null)
-                {
-                    starParticleEffects[i].SetActive(true);
-                    
-                    // Auto-disable after particle duration
-                    StartCoroutine(DisableParticleAfterDelay(starParticleEffects[i], 2f));
-                    
-                    Log($"✓ Star {i + 1} particle effect played");
-                }
-            }
-
-            Log($"✓ Star {i + 1} animated");
-        }
-
-        Log($"✓ All {starsToShow} stars animated");
+        LogWarning("Star images or starFilled sprite not assigned!");
+        yield break;
     }
+
+    int starsToShow = isGameOverMode ? 0 : earnedStars;
+
+    // ✅ DEBUG: Print stars info
+    Debug.Log($"[AnimateStars] Starting animation - Stars to show: {starsToShow}");
+    Debug.Log($"[AnimateStars] starParticleEffects null? {starParticleEffects == null}");
+    
+    if (starParticleEffects != null)
+    {
+        Debug.Log($"[AnimateStars] starParticleEffects.Length = {starParticleEffects.Length}");
+        for (int i = 0; i < starParticleEffects.Length; i++)
+        {
+            Debug.Log($"[AnimateStars] Particle[{i}] = {(starParticleEffects[i] != null ? starParticleEffects[i].name : "NULL")}");
+        }
+    }
+
+    for (int i = 0; i < starsToShow && i < starImages.Length; i++)
+    {
+        if (starImages[i] == null) continue;
+
+        yield return new WaitForSeconds(starAnimationDelay);
+
+        starImages[i].sprite = starFilled;
+        StartCoroutine(PunchScale(starImages[i].transform));
+
+        if (SoundManager.Instance != null)
+        {
+            SoundManager.Instance.PlayStarPickup();
+        }
+
+        // ✅ DEBUG: Detailed particle spawn logging
+        Debug.Log($"[AnimateStars] Attempting to spawn particle for star {i + 1}");
+        Debug.Log($"[AnimateStars] - isGameOverMode: {isGameOverMode}");
+        Debug.Log($"[AnimateStars] - starParticleEffects null? {starParticleEffects == null}");
+        
+        if (!isGameOverMode && starParticleEffects != null && i < starParticleEffects.Length)
+        {
+            Debug.Log($"[AnimateStars] - Passed null checks");
+            
+            if (starParticleEffects[i] != null && starImages[i] != null)
+            {
+                Debug.Log($"[AnimateStars] - Particle GameObject: {starParticleEffects[i].name}");
+                Debug.Log($"[AnimateStars] - Particle active before: {starParticleEffects[i].activeSelf}");
+                Debug.Log($"[AnimateStars] - targetCanvas: {(targetCanvas != null ? targetCanvas.name : "NULL")}");
+                
+                Vector3 worldPos = ConvertUIToWorldPosition(starImages[i].rectTransform, targetCanvas);
+                
+                Debug.Log($"[AnimateStars] - Calculated worldPos: {worldPos}");
+                
+                starParticleEffects[i].transform.position = worldPos;
+                
+                Debug.Log($"[AnimateStars] - Set position to: {starParticleEffects[i].transform.position}");
+                
+                starParticleEffects[i].SetActive(true);
+                
+                Debug.Log($"[AnimateStars] - Particle active after: {starParticleEffects[i].activeSelf}");
+                Debug.Log($"[AnimateStars] ✓ Particle {i} activated successfully!");
+                
+                StartCoroutine(DisableParticleAfterDelay(starParticleEffects[i], 2f));
+            }
+            else
+            {
+                Debug.LogError($"[AnimateStars] - Particle[{i}] or starImage[{i}] is NULL!");
+            }
+        }
+        else
+        {
+            if (isGameOverMode)
+                Debug.Log($"[AnimateStars] - Skipped (Game Over Mode)");
+            else if (starParticleEffects == null)
+                Debug.LogError($"[AnimateStars] - starParticleEffects array is NULL!");
+            else if (i >= starParticleEffects.Length)
+                Debug.LogError($"[AnimateStars] - Index {i} out of range (Length: {starParticleEffects.Length})");
+        }
+
+        Log($"✓ Star {i + 1} animated");
+    }
+
+    Log($"✓ All {starsToShow} stars animated");
+}
+
+    Vector3 ConvertUIToWorldPosition(RectTransform uiElement, Canvas canvas)
+{
+    Debug.Log($"[ConvertUIToWorldPosition] ===== START =====");
+    
+    if (canvas == null)
+    {
+        Debug.LogError("[ConvertUIToWorldPosition] Canvas is NULL!");
+        return Vector3.zero;
+    }
+    
+    if (uiElement == null)
+    {
+        Debug.LogError("[ConvertUIToWorldPosition] UI Element is NULL!");
+        return Vector3.zero;
+    }
+    
+    Debug.Log($"[ConvertUIToWorldPosition] Canvas: {canvas.name}");
+    Debug.Log($"[ConvertUIToWorldPosition] Canvas Render Mode: {canvas.renderMode}");
+    Debug.Log($"[ConvertUIToWorldPosition] UI Element: {uiElement.name}");
+    Debug.Log($"[ConvertUIToWorldPosition] UI Element position: {uiElement.position}");
+    
+    // Get screen position of UI element
+    Vector3 screenPos = RectTransformUtility.WorldToScreenPoint(
+        canvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : canvas.worldCamera,
+        uiElement.position
+    );
+    
+    Debug.Log($"[ConvertUIToWorldPosition] Screen Pos: {screenPos}");
+    
+    // Convert screen position to world position
+    Camera mainCam = Camera.main;
+    if (mainCam == null)
+    {
+        Debug.LogError("[ConvertUIToWorldPosition] Main camera not found!");
+        return Vector3.zero;
+    }
+    
+    Debug.Log($"[ConvertUIToWorldPosition] Main Camera: {mainCam.name}");
+    Debug.Log($"[ConvertUIToWorldPosition] Camera Pos: {mainCam.transform.position}");
+    
+    // Convert to world space (at specific Z distance for particles)
+    float zDistance = 10f; // Adjust ini sesuai kebutuhan
+    Vector3 worldPos = mainCam.ScreenToWorldPoint(new Vector3(screenPos.x, screenPos.y, zDistance));
+    
+    Debug.Log($"[ConvertUIToWorldPosition] zDistance: {zDistance}");
+    Debug.Log($"[ConvertUIToWorldPosition] Final World Pos: {worldPos}");
+    Debug.Log($"[ConvertUIToWorldPosition] ===== END =====");
+    
+    return worldPos;
+}
+
+
 
     // ✅ NEW: Disable particle effect after delay
     IEnumerator DisableParticleAfterDelay(GameObject particleFX, float delay)

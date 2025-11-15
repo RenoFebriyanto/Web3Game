@@ -312,67 +312,144 @@ public class LevelCompleteUI : MonoBehaviour
     }
 
     void GenerateImprovedRewards()
+{
+    generatedRewards.Clear();
+
+    // ✅ CRITICAL FIX: Load saved rewards dari LevelPreview
+    string savedRewardsJson = PlayerPrefs.GetString($"LevelRewards_{currentLevelId}", "");
+    
+    if (!string.IsNullOrEmpty(savedRewardsJson))
     {
-        generatedRewards.Clear();
-
-        string savedRewardsJson = PlayerPrefs.GetString($"LevelRewards_{currentLevelId}", "");
-        
-        if (!string.IsNullOrEmpty(savedRewardsJson))
+        try
         {
-            try
+            RewardDataList rewardList = JsonUtility.FromJson<RewardDataList>(savedRewardsJson);
+            if (rewardList != null && rewardList.rewards != null && rewardList.rewards.Count > 0)
             {
-                RewardDataList rewardList = JsonUtility.FromJson<RewardDataList>(savedRewardsJson);
-                if (rewardList != null && rewardList.rewards != null)
+                generatedRewards.AddRange(rewardList.rewards);
+                
+                // ✅ Re-assign icons (karena Sprite tidak tersimpan di JSON)
+                foreach (var reward in generatedRewards)
                 {
-                    generatedRewards.AddRange(rewardList.rewards);
-                    
-                    PlayerPrefs.DeleteKey($"LevelRewards_{currentLevelId}");
-                    PlayerPrefs.Save();
-                    
-                    Log($"✓ Using saved rewards from preview: {generatedRewards.Count} items");
-                    return;
+                    AssignRewardIcon(reward);
                 }
-            }
-            catch (System.Exception e)
-            {
-                LogWarning($"Failed to parse saved rewards: {e.Message}");
+                
+                // ✅ IMPORTANT: Delete saved rewards setelah di-load
+                PlayerPrefs.DeleteKey($"LevelRewards_{currentLevelId}");
+                PlayerPrefs.Save();
+                
+                Log($"✅ Loaded cached rewards from LevelPreview: {generatedRewards.Count} items");
+                return;
             }
         }
-
-        float roll = Random.Range(0f, 100f);
-
-        if (roll < singleRewardChance)
+        catch (System.Exception e)
         {
-            int coinAmount = Random.Range(coinRewardRange.x, coinRewardRange.y + 1);
-            generatedRewards.Add(new RewardData(
-                RewardType.Coin, 
-                coinAmount,
-                coinIcon,
-                "Coins"
-            ));
-            Log($"✓ Single reward: Coin x{coinAmount}");
-        }
-        else
-        {
-            int coinAmount = Random.Range(coinRewardRange.x, coinRewardRange.y + 1);
-            generatedRewards.Add(new RewardData(
-                RewardType.Coin,
-                coinAmount,
-                coinIcon,
-                "Coins"
-            ));
-
-            int energyAmount = Random.Range(energyRewardRange.x, energyRewardRange.y + 1);
-            generatedRewards.Add(new RewardData(
-                RewardType.Energy,
-                energyAmount,
-                energyIcon,
-                "Energy"
-            ));
-
-            Log($"✓ Double reward: Coin x{coinAmount} + Energy x{energyAmount}");
+            LogWarning($"Failed to parse saved rewards: {e.Message}");
         }
     }
+
+    // ✅ FALLBACK: Generate new rewards (jika tidak ada cache)
+    Log($"⚠️ No cached rewards found - generating new rewards");
+
+    // string savedRewardsJson = PlayerPrefs.GetString($"LevelRewards_{currentLevelId}", "");
+    
+    if (!string.IsNullOrEmpty(savedRewardsJson))
+    {
+        try
+        {
+            RewardDataList rewardList = JsonUtility.FromJson<RewardDataList>(savedRewardsJson);
+            if (rewardList != null && rewardList.rewards != null)
+            {
+                generatedRewards.AddRange(rewardList.rewards);
+                
+                PlayerPrefs.DeleteKey($"LevelRewards_{currentLevelId}");
+                PlayerPrefs.Save();
+                
+                Log($"✓ Using saved rewards from preview: {generatedRewards.Count} items");
+                return;
+            }
+        }
+        catch (System.Exception e)
+        {
+            LogWarning($"Failed to parse saved rewards: {e.Message}");
+        }
+    }
+
+    // FALLBACK: Generate random rewards
+    float roll = Random.Range(0f, 100f);
+
+    if (roll < singleRewardChance)
+    {
+        int coinAmount = Random.Range(coinRewardRange.x, coinRewardRange.y + 1);
+        generatedRewards.Add(new RewardData(
+            RewardType.Coin, 
+            coinAmount,
+            coinIcon,
+            "Coins"
+        ));
+        Log($"✓ Single reward: Coin x{coinAmount}");
+    }
+    else
+    {
+        int coinAmount = Random.Range(coinRewardRange.x, coinRewardRange.y + 1);
+        generatedRewards.Add(new RewardData(
+            RewardType.Coin,
+            coinAmount,
+            coinIcon,
+            "Coins"
+        ));
+
+        int energyAmount = Random.Range(energyRewardRange.x, energyRewardRange.y + 1);
+        generatedRewards.Add(new RewardData(
+            RewardType.Energy,
+            energyAmount,
+            energyIcon,
+            "Energy"
+        ));
+
+        Log($"✓ Double reward: Coin x{coinAmount} + Energy x{energyAmount}");
+    }
+}
+
+/// <summary>
+/// ✅ NEW: Re-assign icon sprite ke reward (karena Sprite tidak bisa disimpan di JSON)
+/// </summary>
+void AssignRewardIcon(RewardData reward)
+{
+    if (reward == null) return;
+
+    switch (reward.type)
+    {
+        case RewardType.Coin:
+            reward.icon = coinIcon;
+            break;
+
+        case RewardType.Energy:
+            reward.icon = energyIcon;
+            break;
+
+        case RewardType.Booster:
+            reward.icon = GetBoosterIcon(reward.boosterId);
+            break;
+    }
+}
+
+/// <summary>
+/// ✅ NEW: Get booster icon by ID
+/// </summary>
+Sprite GetBoosterIcon(string boosterId)
+{
+    if (string.IsNullOrEmpty(boosterId)) return null;
+
+    switch (boosterId.ToLower())
+    {
+        case "speedboost": return speedBoostIcon;
+        case "timefreeze": return timeFreezeIcon;
+        case "shield": return shieldIcon;
+        case "coin2x": return coin2xIcon;
+        case "magnet": return magnetIcon;
+        default: return null;
+    }
+}
 
     void ApplyRewards()
     {
@@ -1088,4 +1165,45 @@ public class LevelCompleteUI : MonoBehaviour
     {
         OnLevelComplete();
     }
+
+    [ContextMenu("Debug: Print Saved Rewards for Current Level")]
+void Debug_PrintSavedRewards()
+{
+    if (string.IsNullOrEmpty(currentLevelId))
+    {
+        Debug.Log("No current level ID!");
+        return;
+    }
+
+    string json = PlayerPrefs.GetString($"LevelRewards_{currentLevelId}", "");
+    
+    if (string.IsNullOrEmpty(json))
+    {
+        Debug.Log($"❌ NO SAVED REWARDS for {currentLevelId}");
+    }
+    else
+    {
+        Debug.Log($"=== SAVED REWARDS FOR {currentLevelId} ===");
+        Debug.Log(json);
+        
+        try
+        {
+            RewardDataList list = JsonUtility.FromJson<RewardDataList>(json);
+            if (list != null && list.rewards != null)
+            {
+                Debug.Log($"\n✓ Parsed {list.rewards.Count} rewards:");
+                foreach (var r in list.rewards)
+                {
+                    Debug.Log($"  - {r.type}: {r.displayName} x{r.amount} (boosterId: {r.boosterId})");
+                }
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"Failed to parse: {e.Message}");
+        }
+        
+        Debug.Log("========================================");
+    }
+}
 }

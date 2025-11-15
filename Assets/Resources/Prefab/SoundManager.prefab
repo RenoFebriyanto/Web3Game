@@ -50,7 +50,8 @@ MonoBehaviour:
   buttonHoverSound: {fileID: 8300000, guid: 36b472d7bdb4280438e5d744f12596b8, type: 3}
   purchaseSuccessSound: {fileID: 8300000, guid: 83b4d5a8c3b360248bc8cdc890239c7f, type: 3}
   purchaseFailSound: {fileID: 0}
-  levelCompleteSound: {fileID: 8300000, guid: 06988fd9604443042a7fea125137401b, type: 3}
+  cannotPlaySound: {fileID: 8300000, guid: 0d3fc9bdf0c058644b967dc96e380fa9, type: 3}
+  levelCompleteSound: {fileID: 8300000, guid: 071c554add2d6c5448609ee74ec4f6a3, type: 3}
   coinPickup1: {fileID: 8300000, guid: 7a15d6363304469449a747b3a66d68a8, type: 3}
   coinPickup2: {fileID: 8300000, guid: 77d80fef6fc893b4ba14162760627f96, type: 3}
   coinPickup3: {fileID: 8300000, guid: 4b9db9ea2187e3c4e8facfe8e9ef7dbf, type: 3}
@@ -58,10 +59,10 @@ MonoBehaviour:
   coinPickup5: {fileID: 0}
   fragmentPickupSound: {fileID: 8300000, guid: 990bcec1f485d0c459245fa0815d66c6, type: 3}
   starPickupSound: {fileID: 8300000, guid: 60aaf0c2b34e77c448691656dbddc7ca, type: 3}
-  boosterActivateSound: {fileID: 0}
-  shieldActivateSound: {fileID: 0}
+  boosterActivateSound: {fileID: 8300000, guid: b32ff0cb5b8ab5648ba02db3c8588d1d, type: 3}
+  shieldActivateSound: {fileID: 8300000, guid: 461a0652202eee94da9ef1bd68e3c403, type: 3}
   shieldBreakSound: {fileID: 8300000, guid: 080933688c3cdc84591346b5111f7613, type: 3}
   planetCollisionSound: {fileID: 8300000, guid: 4a792f863b0a8354b96a48255151570f, type: 3}
-  planetDestroySound: {fileID: 0}
-  defaultMusicVolume: 1
+  planetDestroySound: {fileID: 8300000, guid: da238a742c7991f449d27c43aa6304a8, type: 3}
+  defaultMusicVolume: 0.5
   defaultSFXVolume: 1

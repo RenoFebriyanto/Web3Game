@@ -1,28 +1,15 @@
-﻿// Assets/Script/ShopScript/ShopManager.cs
-using System;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public enum Currency 
-{ 
-    Coins,      // In-game coins
-    Shards,     // In-game shards
-    KulinoCoin  // ✅ BARU: Kulino Coin dari wallet
-}
+public enum Currency { Coins, Shards, KulinoCoin }
 
 /// <summary>
-/// FIXED: PlayerEconomy null check dengan auto-create
-/// Flow: ShopItem → BuyPreview → PopupClaimQuest → Grant Reward
+/// FULL COMPLETE ShopManager dengan Kulino Coin support
 /// </summary>
 public class ShopManager : MonoBehaviour
 {
-    [Header("💎 Kulino Coin Pricing")]
-[Tooltip("Harga dalam Kulino Coin (0 = tidak bisa beli dengan Kulino Coin)")]
-public double kulinoCoinPrice = 0;
-
-[Tooltip("Boleh dibeli dengan Kulino Coin?")]
-public bool allowBuyWithKulinoCoin = false;
-
     [Header("Prefabs & UI")]
     [Tooltip("Prefab for one shop entry (BackgroundItem). Must have ShopItemUI component.")]
     public GameObject itemUIPrefab;
@@ -37,8 +24,8 @@ public bool allowBuyWithKulinoCoin = false;
     [Tooltip("Fallback manual list of ShopItemData if no database assigned.")]
     public List<ShopItemData> shopItems = new List<ShopItemData>();
 
-    [Header("Icons for Economy Items (untuk bundle display)")]
-    [Tooltip("Icon untuk Coins (dipakai di PopupClaimQuest bundle)")]
+    [Header("Icons for Economy Items")]
+    [Tooltip("Icon untuk Coins")]
     public Sprite iconCoin;
     [Tooltip("Icon untuk Shards")]
     public Sprite iconShard;
@@ -52,7 +39,6 @@ public bool allowBuyWithKulinoCoin = false;
 
     void Awake()
     {
-        // ✅ CRITICAL FIX: Ensure PlayerEconomy exists first
         EnsurePlayerEconomy();
 
         if (buyPreviewUI == null)
@@ -76,9 +62,6 @@ public bool allowBuyWithKulinoCoin = false;
         PopulateShop();
     }
 
-    /// <summary>
-    /// ✅ NEW: Ensure PlayerEconomy instance exists before any operations
-    /// </summary>
     void EnsurePlayerEconomy()
     {
         if (PlayerEconomy.Instance != null)
@@ -89,7 +72,6 @@ public bool allowBuyWithKulinoCoin = false;
 
         Debug.LogWarning("[ShopManager] PlayerEconomy.Instance is null! Attempting to find or create...");
 
-        // Try to find existing PlayerEconomy in scene
         var existing = FindFirstObjectByType<PlayerEconomy>();
         if (existing != null)
         {
@@ -97,7 +79,6 @@ public bool allowBuyWithKulinoCoin = false;
             return;
         }
 
-        // Try to load from Resources
         var prefab = Resources.Load<GameObject>("EconomyManager");
         if (prefab != null)
         {
@@ -108,7 +89,6 @@ public bool allowBuyWithKulinoCoin = false;
             return;
         }
 
-        // Last resort: create empty GameObject with PlayerEconomy
         var go = new GameObject("PlayerEconomy");
         go.AddComponent<PlayerEconomy>();
         DontDestroyOnLoad(go);
@@ -121,12 +101,12 @@ public bool allowBuyWithKulinoCoin = false;
 
         if (itemUIPrefab == null)
         {
-            Debug.LogError("[ShopManager] itemUIPrefab is not assigned! Drag the BackgroundItem prefab into inspector.");
+            Debug.LogError("[ShopManager] itemUIPrefab is not assigned!");
             return;
         }
         if (itemsParent == null)
         {
-            Debug.LogError("[ShopManager] itemsParent is not assigned! Drag the ItemsShop (content transform) into inspector.");
+            Debug.LogError("[ShopManager] itemsParent is not assigned!");
             return;
         }
 
@@ -205,96 +185,101 @@ public bool allowBuyWithKulinoCoin = false;
         else Debug.LogWarning("[ShopManager] buyPreviewUI not assigned. Cannot show preview.");
     }
 
-    // ========================================
-    // ✅ FIXED: Purchase Flow dengan PlayerEconomy null check
-    // ========================================
-
     public bool TryBuy(ShopItemData data, Currency currency)
-{
-    if (data == null) return false;
-
-    // ✅ Ensure PlayerEconomy exists
-    if (PlayerEconomy.Instance == null)
     {
-        Debug.LogError("[ShopManager] PlayerEconomy.Instance is null!");
-        EnsurePlayerEconomy();
-        
+        if (data == null) return false;
+
         if (PlayerEconomy.Instance == null)
         {
-            Debug.LogError("[ShopManager] Failed to create PlayerEconomy!");
+            Debug.LogError("[ShopManager] PlayerEconomy.Instance is null. Attempting to create...");
+            EnsurePlayerEconomy();
+
+            if (PlayerEconomy.Instance == null)
+            {
+                Debug.LogError("[ShopManager] Failed to create PlayerEconomy! Cannot proceed with purchase.");
+
+                if (SoundManager.Instance != null)
+                {
+                    SoundManager.Instance.PlayPurchaseFail();
+                }
+
+                return false;
+            }
+        }
+
+        bool canAfford = false;
+        double price = 0;
+
+        switch (currency)
+        {
+            case Currency.Coins:
+                if (!data.allowBuyWithCoins) return false;
+                price = data.coinPrice;
+                canAfford = PlayerEconomy.Instance.Coins >= price;
+                Debug.Log($"[ShopManager] TryBuy with Coins: has={PlayerEconomy.Instance.Coins}, need={price}, canAfford={canAfford}");
+                break;
+
+            case Currency.Shards:
+                if (!data.allowBuyWithShards) return false;
+                price = data.shardPrice;
+                canAfford = PlayerEconomy.Instance.Shards >= price;
+                Debug.Log($"[ShopManager] TryBuy with Shards: has={PlayerEconomy.Instance.Shards}, need={price}, canAfford={canAfford}");
+                break;
+
+            case Currency.KulinoCoin:
+                if (!data.allowBuyWithKulinoCoin)
+                {
+                    Debug.LogWarning("[ShopManager] This item cannot be purchased with Kulino Coin!");
+
+                    if (SoundManager.Instance != null)
+                    {
+                        SoundManager.Instance.PlayPurchaseFail();
+                    }
+
+                    return false;
+                }
+
+                if (KulinoCoinManager.Instance == null)
+                {
+                    Debug.LogError("[ShopManager] KulinoCoinManager.Instance is null! Cannot check Kulino Coin balance.");
+
+                    if (SoundManager.Instance != null)
+                    {
+                        SoundManager.Instance.PlayPurchaseFail();
+                    }
+
+                    return false;
+                }
+
+                price = data.kulinoCoinPrice;
+                canAfford = KulinoCoinManager.Instance.HasEnoughBalance(price);
+                Debug.Log($"[ShopManager] TryBuy with Kulino Coin: has={KulinoCoinManager.Instance.GetBalance():F6}, need={price:F6}, canAfford={canAfford}");
+                break;
+
+            default:
+                Debug.LogError($"[ShopManager] Unknown currency type: {currency}");
+                return false;
+        }
+
+        if (!canAfford)
+        {
+            Debug.Log($"[ShopManager] Not enough {currency}. Need {price}");
+
             if (SoundManager.Instance != null)
             {
                 SoundManager.Instance.PlayPurchaseFail();
             }
+
             return false;
         }
+
+        buyPreviewUI?.Close();
+
+        ShowPurchasePopup(data, currency);
+
+        return true;
     }
 
-    // Check affordability berdasarkan currency
-    bool canAfford = false;
-    double price = 0;
-
-    switch (currency)
-    {
-        case Currency.Coins:
-            if (!data.allowBuyWithCoins) return false;
-            price = data.coinPrice;
-            canAfford = PlayerEconomy.Instance.Coins >= price;
-            Debug.Log($"[ShopManager] Coins: has={PlayerEconomy.Instance.Coins}, need={price}");
-            break;
-
-        case Currency.Shards:
-            if (!data.allowBuyWithShards) return false;
-            price = data.shardPrice;
-            canAfford = PlayerEconomy.Instance.Shards >= price;
-            Debug.Log($"[ShopManager] Shards: has={PlayerEconomy.Instance.Shards}, need={price}");
-            break;
-
-        case Currency.KulinoCoin:
-            // ✅ BARU: Check Kulino Coin balance
-            if (!data.allowBuyWithKulinoCoin) 
-            {
-                Debug.LogWarning("[ShopManager] Item ini tidak bisa dibeli dengan Kulino Coin!");
-                return false;
-            }
-            
-            if (KulinoCoinManager.Instance == null)
-            {
-                Debug.LogError("[ShopManager] KulinoCoinManager.Instance is null!");
-                return false;
-            }
-
-            price = data.kulinoCoinPrice;
-            canAfford = KulinoCoinManager.Instance.HasEnoughBalance(price);
-            Debug.Log($"[ShopManager] Kulino Coin: has={KulinoCoinManager.Instance.GetBalance():F6}, need={price:F6}");
-            break;
-    }
-
-    // Cek apakah cukup balance
-    if (!canAfford)
-    {
-        Debug.Log($"[ShopManager] ✗ Tidak cukup {currency}. Butuh {price}");
-        
-        if (SoundManager.Instance != null)
-        {
-            SoundManager.Instance.PlayPurchaseFail();
-        }
-        
-        return false;
-    }
-
-    // ✅ Close BuyPreview
-    buyPreviewUI?.Close();
-
-    // ✅ Show popup purchase confirmation
-    ShowPurchasePopup(data, currency);
-
-    return true;
-}
-
-    /// <summary>
-    /// Show PopupClaimQuest dengan items yang dibeli
-    /// </summary>
     void ShowPurchasePopup(ShopItemData data, Currency currency)
     {
         if (PopupClaimQuest.Instance == null)
@@ -304,29 +289,22 @@ public bool allowBuyWithKulinoCoin = false;
             return;
         }
 
-        // Check if bundle or single
         if (data.IsBundle)
         {
-            // BUNDLE: Show multiple items
             ShowBundlePurchasePopup(data, currency);
         }
         else
         {
-            // SINGLE ITEM: Show single icon + amount
             ShowSingleItemPurchasePopup(data, currency);
         }
     }
 
-    /// <summary>
-    /// Show popup untuk single item purchase
-    /// </summary>
     void ShowSingleItemPurchasePopup(ShopItemData data, Currency currency)
     {
         Sprite icon = GetItemIcon(data);
         string amountText = GetItemAmountText(data);
         string title = $"Purchase {data.displayName}";
 
-        // DEBUG: Check icon
         if (icon == null)
         {
             Debug.LogError($"[ShopManager] ✗✗✗ ICON IS NULL for {data.itemId}! ✗✗✗");
@@ -346,16 +324,12 @@ public bool allowBuyWithKulinoCoin = false;
         );
     }
 
-    /// <summary>
-    /// Show popup untuk bundle purchase dengan HANYA items dari bundleItems
-    /// </summary>
     void ShowBundlePurchasePopup(ShopItemData data, Currency currency)
     {
         List<BundleItemData> bundleItems = new List<BundleItemData>();
 
         Debug.Log($"[ShopManager] ShowBundlePurchasePopup: {data.bundleItems.Count} items in bundle");
 
-        // FIXED: HANYA ambil dari data.bundleItems (tidak ada item extra)
         foreach (var item in data.bundleItems)
         {
             if (item == null)
@@ -364,7 +338,6 @@ public bool allowBuyWithKulinoCoin = false;
                 continue;
             }
 
-            // FIXED: Gunakan icon yang sudah di-assign di BundleItem
             Sprite itemIcon = item.icon;
 
             if (itemIcon == null)
@@ -395,14 +368,119 @@ public bool allowBuyWithKulinoCoin = false;
         );
     }
 
-    /// <summary>
-    /// Get icon untuk single item (Shield, Magnet, dll)
-    /// </summary>
+    void CompletePurchase(ShopItemData data, Currency currency)
+    {
+        if (PlayerEconomy.Instance == null)
+        {
+            Debug.LogError("[ShopManager] PlayerEconomy.Instance is null in CompletePurchase!");
+            EnsurePlayerEconomy();
+
+            if (PlayerEconomy.Instance == null)
+            {
+                Debug.LogError("[ShopManager] Failed to create PlayerEconomy! Cannot complete purchase.");
+                return;
+            }
+        }
+
+        bool deductSuccess = false;
+
+        switch (currency)
+        {
+            case Currency.Coins:
+                bool okCoins = PlayerEconomy.Instance.SpendCoins(data.coinPrice);
+                if (!okCoins)
+                {
+                    Debug.LogError("[ShopManager] Failed to spend coins!");
+                    if (SoundManager.Instance != null)
+                    {
+                        SoundManager.Instance.PlayPurchaseFail();
+                    }
+                    return;
+                }
+                deductSuccess = true;
+                Debug.Log($"[ShopManager] ✓ Spent {data.coinPrice} Coins");
+                break;
+
+            case Currency.Shards:
+                bool okShards = PlayerEconomy.Instance.SpendShards(data.shardPrice);
+                if (!okShards)
+                {
+                    Debug.LogError("[ShopManager] Failed to spend shards!");
+                    if (SoundManager.Instance != null)
+                    {
+                        SoundManager.Instance.PlayPurchaseFail();
+                    }
+                    return;
+                }
+                deductSuccess = true;
+                Debug.Log($"[ShopManager] ✓ Spent {data.shardPrice} Shards");
+                break;
+
+            case Currency.KulinoCoin:
+                if (KulinoCoinManager.Instance == null)
+                {
+                    Debug.LogError("[ShopManager] KulinoCoinManager.Instance is null!");
+                    if (SoundManager.Instance != null)
+                    {
+                        SoundManager.Instance.PlayPurchaseFail();
+                    }
+                    return;
+                }
+
+                if (!KulinoCoinManager.Instance.HasEnoughBalance(data.kulinoCoinPrice))
+                {
+                    Debug.LogError("[ShopManager] Insufficient Kulino Coin balance!");
+                    if (SoundManager.Instance != null)
+                    {
+                        SoundManager.Instance.PlayPurchaseFail();
+                    }
+                    return;
+                }
+
+                Debug.LogWarning("[ShopManager] ⚠️ DEVELOPMENT MODE: Kulino Coin purchase approved (LOCAL CHECK ONLY)");
+                Debug.LogWarning("[ShopManager] ⚠️ TODO: Implement actual blockchain transaction for production!");
+
+                deductSuccess = true;
+                Debug.Log($"[ShopManager] ✓ Kulino Coin purchase approved: {data.kulinoCoinPrice:F6} KC");
+                break;
+
+            default:
+                Debug.LogError($"[ShopManager] Unknown currency type: {currency}");
+                return;
+        }
+
+        if (!deductSuccess)
+        {
+            Debug.LogError("[ShopManager] Failed to deduct currency!");
+            return;
+        }
+
+        GrantReward(data);
+
+        if (currency == Currency.KulinoCoin && KulinoCoinManager.Instance != null)
+        {
+            Debug.Log("[ShopManager] Refreshing Kulino Coin balance from blockchain...");
+            StartCoroutine(RefreshKulinoCoinBalanceDelayed(2f));
+        }
+
+        Debug.Log($"[ShopManager] ✓ Purchase completed: {data.displayName}");
+    }
+
+    System.Collections.IEnumerator RefreshKulinoCoinBalanceDelayed(float delay)
+    {
+        yield return new WaitForSeconds(delay);
+
+        if (KulinoCoinManager.Instance != null)
+        {
+            KulinoCoinManager.Instance.RefreshBalance();
+            Debug.Log("[ShopManager] Kulino Coin balance refreshed");
+        }
+    }
+
     Sprite GetItemIcon(ShopItemData data)
     {
         if (data == null) return null;
 
-        // Prioritas: iconPreview → iconGrid
         if (data.iconPreview != null)
         {
             Debug.Log($"[ShopManager] Using iconPreview for {data.itemId}: {data.iconPreview.name}");
@@ -415,7 +493,6 @@ public bool allowBuyWithKulinoCoin = false;
             return data.iconGrid;
         }
 
-        // Fallback untuk economy items
         switch (data.rewardType)
         {
             case ShopRewardType.Coin:
@@ -430,109 +507,17 @@ public bool allowBuyWithKulinoCoin = false;
         }
     }
 
-    /// <summary>
-    /// Get amount text untuk single item
-    /// </summary>
     string GetItemAmountText(ShopItemData data)
     {
         if (data.rewardAmount <= 0) return "";
 
-        // Untuk booster, tampilkan "x5" style
         if (data.rewardType == ShopRewardType.Booster)
         {
             return $"x{data.rewardAmount}";
         }
 
-        // Untuk currency, tampilkan angka dengan format
         return data.rewardAmount.ToString("N0");
     }
-
-    public bool TryBuy(ShopItemData data, Currency currency)
-{
-    if (data == null) return false;
-
-    // ✅ Ensure PlayerEconomy exists
-    if (PlayerEconomy.Instance == null)
-    {
-        Debug.LogError("[ShopManager] PlayerEconomy.Instance is null!");
-        EnsurePlayerEconomy();
-        
-        if (PlayerEconomy.Instance == null)
-        {
-            Debug.LogError("[ShopManager] Failed to create PlayerEconomy!");
-            if (SoundManager.Instance != null)
-            {
-                SoundManager.Instance.PlayPurchaseFail();
-            }
-            return false;
-        }
-    }
-
-    // Check affordability berdasarkan currency
-    bool canAfford = false;
-    double price = 0;
-
-    switch (currency)
-    {
-        case Currency.Coins:
-            if (!data.allowBuyWithCoins) return false;
-            price = data.coinPrice;
-            canAfford = PlayerEconomy.Instance.Coins >= price;
-            Debug.Log($"[ShopManager] Coins: has={PlayerEconomy.Instance.Coins}, need={price}");
-            break;
-
-        case Currency.Shards:
-            if (!data.allowBuyWithShards) return false;
-            price = data.shardPrice;
-            canAfford = PlayerEconomy.Instance.Shards >= price;
-            Debug.Log($"[ShopManager] Shards: has={PlayerEconomy.Instance.Shards}, need={price}");
-            break;
-
-        case Currency.KulinoCoin:
-            // ✅ BARU: Check Kulino Coin balance
-            if (!data.allowBuyWithKulinoCoin) 
-            {
-                Debug.LogWarning("[ShopManager] Item ini tidak bisa dibeli dengan Kulino Coin!");
-                return false;
-            }
-            
-            if (KulinoCoinManager.Instance == null)
-            {
-                Debug.LogError("[ShopManager] KulinoCoinManager.Instance is null!");
-                return false;
-            }
-
-            price = data.kulinoCoinPrice;
-            canAfford = KulinoCoinManager.Instance.HasEnoughBalance(price);
-            Debug.Log($"[ShopManager] Kulino Coin: has={KulinoCoinManager.Instance.GetBalance():F6}, need={price:F6}");
-            break;
-    }
-
-    // Cek apakah cukup balance
-    if (!canAfford)
-    {
-        Debug.Log($"[ShopManager] ✗ Tidak cukup {currency}. Butuh {price}");
-        
-        if (SoundManager.Instance != null)
-        {
-            SoundManager.Instance.PlayPurchaseFail();
-        }
-        
-        return false;
-    }
-
-    // ✅ Close BuyPreview
-    buyPreviewUI?.Close();
-
-    // ✅ Show popup purchase confirmation
-    ShowPurchasePopup(data, currency);
-
-    return true;
-}
-
-    // ========================================
-    // Reward Granting
-    // ========================================
 
     void GrantReward(ShopItemData data)
     {
@@ -605,7 +590,6 @@ public bool allowBuyWithKulinoCoin = false;
 
             string id = bundleItem.itemId.ToLower().Trim();
 
-            // Handle special currency items
             if (id == "coin" || id == "coins")
             {
                 PlayerEconomy.Instance.AddCoins(bundleItem.amount);
@@ -623,7 +607,6 @@ public bool allowBuyWithKulinoCoin = false;
             }
             else
             {
-                // Regular booster - masuk ke BoosterInventory
                 EnsureBoosterInventory();
 
                 if (BoosterInventory.Instance != null)
@@ -650,10 +633,6 @@ public bool allowBuyWithKulinoCoin = false;
             DontDestroyOnLoad(go);
         }
     }
-
-    // ========================================
-    // Filter Methods
-    // ========================================
 
     [ContextMenu("Repopulate Shop")]
     void Context_Repopulate()

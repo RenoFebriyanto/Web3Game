@@ -16,6 +16,8 @@ public class GameManager : MonoBehaviour
     // ✅ SINGLETON PATTERN (diperlukan oleh KulinoCoinRewardSystem)
     public static GameManager Instance { get; private set; }
 
+    private string walletAddress; // Wallet address dari Phantom
+
     [Header("UI")]
     public Button claimButton;
     public TextMeshProUGUI statusText;
@@ -204,17 +206,23 @@ public class GameManager : MonoBehaviour
 // TAMBAHKAN CODE INI DI GameManager.cs YANG SUDAH ADA
 // ============================================================
 
-// Di bagian OnWalletConnected method, TAMBAHKAN:
+// ============================================================
+// GAMEMANAGER.CS - REPLACE method OnWalletConnected yang ada
+// dengan code ini
+// ============================================================
 
+/// <summary>
+/// Dipanggil dari JavaScript saat wallet connected
+/// </summary>
 public void OnWalletConnected(string address) 
 {
     walletAddress = address;
     Debug.Log("Wallet connected: " + address);
     
-    // Simpan ke PlayerPrefs
+    // Update UI atau mulai game logic
     PlayerPrefs.SetString("WalletAddress", address);
     
-    // ✅ TAMBAHAN BARU: Initialize KulinoCoinManager
+    // ✅ Initialize KulinoCoinManager
     if (KulinoCoinManager.Instance != null)
     {
         KulinoCoinManager.Instance.Initialize(address);
@@ -222,8 +230,17 @@ public void OnWalletConnected(string address)
     }
     else
     {
-        Debug.LogError("[GameManager] ✗ KulinoCoinManager.Instance tidak ditemukan!");
+        Debug.LogWarning("[GameManager] ⚠️ KulinoCoinManager.Instance tidak ditemukan!");
+        Debug.LogWarning("[GameManager] Pastikan GameObject 'KulinoCoinManager' ada di scene");
     }
+}
+
+/// <summary>
+/// Get current wallet address
+/// </summary>
+public string GetWalletAddress() 
+{
+    return walletAddress;
 }
 
 // ============================================================

@@ -12,6 +12,20 @@ public class KulinoCoinManager : MonoBehaviour
 {
     public static KulinoCoinManager Instance { get; private set; }
 
+
+    [Header("🧪 Testing (Editor Only)")]
+[Tooltip("Wallet address untuk testing di Editor")]
+public string testWalletAddress = "";
+
+[Tooltip("Mock balance untuk testing (hanya di Editor)")]
+public double mockBalance = 100.5;
+
+[Tooltip("Use mock data untuk testing?")]
+public bool useMockData = false;
+
+
+
+
     [Header("⚙️ Kulino Coin Settings")]
     [Tooltip("Token Mint Address di Solana")]
     public string kulinoCoinMintAddress = "YOUR_TOKEN_MINT_ADDRESS_HERE";
@@ -80,32 +94,43 @@ public class KulinoCoinManager : MonoBehaviour
     }
 
     IEnumerator FetchBalanceCoroutine()
+{
+    Log("🔄 Fetching Kulino Coin balance...");
+
+#if UNITY_EDITOR
+    // 🧪 DEVELOPMENT MODE: Use mock data jika enabled
+    if (useMockData)
     {
-        Log("🔄 Fetching Kulino Coin balance...");
-
-        // Build request body untuk Solana RPC
-        string jsonBody = BuildTokenBalanceRequest();
-
-        using (UnityWebRequest request = new UnityWebRequest(solanaRpcUrl, "POST"))
-        {
-            byte[] bodyRaw = System.Text.Encoding.UTF8.GetBytes(jsonBody);
-            request.uploadHandler = new UploadHandlerRaw(bodyRaw);
-            request.downloadHandler = new DownloadHandlerBuffer();
-            request.SetRequestHeader("Content-Type", "application/json");
-
-            yield return request.SendWebRequest();
-
-            if (request.result != UnityWebRequest.Result.Success)
-            {
-                LogError($"❌ Gagal fetch balance: {request.error}");
-                SetBalance(0);
-                yield break;
-            }
-
-            // Parse response
-            ParseBalanceResponse(request.downloadHandler.text);
-        }
+        Log($"🧪 MOCK MODE: Using mock balance: {mockBalance:F6}");
+        yield return new WaitForSeconds(0.5f); // Simulate network delay
+        SetBalance(mockBalance);
+        yield break;
     }
+#endif
+
+    // Build request body untuk Solana RPC
+    string jsonBody = BuildTokenBalanceRequest();
+
+    using (UnityWebRequest request = new UnityWebRequest(solanaRpcUrl, "POST"))
+    {
+        byte[] bodyRaw = System.Text.Encoding.UTF8.GetBytes(jsonBody);
+        request.uploadHandler = new UploadHandlerRaw(bodyRaw);
+        request.downloadHandler = new DownloadHandlerBuffer();
+        request.SetRequestHeader("Content-Type", "application/json");
+
+        yield return request.SendWebRequest();
+
+        if (request.result != UnityWebRequest.Result.Success)
+        {
+            LogError($"❌ Gagal fetch balance: {request.error}");
+            SetBalance(0);
+            yield break;
+        }
+
+        // Parse response
+        ParseBalanceResponse(request.downloadHandler.text);
+    }
+}
 
     /// <summary>
     /// Build JSON request untuk getTokenAccountsByOwner
@@ -238,4 +263,34 @@ public class KulinoCoinManager : MonoBehaviour
     {
         Debug.Log($"💰 Current Balance: {kulinoCoinBalance:F6} Kulino Coin");
     }
+
+
+
+    [ContextMenu("🧪 Test: Initialize dengan Mock Wallet")]
+void Test_InitializeWithMockWallet()
+{
+    if (string.IsNullOrEmpty(testWalletAddress))
+    {
+        testWalletAddress = "8xGxMockWalletAddressForTestingPurpose123";
+        Debug.Log("[KulinoCoin] 🧪 Generated mock wallet address");
+    }
+
+    Initialize(testWalletAddress);
+}
+
+[ContextMenu("🧪 Test: Set Mock Balance")]
+void Test_SetMockBalance()
+{
+    SetBalance(mockBalance);
+    Debug.Log($"[KulinoCoin] 🧪 Mock balance set to: {mockBalance:F6}");
+}
+
+[ContextMenu("🧪 Test: Simulate Balance Update")]
+void Test_SimulateBalanceUpdate()
+{
+    // Simulasi balance berubah
+    double newBalance = UnityEngine.Random.Range(0f, 1000f);
+    SetBalance(newBalance);
+    Debug.Log($"[KulinoCoin] 🧪 Simulated balance update: {newBalance:F6}");
+}
 }

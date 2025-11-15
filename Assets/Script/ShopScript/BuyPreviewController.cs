@@ -1,9 +1,11 @@
-// BuyPreviewController.cs
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using System.Collections.Generic;
 
+/// <summary>
+/// FULL COMPLETE BuyPreviewController dengan Kulino Coin support
+/// </summary>
 public class BuyPreviewController : MonoBehaviour
 {
     [Header("UI refs (assign in Inspector)")]
@@ -12,15 +14,15 @@ public class BuyPreviewController : MonoBehaviour
     public RectTransform previewPanel;
 
     [Header("Icon Display")]
-    public Transform iconItemsPreview;      // Container untuk display items (single atau bundle)
-    public GameObject singleItemTemplate;   // Template existing IconsItem pertama (untuk single item)
+    public Transform iconItemsPreview;
+    public GameObject singleItemTemplate;
 
-    [Header("Single Item Display (jika pakai terpisah)")]
-    public Image iconPreviewImage;          // Optional: icon besar terpisah untuk single item
-    public TMP_Text rewardAmountText;       // Optional: text terpisah untuk single item
+    [Header("Single Item Display")]
+    public Image iconPreviewImage;
+    public TMP_Text rewardAmountText;
 
     [Header("Bundle Item Prefab")]
-    public GameObject bundleItemPrefab;     // Prefab IconsItem (untuk clone bundle)
+    public GameObject bundleItemPrefab;
 
     [Header("Info Display")]
     public TMP_Text titleText;
@@ -29,14 +31,18 @@ public class BuyPreviewController : MonoBehaviour
     [Header("Price Display")]
     public TMP_Text coinPriceText;
     public TMP_Text shardPriceText;
+    public TMP_Text kulinoCoinPriceText;
     public GameObject coinPriceGroup;
     public GameObject shardPriceGroup;
+    public GameObject kulinoCoinPriceGroup;
 
     [Header("Buttons")]
     public Button buyWithCoinsBtn;
     public Button buyWithShardsBtn;
+    public Button buyWithKulinoCoinBtn;
     public TMP_Text buyWithCoinsBtnText;
     public TMP_Text buyWithShardsBtnText;
+    public TMP_Text buyWithKulinoCoinBtnText;
     public Button closeBtn;
 
     [Header("Scroll Settings")]
@@ -71,13 +77,11 @@ public class BuyPreviewController : MonoBehaviour
             b.onClick.AddListener(Close);
         }
 
-        // Auto-find ScrollRect
         if (scrollRect == null && iconItemsPreview != null)
         {
             scrollRect = iconItemsPreview.GetComponentInParent<ScrollRect>();
         }
 
-        // PERBAIKAN: Simpan direct children dari IconItemsPreview (IconsItems parent, bukan grandchildren)
         if (iconItemsPreview != null)
         {
             for (int i = 0; i < iconItemsPreview.childCount; i++)
@@ -87,7 +91,6 @@ public class BuyPreviewController : MonoBehaviour
                 Debug.Log($"[BuyPreview] Saved existing child: {child.name}");
             }
 
-            // Auto-assign singleItemTemplate dari existing children
             if (singleItemTemplate == null && existingChildren.Count > 0)
             {
                 singleItemTemplate = existingChildren[0];
@@ -111,17 +114,17 @@ public class BuyPreviewController : MonoBehaviour
         if (rootPanel != null) rootPanel.SetActive(true);
         if (blurOverlay != null) blurOverlay.gameObject.SetActive(true);
 
-        // Common: title, description, prices
         if (titleText != null) titleText.text = data.displayName ?? "";
         if (descText != null) descText.text = data.description ?? "";
 
         if (coinPriceText != null) coinPriceText.text = data.coinPrice > 0 ? data.coinPrice.ToString("N0") : "";
         if (shardPriceText != null) shardPriceText.text = data.shardPrice > 0 ? data.shardPrice.ToString("N0") : "";
+        if (kulinoCoinPriceText != null) kulinoCoinPriceText.text = data.kulinoCoinPrice > 0 ? data.kulinoCoinPrice.ToString("F6") + " KC" : "";
 
         if (coinPriceGroup != null) coinPriceGroup.SetActive(data.allowBuyWithCoins && data.coinPrice > 0);
         if (shardPriceGroup != null) shardPriceGroup.SetActive(data.allowBuyWithShards && data.shardPrice > 0);
+        if (kulinoCoinPriceGroup != null) kulinoCoinPriceGroup.SetActive(data.allowBuyWithKulinoCoin && data.kulinoCoinPrice > 0);
 
-        // Check if bundle or single
         if (data.IsBundle)
         {
             ShowBundleIcons(data);
@@ -131,7 +134,6 @@ public class BuyPreviewController : MonoBehaviour
             ShowSingleIcon(data);
         }
 
-        // Setup buttons
         SetupButtons(data);
     }
 
@@ -139,34 +141,28 @@ public class BuyPreviewController : MonoBehaviour
     {
         Debug.Log("[BuyPreview] ShowSingleIcon called");
 
-        // Destroy spawned bundle items jika ada
         ClearSpawnedBundleItems();
 
-        // Show IconItemsPreview container
         if (iconItemsPreview != null)
         {
             iconItemsPreview.gameObject.SetActive(true);
         }
 
-        // Hide iconPreviewImage & rewardAmountText jika ada
         if (iconPreviewImage != null) iconPreviewImage.gameObject.SetActive(false);
         if (rewardAmountText != null) rewardAmountText.gameObject.SetActive(false);
 
-        // Show HANYA singleItemTemplate (IconsItems parent)
         for (int i = 0; i < existingChildren.Count; i++)
         {
             if (existingChildren[i] != null)
             {
-                existingChildren[i].SetActive(i == 0); // show hanya index 0 (IconsItems)
+                existingChildren[i].SetActive(i == 0);
             }
         }
 
-        // PENTING: Pastikan children dari singleItemTemplate aktif (Icons, Priceitems)
         if (singleItemTemplate != null)
         {
             singleItemTemplate.SetActive(true);
 
-            // Aktifkan semua children dari singleItemTemplate
             for (int i = 0; i < singleItemTemplate.transform.childCount; i++)
             {
                 var child = singleItemTemplate.transform.GetChild(i).gameObject;
@@ -174,7 +170,6 @@ public class BuyPreviewController : MonoBehaviour
                 Debug.Log($"[BuyPreview] Activated child: {child.name}");
             }
 
-            // Update dengan data
             var display = singleItemTemplate.GetComponent<BundleItemDisplay>();
             if (display != null)
             {
@@ -192,7 +187,6 @@ public class BuyPreviewController : MonoBehaviour
             Debug.LogWarning("[BuyPreview] singleItemTemplate is null!");
         }
 
-        // Disable scroll untuk single item
         if (scrollRect != null)
         {
             scrollRect.enabled = false;
@@ -203,20 +197,16 @@ public class BuyPreviewController : MonoBehaviour
     {
         Debug.Log("[BuyPreview] ShowBundleIcons called");
 
-        // Destroy spawned items dari preview sebelumnya
         ClearSpawnedBundleItems();
 
-        // Show IconItemsPreview container
         if (iconItemsPreview != null)
         {
             iconItemsPreview.gameObject.SetActive(true);
         }
 
-        // Hide iconPreviewImage & rewardAmountText (tidak dipakai untuk bundle)
         if (iconPreviewImage != null) iconPreviewImage.gameObject.SetActive(false);
         if (rewardAmountText != null) rewardAmountText.gameObject.SetActive(false);
 
-        // Hide SEMUA existing children (tidak dipakai untuk bundle)
         foreach (var child in existingChildren)
         {
             if (child != null) child.SetActive(false);
@@ -240,7 +230,6 @@ public class BuyPreviewController : MonoBehaviour
             return;
         }
 
-        // Spawn bundle items (clones)
         int spawnedCount = 0;
         foreach (var bundleItem in data.bundleItems)
         {
@@ -267,7 +256,6 @@ public class BuyPreviewController : MonoBehaviour
             }
         }
 
-        // Enable scroll if items > maxVisibleItems
         if (scrollRect != null)
         {
             scrollRect.enabled = spawnedCount > maxVisibleItems;
@@ -284,7 +272,6 @@ public class BuyPreviewController : MonoBehaviour
 
     void ClearSpawnedBundleItems()
     {
-        // Destroy HANYA spawned bundle items (clones), bukan existing children
         foreach (var go in spawnedBundleItems)
         {
             if (go != null) Destroy(go);
@@ -296,7 +283,6 @@ public class BuyPreviewController : MonoBehaviour
 
     void SetupButtons(ShopItemData data)
     {
-        // Buy with Coins button
         if (buyWithCoinsBtn != null)
         {
             buyWithCoinsBtn.onClick.RemoveAllListeners();
@@ -313,25 +299,6 @@ public class BuyPreviewController : MonoBehaviour
             }
         }
 
-        // ✅ BARU: Buy with Kulino Coin button
-    if (buyWithKulinoCoinBtn != null)
-    {
-        buyWithKulinoCoinBtn.onClick.RemoveAllListeners();
-        buyWithKulinoCoinBtn.gameObject.SetActive(data.allowBuyWithKulinoCoin && data.kulinoCoinPrice > 0);
-        
-        if (data.allowBuyWithKulinoCoin && data.kulinoCoinPrice > 0)
-        {
-            buyWithKulinoCoinBtn.onClick.AddListener(() =>
-            {
-                if (manager != null)
-                {
-                    manager.TryBuy(data, Currency.KulinoCoin);
-                }
-            });
-        }
-    }
-
-        // Buy with Shards button
         if (buyWithShardsBtn != null)
         {
             buyWithShardsBtn.onClick.RemoveAllListeners();
@@ -347,29 +314,42 @@ public class BuyPreviewController : MonoBehaviour
                 });
             }
         }
+
+        if (buyWithKulinoCoinBtn != null)
+        {
+            buyWithKulinoCoinBtn.onClick.RemoveAllListeners();
+            buyWithKulinoCoinBtn.gameObject.SetActive(data.allowBuyWithKulinoCoin && data.kulinoCoinPrice > 0);
+
+            if (data.allowBuyWithKulinoCoin && data.kulinoCoinPrice > 0)
+            {
+                buyWithKulinoCoinBtn.onClick.AddListener(() =>
+                {
+                    if (manager != null)
+                    {
+                        Debug.Log("[BuyPreview] Attempting to buy with Kulino Coin");
+                        manager.TryBuy(data, Currency.KulinoCoin);
+                    }
+                });
+            }
+        }
     }
 
     public void Close()
     {
         currentData = null;
 
-        // Clear spawned bundle items
         ClearSpawnedBundleItems();
 
-        // Restore existing children visibility
         foreach (var child in existingChildren)
         {
             if (child != null) child.SetActive(true);
         }
 
-        // Show IconItemsPreview
         if (iconItemsPreview != null) iconItemsPreview.gameObject.SetActive(true);
 
-        // Restore iconPreviewImage & rewardAmountText
         if (iconPreviewImage != null) iconPreviewImage.gameObject.SetActive(true);
         if (rewardAmountText != null) rewardAmountText.gameObject.SetActive(true);
 
-        // Reset scroll
         if (scrollRect != null)
         {
             scrollRect.horizontalNormalizedPosition = 0f;
@@ -381,5 +361,6 @@ public class BuyPreviewController : MonoBehaviour
 
         if (buyWithCoinsBtn != null) buyWithCoinsBtn.onClick.RemoveAllListeners();
         if (buyWithShardsBtn != null) buyWithShardsBtn.onClick.RemoveAllListeners();
+        if (buyWithKulinoCoinBtn != null) buyWithKulinoCoinBtn.onClick.RemoveAllListeners();
     }
 }

@@ -30,6 +30,13 @@ public class ShopItemData : ScriptableObject
     public bool allowBuyWithCoins = true;
     public bool allowBuyWithShards = false;
 
+    [Header("💎 Kulino Coin Pricing")]
+[Tooltip("Harga dalam Kulino Coin (0 = tidak bisa beli dengan Kulino Coin)")]
+public double kulinoCoinPrice = 0;
+
+[Tooltip("Boleh dibeli dengan Kulino Coin dari wallet?")]
+public bool allowBuyWithKulinoCoin = false;
+
     [Header("Reward (what player gets when bought)")]
     public ShopRewardType rewardType = ShopRewardType.Energy;
     public int rewardAmount = 0; // untuk single item (energy/coin/shard/booster)

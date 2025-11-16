@@ -8119,9 +8119,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 63df510430142aa45b05e70d62e4d800, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  testWalletAddress: 
+  testWalletAddress: 44kmkWSoRYPgft7hsmVRx7GTHyaQ5CesBDyFMLbBkjsP
   mockBalance: 100.5
-  useMockData: 1
+  useMockData: 0
   kulinoCoinMintAddress: 2tWC4JAdL4AxEFJXGKjPqPkLJZqfvxzHmBdWVBBc9TmL
   solanaRpcUrl: https://api.mainnet-beta.solana.com
   kulinoCoinBalance: 0
@@ -9167,26 +9167,6 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 1343351323}
     m_Modifications:
-    - target: {fileID: 562303535875044365, guid: dbd0c957a656d4647aab49a62cb769f9, type: 3}
-      propertyPath: m_AnchoredPosition.x
-      value: -35
-      objectReference: {fileID: 0}
-    - target: {fileID: 3548329176900505568, guid: dbd0c957a656d4647aab49a62cb769f9, type: 3}
-      propertyPath: m_Sprite
-      value: 
-      objectReference: {fileID: 259520018747022094, guid: 823d72159cbc72e4ebd082d3e75fe86c, type: 3}
-    - target: {fileID: 3548329176900505568, guid: dbd0c957a656d4647aab49a62cb769f9, type: 3}
-      propertyPath: m_Color.b
-      value: 0.8074938
-      objectReference: {fileID: 0}
-    - target: {fileID: 3548329176900505568, guid: dbd0c957a656d4647aab49a62cb769f9, type: 3}
-      propertyPath: m_Color.g
-      value: 0.8074938
-      objectReference: {fileID: 0}
-    - target: {fileID: 3548329176900505568, guid: dbd0c957a656d4647aab49a62cb769f9, type: 3}
-      propertyPath: m_Color.r
-      value: 0.8113208
-      objectReference: {fileID: 0}
     - target: {fileID: 4983517055877798003, guid: dbd0c957a656d4647aab49a62cb769f9, type: 3}
       propertyPath: m_Pivot.x
       value: 0.5
@@ -9267,14 +9247,6 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 5588388592242468369, guid: dbd0c957a656d4647aab49a62cb769f9, type: 3}
-      propertyPath: kulinoCoinIconRoot
-      value: 
-      objectReference: {fileID: 2119806973}
-    - target: {fileID: 5588388592242468369, guid: dbd0c957a656d4647aab49a62cb769f9, type: 3}
-      propertyPath: kulinoCoinPriceText
-      value: 
-      objectReference: {fileID: 1988846391}
     - target: {fileID: 7612720540475846766, guid: dbd0c957a656d4647aab49a62cb769f9, type: 3}
       propertyPath: m_Name
       value: ParentItemsShop
@@ -10486,8 +10458,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0.00018310547, y: -131.50012}
-  m_SizeDelta: {x: 0, y: 263}
+  m_AnchoredPosition: {x: 0.00018310547, y: -369.08734}
+  m_SizeDelta: {x: 0, y: 738.1744}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1343351324
 MonoBehaviour:
@@ -16236,17 +16208,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1984434486}
   m_CullTransparentMesh: 1
---- !u!114 &1988846391 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 2555334844411189648, guid: dbd0c957a656d4647aab49a62cb769f9, type: 3}
-  m_PrefabInstance: {fileID: 1192987845}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f4688fdb7df04437aeb418b961361dc5, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!1 &1996605029
 GameObject:
   m_ObjectHideFlags: 0
@@ -16727,11 +16688,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2113977190}
   m_CullTransparentMesh: 1
---- !u!1 &2119806973 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 2697006466507384433, guid: dbd0c957a656d4647aab49a62cb769f9, type: 3}
-  m_PrefabInstance: {fileID: 1192987845}
-  m_PrefabAsset: {fileID: 0}
 --- !u!1 &2129615151
 GameObject:
   m_ObjectHideFlags: 0
@@ -17706,6 +17662,7 @@ GameObject:
   - component: {fileID: 1293946799516845115}
   - component: {fileID: 4148763635971817604}
   - component: {fileID: 381420581376703684}
+  - component: {fileID: 6825200583898109548}
   m_Layer: 0
   m_Name: ShopManager
   m_TagString: Untagged
@@ -17713,6 +17670,24 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
+--- !u!114 &6825200583898109548
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6825200583898109547}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 66562843590f56c4cb0d27f0e322d603, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  enableDebugLogs: 1
+  autoCheckOnStart: 1
+  shopManagerStatus: Not Checked
+  kulinoCoinManagerStatus: Not Checked
+  playerEconomyStatus: Not Checked
+  totalShopItems: 0
 --- !u!114 &7778030998824601675
 MonoBehaviour:
   m_ObjectHideFlags: 0

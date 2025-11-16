@@ -32,17 +32,23 @@ public class ShopItemUI : MonoBehaviour
         if (iconImage != null) iconImage.sprite = data.iconGrid;
         if (nameText != null) nameText.text = data.displayName;
 
-        // ✅ FIX: Priority - Kulino Coin > Shard > Coin
+        // ✅ NEW LOGIC: Show ALL enabled payment methods
         bool hasKulinoCoin = data.allowBuyWithKulinoCoin && data.kulinoCoinPrice > 0;
         bool hasShard = data.allowBuyWithShards && data.shardPrice > 0;
         bool hasCoin = data.allowBuyWithCoins && data.coinPrice > 0;
 
-        // Tentukan mana yang harus ditampilkan (prioritas: KC > Shard > Coin)
-        bool showKulinoCoin = hasKulinoCoin;
-        bool showShard = !showKulinoCoin && hasShard;
-        bool showCoin = !showKulinoCoin && !showShard && hasCoin;
+        // Jika item HANYA bisa dibeli dengan Kulino Coin, sembunyikan yang lain
+        bool isKulinoCoinOnly = hasKulinoCoin && !hasShard && !hasCoin;
 
-        Debug.Log($"[ShopItemUI] {data.displayName} -> KC:{showKulinoCoin} Shard:{showShard} Coin:{showCoin}");
+        // Tampilkan semua yang enabled, kecuali jika Kulino Coin only
+        bool showKulinoCoin = hasKulinoCoin;
+        bool showShard = hasShard && !isKulinoCoinOnly;
+        bool showCoin = hasCoin && !isKulinoCoinOnly;
+
+        Debug.Log($"[ShopItemUI] {data.displayName} Setup:");
+        Debug.Log($"  - Coin: allow={data.allowBuyWithCoins}, price={data.coinPrice}, show={showCoin}");
+        Debug.Log($"  - Shard: allow={data.allowBuyWithShards}, price={data.shardPrice}, show={showShard}");
+        Debug.Log($"  - KC: allow={data.allowBuyWithKulinoCoin}, price={data.kulinoCoinPrice}, show={showKulinoCoin}");
 
         // Update price texts
         if (coinPriceText != null)
@@ -55,11 +61,23 @@ public class ShopItemUI : MonoBehaviour
             kulinoCoinPriceText.text = showKulinoCoin ? $"{data.kulinoCoinPrice:F6} KC" : "";
 
         // Show/hide icon groups
-        if (coinIconRoot != null) coinIconRoot.SetActive(showCoin);
-        if (shardIconRoot != null) shardIconRoot.SetActive(showShard);
-        if (kulinoCoinIconRoot != null) kulinoCoinIconRoot.SetActive(showKulinoCoin);
-
-        Debug.Log($"[ShopItemUI] {data.displayName} - KC:{showKulinoCoin} Shard:{showShard} Coin:{showCoin}");
+        if (coinIconRoot != null) 
+        {
+            coinIconRoot.SetActive(showCoin);
+            Debug.Log($"  - Coin Icon: {(showCoin ? "VISIBLE" : "HIDDEN")}");
+        }
+        
+        if (shardIconRoot != null) 
+        {
+            shardIconRoot.SetActive(showShard);
+            Debug.Log($"  - Shard Icon: {(showShard ? "VISIBLE" : "HIDDEN")}");
+        }
+        
+        if (kulinoCoinIconRoot != null) 
+        {
+            kulinoCoinIconRoot.SetActive(showKulinoCoin);
+            Debug.Log($"  - KC Icon: {(showKulinoCoin ? "VISIBLE" : "HIDDEN")}");
+        }
 
         // Buy button
         if (buyButton != null)

@@ -672,7 +672,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -34, y: 0}
+  m_AnchoredPosition: {x: -35, y: 0}
   m_SizeDelta: {x: 32, y: 32}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &2317889820639707379
@@ -696,14 +696,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_Color: {r: 0.8113208, g: 0.8074938, b: 0.8074938, a: 1}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: -4101916017452507219, guid: 17c51150cca33ca46bb76c4c0df5bffd, type: 3}
+  m_Sprite: {fileID: 259520018747022094, guid: 823d72159cbc72e4ebd082d3e75fe86c, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -1356,11 +1356,11 @@ MonoBehaviour:
   nameText: {fileID: 5614238772829047768}
   coinPriceText: {fileID: 5510597398925177401}
   shardPriceText: {fileID: 1565657791057921516}
-  kulinoCoinPriceText: {fileID: 0}
+  kulinoCoinPriceText: {fileID: 2555334844411189648}
   buyButton: {fileID: 3178104966949130112}
   coinIconRoot: {fileID: 3958829925381644078}
   shardIconRoot: {fileID: 743108297691955855}
-  kulinoCoinIconRoot: {fileID: 0}
+  kulinoCoinIconRoot: {fileID: 2697006466507384433}
 --- !u!114 &3026303966940387733
 MonoBehaviour:
   m_ObjectHideFlags: 0

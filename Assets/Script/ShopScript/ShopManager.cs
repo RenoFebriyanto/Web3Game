@@ -325,7 +325,26 @@ public class ShopManager : MonoBehaviour
                 }
 
                 price = data.kulinoCoinPrice;
-                canAfford = KulinoCoinManager.Instance.HasEnoughBalance(price);
+                
+                // ✅ Force refresh balance before checking
+                KulinoCoinManager.Instance.RefreshBalance();
+                
+                // Wait a bit for refresh
+                System.Threading.Thread.Sleep(500);
+                
+                double currentBalance = KulinoCoinManager.Instance.GetBalance();
+                canAfford = currentBalance >= price;
+                
+                Debug.Log($"[ShopManager] Kulino Coin Check:");
+                Debug.Log($"  - Required: {price:F6} KC");
+                Debug.Log($"  - Current Balance: {currentBalance:F6} KC");
+                Debug.Log($"  - Can Afford: {canAfford}");
+                
+                if (!canAfford)
+                {
+                    Debug.LogWarning($"[ShopManager] Insufficient Kulino Coin! Need {price:F6} KC, have {currentBalance:F6} KC");
+                }
+                
                 break;
         }
 

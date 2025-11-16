@@ -59,6 +59,21 @@ public class KulinoCoinManager : MonoBehaviour
     {
         // ✅ FIX: Auto-initialize jika GameManager sudah ada wallet
         StartCoroutine(WaitForGameManagerWallet());
+        
+        // ✅ NEW: Auto-refresh balance every 30 seconds
+        InvokeRepeating(nameof(AutoRefreshBalance), 30f, 30f);
+    }
+    
+    /// <summary>
+    /// ✅ NEW: Auto-refresh balance periodically
+    /// </summary>
+    void AutoRefreshBalance()
+    {
+        if (isInitialized && !string.IsNullOrEmpty(walletAddress))
+        {
+            Log("🔄 Auto-refreshing Kulino Coin balance...");
+            FetchKulinoCoinBalance();
+        }
     }
 
     /// <summary>

@@ -2,6 +2,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using System.Collections;
 
 #if UNITY_WEBGL && !UNITY_EDITOR
 using System.Runtime.InteropServices;
@@ -161,6 +162,10 @@ public class GameManager : MonoBehaviour
         }
     }
 
+
+    
+
+
     void FinishRequest(bool ok, string info)
     {
         isRequestInProgress = false;
@@ -303,4 +308,101 @@ public void RefreshKulinoCoinBalance()
     {
         OnClaimButtonClick();
     }
+
+    /// <summary>
+/// ✅ NEW: Callback dari JavaScript setelah Phantom payment
+/// Dipanggil via: unityInstance.SendMessage('GameManager', 'OnPhantomPaymentResult', json)
+/// </summary>
+public void OnPhantomPaymentResult(string resultJson)
+{
+    Debug.Log($"[GameManager] 💰 Payment result received: {resultJson}");
+    
+    try
+    {
+        // Reuse ClaimResult class yang sudah ada
+        var result = JsonUtility.FromJson<ClaimResult>(resultJson);
+        
+        if (result.success)
+        {
+            Debug.Log($"✓✓✓ PAYMENT SUCCESS!");
+            Debug.Log($"Transaction: {result.txHash}");
+            LogPaymentSuccess(result.txHash);
+            
+            
+            // Notify ShopManager untuk grant reward
+            var shopManager = FindFirstObjectByType<ShopManager>();
+            if (shopManager != null)
+            {
+                Debug.Log("[GameManager] ✓ Notifying ShopManager to grant reward");
+                // ShopManager akan handle grant reward via OnPaymentSuccess event
+            }
+            else
+            {
+                Debug.LogWarning("[GameManager] ⚠️ ShopManager not found");
+            }
+            
+            // Refresh Kulino Coin balance
+            if (KulinoCoinManager.Instance != null)
+            {
+                Debug.Log("[GameManager] 🔄 Refreshing Kulino Coin balance...");
+                StartCoroutine(RefreshKulinoCoinBalanceDelayed(2f));
+            }
+            
+            Debug.Log("[GameManager] ✓ Purchase completed successfully!");
+        }
+        else
+        {
+
+            Debug.LogError($"✗✗✗ PAYMENT FAILED: {result.error}");
+            Debug.LogError($"[GameManager] Payment error: {result.error}");
+            LogPaymentFailure(result.error);
+        }
+    }
+    catch (Exception ex)
+    {
+        Debug.LogError($"[GameManager] ❌ Error parsing payment result: {ex.Message}");
+        Debug.LogError($"[GameManager] Raw JSON: {resultJson}");
+    }
+}
+
+/// <summary>
+/// Helper: Refresh balance dengan delay
+/// </summary>
+
+IEnumerator RefreshKulinoCoinBalanceDelayed(float delay)
+{
+    yield return new WaitForSeconds(delay);
+    
+    if (KulinoCoinManager.Instance != null)
+    {
+        KulinoCoinManager.Instance.RefreshBalance();
+        Debug.Log("[GameManager] ✓ Kulino Coin balance refreshed");
+    }
+}
+
+// ✅ NEW METHODS:
+void LogPaymentSuccess(string txHash)
+{
+    Debug.Log("=== PAYMENT SUCCESS ===");
+    Debug.Log($"TX Hash: {txHash}");
+    Debug.Log($"Time: {System.DateTime.Now}");
+    Debug.Log("=======================");
+    
+    // TODO: Send ke analytics backend
+    // Analytics.TrackEvent("payment_success", new Dictionary<string, object> {
+    //     { "tx_hash", txHash },
+    //     { "timestamp", System.DateTime.UtcNow.ToString() }
+    // });
+}
+
+void LogPaymentFailure(string error)
+{
+    Debug.LogError("=== PAYMENT FAILED ===");
+    Debug.LogError($"Error: {error}");
+    Debug.LogError($"Time: {System.DateTime.Now}");
+    Debug.LogError("======================");
+    
+    // TODO: Send ke error tracking
+    // Sentry.CaptureException(new Exception($"Payment failed: {error}"));
+}
 }

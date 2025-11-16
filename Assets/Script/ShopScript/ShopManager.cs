@@ -18,6 +18,9 @@ public class ShopManager : MonoBehaviour
     [Tooltip("Popup controller for buy preview (optional but recommended).")]
     public BuyPreviewController buyPreviewUI;
 
+    // ✅ NEW: Store pending purchase data
+    private ShopItemData _pendingPurchaseData;
+
     [Header("Data")]
     [Tooltip("Optional: ShopDatabase ScriptableObject with items array. If null, uses shopItems list.")]
     public ShopDatabase database;
@@ -436,103 +439,90 @@ public void OnPhantomPaymentComplete(bool success, ShopItemData data)
         );
     }
 
-    void CompletePurchase(ShopItemData data, Currency currency)
+    // CARI method CompletePurchase dan GANTI bagian Currency.KulinoCoin
+void CompletePurchase(ShopItemData data, Currency currency)
+{
+    if (PlayerEconomy.Instance == null)
     {
+        Debug.LogError("[ShopManager] PlayerEconomy.Instance is null in CompletePurchase!");
+        EnsurePlayerEconomy();
         if (PlayerEconomy.Instance == null)
         {
-            Debug.LogError("[ShopManager] PlayerEconomy.Instance is null in CompletePurchase!");
-            EnsurePlayerEconomy();
-
-            if (PlayerEconomy.Instance == null)
-            {
-                Debug.LogError("[ShopManager] Failed to create PlayerEconomy! Cannot complete purchase.");
-                return;
-            }
-        }
-
-        bool deductSuccess = false;
-
-        switch (currency)
-        {
-            case Currency.Coins:
-                bool okCoins = PlayerEconomy.Instance.SpendCoins(data.coinPrice);
-                if (!okCoins)
-                {
-                    Debug.LogError("[ShopManager] Failed to spend coins!");
-                    if (SoundManager.Instance != null)
-                    {
-                        SoundManager.Instance.PlayPurchaseFail();
-                    }
-                    return;
-                }
-                deductSuccess = true;
-                Debug.Log($"[ShopManager] ✓ Spent {data.coinPrice} Coins");
-                break;
-
-            case Currency.Shards:
-                bool okShards = PlayerEconomy.Instance.SpendShards(data.shardPrice);
-                if (!okShards)
-                {
-                    Debug.LogError("[ShopManager] Failed to spend shards!");
-                    if (SoundManager.Instance != null)
-                    {
-                        SoundManager.Instance.PlayPurchaseFail();
-                    }
-                    return;
-                }
-                deductSuccess = true;
-                Debug.Log($"[ShopManager] ✓ Spent {data.shardPrice} Shards");
-                break;
-
-            case Currency.KulinoCoin:
-                if (KulinoCoinManager.Instance == null)
-                {
-                    Debug.LogError("[ShopManager] KulinoCoinManager.Instance is null!");
-                    if (SoundManager.Instance != null)
-                    {
-                        SoundManager.Instance.PlayPurchaseFail();
-                    }
-                    return;
-                }
-
-                if (!KulinoCoinManager.Instance.HasEnoughBalance(data.kulinoCoinPrice))
-                {
-                    Debug.LogError("[ShopManager] Insufficient Kulino Coin balance!");
-                    if (SoundManager.Instance != null)
-                    {
-                        SoundManager.Instance.PlayPurchaseFail();
-                    }
-                    return;
-                }
-
-                Debug.LogWarning("[ShopManager] ⚠️ DEVELOPMENT MODE: Kulino Coin purchase approved (LOCAL CHECK ONLY)");
-                Debug.LogWarning("[ShopManager] ⚠️ TODO: Implement actual blockchain transaction for production!");
-
-                deductSuccess = true;
-                Debug.Log($"[ShopManager] ✓ Kulino Coin purchase approved: {data.kulinoCoinPrice:F6} KC");
-                break;
-
-            default:
-                Debug.LogError($"[ShopManager] Unknown currency type: {currency}");
-                return;
-        }
-
-        if (!deductSuccess)
-        {
-            Debug.LogError("[ShopManager] Failed to deduct currency!");
+            Debug.LogError("[ShopManager] Failed to create PlayerEconomy!");
             return;
         }
+    }
 
+    bool deductSuccess = false;
+
+    switch (currency)
+    {
+        case Currency.Coins:
+            bool okCoins = PlayerEconomy.Instance.SpendCoins(data.coinPrice);
+            if (!okCoins)
+            {
+                Debug.LogError("[ShopManager] Failed to spend coins!");
+                if (SoundManager.Instance != null)
+                    SoundManager.Instance.PlayPurchaseFail();
+                return;
+            }
+            deductSuccess = true;
+            Debug.Log($"[ShopManager] ✓ Spent {data.coinPrice} Coins");
+            break;
+
+        case Currency.Shards:
+            bool okShards = PlayerEconomy.Instance.SpendShards(data.shardPrice);
+            if (!okShards)
+            {
+                Debug.LogError("[ShopManager] Failed to spend shards!");
+                if (SoundManager.Instance != null)
+                    SoundManager.Instance.PlayPurchaseFail();
+                return;
+            }
+            deductSuccess = true;
+            Debug.Log($"[ShopManager] ✓ Spent {data.shardPrice} Shards");
+            break;
+
+        case Currency.KulinoCoin:
+            // ✅ START PHANTOM PAYMENT PROCESS
+            if (KulinoCoinManager.Instance == null)
+            {
+                Debug.LogError("[ShopManager] KulinoCoinManager null!");
+                if (SoundManager.Instance != null)
+                    SoundManager.Instance.PlayPurchaseFail();
+                return;
+            }
+
+            if (!KulinoCoinManager.Instance.HasEnoughBalance(data.kulinoCoinPrice))
+            {
+                Debug.LogError("[ShopManager] Insufficient Kulino Coin balance!");
+                if (SoundManager.Instance != null)
+                    SoundManager.Instance.PlayPurchaseFail();
+                return;
+            }
+
+            Debug.Log($"[ShopManager] 💰 Initiating Phantom payment: {data.kulinoCoinPrice:F6} KC");
+            
+            // Store data untuk digunakan setelah payment sukses
+            _pendingPurchaseData = data;
+            
+            StartCoroutine(InitiatePhantomPayment(data, data.kulinoCoinPrice));
+            
+            // EXIT dulu - reward akan di-grant setelah payment confirmed
+            return;
+
+        default:
+            Debug.LogError($"[ShopManager] Unknown currency: {currency}");
+            return;
+    }
+
+    // Untuk Coin dan Shard, langsung grant reward
+    if (deductSuccess)
+    {
         GrantReward(data);
-
-        if (currency == Currency.KulinoCoin && KulinoCoinManager.Instance != null)
-        {
-            Debug.Log("[ShopManager] Refreshing Kulino Coin balance from blockchain...");
-            StartCoroutine(RefreshKulinoCoinBalanceDelayed(2f));
-        }
-
         Debug.Log($"[ShopManager] ✓ Purchase completed: {data.displayName}");
     }
+}
 
     System.Collections.IEnumerator RefreshKulinoCoinBalanceDelayed(float delay)
     {
@@ -845,4 +835,105 @@ public void OnPhantomPaymentComplete(bool success, ShopItemData data)
     {
         FilterShop(ShopFilter.Bundle);
     }
+
+    /// <summary>
+/// ✅ Initiate Phantom payment via JavaScript
+/// </summary>
+IEnumerator InitiatePhantomPayment(ShopItemData data, double kcAmount)
+{
+    Debug.Log($"[ShopManager] 🚀 Starting Phantom payment: {kcAmount:F6} KC for {data.displayName}");
+    
+    // Prepare payload untuk JavaScript
+    var payload = new PaymentPayload
+    {
+        amount = kcAmount,
+        itemId = data.itemId,
+        itemName = data.displayName,
+        nonce = System.Guid.NewGuid().ToString(),
+        timestamp = System.DateTimeOffset.UtcNow.ToUnixTimeSeconds()
+    };
+    
+    string json = JsonUtility.ToJson(payload);
+    Debug.Log($"[ShopManager] 📤 Payload: {json}");
+    
+#if UNITY_WEBGL && !UNITY_EDITOR
+    // Call JavaScript function
+    try
+    {
+        string jsCode = $"if(typeof requestKulinoCoinPayment === 'function') {{ requestKulinoCoinPayment('{json}'); }} else {{ console.error('requestKulinoCoinPayment not found'); }}";
+        Application.ExternalEval(jsCode);
+        Debug.Log("[ShopManager] ✓ Payment request sent to Phantom");
+    }
+    catch (System.Exception ex)
+    {
+        Debug.LogError($"[ShopManager] ❌ Failed to call JavaScript: {ex.Message}");
+        if (SoundManager.Instance != null)
+            SoundManager.Instance.PlayPurchaseFail();
+        _pendingPurchaseData = null;
+    }
+#else
+    // ✅ EDITOR MODE: Simulate payment untuk testing
+    Debug.Log("[ShopManager] 🧪 EDITOR MODE: Simulating Phantom payment...");
+    yield return new WaitForSeconds(2f);
+    
+    // Simulate success response
+    string mockResponse = $"{{\"success\":true,\"txHash\":\"EDITOR_MOCK_TX_{System.DateTime.Now.Ticks}\",\"error\":null}}";
+    Debug.Log($"[ShopManager] 🧪 Mock response: {mockResponse}");
+    
+    // Trigger GameManager callback
+    var gm = FindFirstObjectByType<GameManager>();
+    if (gm != null)
+    {
+        gm.OnPhantomPaymentResult(mockResponse);
+        
+        // Grant reward directly in editor mode
+        if (_pendingPurchaseData != null)
+        {
+            Debug.Log($"[ShopManager] 🧪 EDITOR: Granting reward for {_pendingPurchaseData.displayName}");
+            GrantReward(_pendingPurchaseData);
+            _pendingPurchaseData = null;
+            
+            if (SoundManager.Instance != null)
+                SoundManager.Instance.PlayPurchaseSuccess();
+        }
+    }
+#endif
+    
+    yield return null;
+}
+
+/// <summary>
+/// ✅ Called dari GameManager setelah payment confirmed
+/// </summary>
+public void OnPaymentConfirmed()
+{
+    Debug.Log("[ShopManager] 💰 Payment confirmed! Granting reward...");
+    
+    if (_pendingPurchaseData != null)
+    {
+        GrantReward(_pendingPurchaseData);
+        
+        if (SoundManager.Instance != null)
+            SoundManager.Instance.PlayPurchaseSuccess();
+        
+        Debug.Log($"[ShopManager] ✓ Reward granted for {_pendingPurchaseData.displayName}");
+        
+        // Clear pending data
+        _pendingPurchaseData = null;
+    }
+    else
+    {
+        Debug.LogWarning("[ShopManager] ⚠️ No pending purchase data to grant");
+    }
+}
+
+[System.Serializable]
+class PaymentPayload
+{
+    public double amount;
+    public string itemId;
+    public string itemName;
+    public string nonce;
+    public long timestamp;
+}
 }

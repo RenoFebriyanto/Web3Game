@@ -10,13 +10,13 @@ public class ShopItemUI : MonoBehaviour
     public TMP_Text nameText;
     public TMP_Text coinPriceText;
     public TMP_Text shardPriceText;
-    public TMP_Text kulinoCoinPriceText; // ✅ NEW
+    public TMP_Text kulinoCoinPriceText;
     public Button buyButton;
 
     [Header("Optional: root objects for layout")]
     public GameObject coinIconRoot;
     public GameObject shardIconRoot;
-    public GameObject kulinoCoinIconRoot; // ✅ NEW
+    public GameObject kulinoCoinIconRoot;
 
     ShopItemData currentData;
     ShopManager manager;
@@ -32,25 +32,34 @@ public class ShopItemUI : MonoBehaviour
         if (iconImage != null) iconImage.sprite = data.iconGrid;
         if (nameText != null) nameText.text = data.displayName;
 
-        // ✅ LOGIC BARU: Prioritas Kulino Coin > Shard > Coin
-        bool showKulinoCoin = data.allowBuyWithKulinoCoin && data.kulinoCoinPrice > 0;
-        bool showShard = !showKulinoCoin && data.allowBuyWithShards && data.shardPrice > 0;
-        bool showCoin = !showKulinoCoin && !showShard && data.allowBuyWithCoins && data.coinPrice > 0;
+        // ✅ FIX: Priority - Kulino Coin > Shard > Coin
+        bool hasKulinoCoin = data.allowBuyWithKulinoCoin && data.kulinoCoinPrice > 0;
+        bool hasShard = data.allowBuyWithShards && data.shardPrice > 0;
+        bool hasCoin = data.allowBuyWithCoins && data.coinPrice > 0;
+
+        // Tentukan mana yang harus ditampilkan (prioritas: KC > Shard > Coin)
+        bool showKulinoCoin = hasKulinoCoin;
+        bool showShard = !showKulinoCoin && hasShard;
+        bool showCoin = !showKulinoCoin && !showShard && hasCoin;
+
+        Debug.Log($"[ShopItemUI] {data.displayName} -> KC:{showKulinoCoin} Shard:{showShard} Coin:{showCoin}");
 
         // Update price texts
-        if (coinPriceText != null) 
+        if (coinPriceText != null)
             coinPriceText.text = showCoin ? data.coinPrice.ToString("N0") : "";
-        
-        if (shardPriceText != null) 
+
+        if (shardPriceText != null)
             shardPriceText.text = showShard ? data.shardPrice.ToString("N0") : "";
-        
-        if (kulinoCoinPriceText != null) 
-            kulinoCoinPriceText.text = showKulinoCoin ? data.kulinoCoinPrice.ToString("F6") + " KC" : "";
+
+        if (kulinoCoinPriceText != null)
+            kulinoCoinPriceText.text = showKulinoCoin ? $"{data.kulinoCoinPrice:F6} KC" : "";
 
         // Show/hide icon groups
         if (coinIconRoot != null) coinIconRoot.SetActive(showCoin);
         if (shardIconRoot != null) shardIconRoot.SetActive(showShard);
         if (kulinoCoinIconRoot != null) kulinoCoinIconRoot.SetActive(showKulinoCoin);
+
+        Debug.Log($"[ShopItemUI] {data.displayName} - KC:{showKulinoCoin} Shard:{showShard} Coin:{showCoin}");
 
         // Buy button
         if (buyButton != null)

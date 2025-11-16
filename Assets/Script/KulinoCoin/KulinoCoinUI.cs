@@ -3,8 +3,7 @@ using TMPro;
 using UnityEngine.UI;
 
 /// <summary>
-/// UI Controller untuk Kulino Coin
-/// Attach ke GameObject yang ada di PanelEconomy
+/// FIXED: UI Controller untuk Kulino Coin dengan proper initialization
 /// </summary>
 public class KulinoCoinUI : MonoBehaviour
 {
@@ -23,25 +22,46 @@ public class KulinoCoinUI : MonoBehaviour
     [Tooltip("Animate saat balance update")]
     public bool animateOnUpdate = true;
 
+    [Header("🐛 Debug")]
+    public bool enableDebugLogs = true;
+
     private double currentBalance = 0;
     private double targetBalance = 0;
     private float animationTime = 0.5f;
     private float animationTimer = 0;
 
+    void OnEnable()
+    {
+        // ✅ Subscribe saat enable (penting untuk UI yang di-toggle)
+        SubscribeToManager();
+        // Force refresh display
+    if (KulinoCoinManager.Instance != null)
+    {
+        UpdateBalanceDisplay(KulinoCoinManager.Instance.GetBalance());
+    }
+    }
+
+    void OnDisable()
+    {
+        // ✅ Unsubscribe saat disable
+        UnsubscribeFromManager();
+    }
+
     void Start()
     {
-        // Subscribe ke event dari KulinoCoinManager
-        if (KulinoCoinManager.Instance != null)
-        {
-            KulinoCoinManager.Instance.OnBalanceUpdated += OnBalanceUpdated;
-            
-            // Update dengan balance yang sudah ada
-            UpdateBalanceDisplay(KulinoCoinManager.Instance.GetBalance());
-        }
-        else
-        {
-            Debug.LogWarning("[KulinoCoinUI] KulinoCoinManager.Instance belum tersedia!");
-        }
+        SubscribeToManager();
+    
+    // ✅ FIX: Force update display immediately
+    if (KulinoCoinManager.Instance != null)
+    {
+        double currentBalance = KulinoCoinManager.Instance.GetBalance();
+        UpdateBalanceDisplay(currentBalance);
+        Debug.Log($"[KulinoCoinUI] ✓ Initial balance: {currentBalance:F6}");
+    }
+    else
+    {
+        Debug.LogWarning("[KulinoCoinUI] ⚠️ KulinoCoinManager not found at Start");
+    }
 
         // Auto refresh jika enabled
         if (autoRefreshInterval > 0)
@@ -50,15 +70,30 @@ public class KulinoCoinUI : MonoBehaviour
         }
     }
 
-    void OnDestroy()
+    void SubscribeToManager()
+{
+    if (KulinoCoinManager.Instance != null)
     {
-        // Unsubscribe untuk hindari memory leak
-        if (KulinoCoinManager.Instance != null)
-        {
-            KulinoCoinManager.Instance.OnBalanceUpdated -= OnBalanceUpdated;
-        }
+        // Unsubscribe dulu untuk hindari duplicate
+        KulinoCoinManager.Instance.OnBalanceUpdated -= OnBalanceUpdated;
+        // Subscribe
+        KulinoCoinManager.Instance.OnBalanceUpdated += OnBalanceUpdated;
+        Debug.Log("[KulinoCoinUI] ✓ Subscribed to KulinoCoinManager");
     }
+    else
+    {
+        Debug.LogWarning("[KulinoCoinUI] ⚠️ Cannot subscribe - KulinoCoinManager not found");
+    }
+}
 
+void UnsubscribeFromManager()
+{
+    if (KulinoCoinManager.Instance != null)
+    {
+        KulinoCoinManager.Instance.OnBalanceUpdated -= OnBalanceUpdated;
+        Debug.Log("[KulinoCoinUI] ✓ Unsubscribed");
+    }
+}
     void Update()
     {
         // Animate balance jika enabled
@@ -67,7 +102,7 @@ public class KulinoCoinUI : MonoBehaviour
             animationTimer -= Time.deltaTime;
             float t = 1f - (animationTimer / animationTime);
             double displayBalance = Mathf.Lerp((float)currentBalance, (float)targetBalance, t);
-            
+
             if (kulinoCoinText != null)
             {
                 kulinoCoinText.text = FormatBalance(displayBalance);
@@ -85,7 +120,7 @@ public class KulinoCoinUI : MonoBehaviour
     /// </summary>
     void OnBalanceUpdated(double newBalance)
     {
-        Debug.Log($"[KulinoCoinUI] Balance updated: {newBalance:F6}");
+        Log($"Balance updated: {newBalance:F6}");
         UpdateBalanceDisplay(newBalance);
     }
 
@@ -118,7 +153,6 @@ public class KulinoCoinUI : MonoBehaviour
     /// </summary>
     string FormatBalance(double balance)
     {
-        // Format dengan 2 decimal untuk balance besar, 6 untuk balance kecil
         if (balance >= 1000)
         {
             return balance.ToString("N2"); // 1,234.56
@@ -150,5 +184,26 @@ public class KulinoCoinUI : MonoBehaviour
     public void OnRefreshButtonClick()
     {
         RefreshBalance();
+    }
+
+    void Log(string msg)
+    {
+        if (enableDebugLogs)
+            Debug.Log($"[KulinoCoinUI] {msg}");
+    }
+
+    void LogWarning(string msg)
+    {
+        Debug.LogWarning($"[KulinoCoinUI] {msg}");
+    }
+
+    [ContextMenu("🧪 Test: Force Update Display")]
+    void Test_ForceUpdateDisplay()
+    {
+        if (KulinoCoinManager.Instance != null)
+        {
+            UpdateBalanceDisplay(KulinoCoinManager.Instance.GetBalance());
+            Debug.Log($"[KulinoCoinUI] 🧪 Forced update: {KulinoCoinManager.Instance.GetBalance():F6}");
+        }
     }
 }

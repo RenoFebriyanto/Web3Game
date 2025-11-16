@@ -25,4 +25,6 @@ MonoBehaviour:
   rewardType: 2
   rewardAmount: 100
   bundleItems: []
-  description: 
+  description: 'Blue Shard bisa digunakan untuk membeli
+
+    item rare'

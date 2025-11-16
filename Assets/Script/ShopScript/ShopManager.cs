@@ -6,7 +6,8 @@ using UnityEngine;
 public enum Currency { Coins, Shards, KulinoCoin }
 
 /// <summary>
-/// FULL COMPLETE ShopManager dengan Kulino Coin support
+/// COMPLETE ShopManager dengan Kulino Coin Payment Integration
+/// Version: 2.0 - Fixed Duplicate Method
 /// </summary>
 public class ShopManager : MonoBehaviour
 {
@@ -17,9 +18,6 @@ public class ShopManager : MonoBehaviour
     public Transform itemsParent;
     [Tooltip("Popup controller for buy preview (optional but recommended).")]
     public BuyPreviewController buyPreviewUI;
-
-    // ✅ NEW: Store pending purchase data
-    private ShopItemData _pendingPurchaseData;
 
     [Header("Data")]
     [Tooltip("Optional: ShopDatabase ScriptableObject with items array. If null, uses shopItems list.")]
@@ -35,10 +33,14 @@ public class ShopManager : MonoBehaviour
     [Tooltip("Icon untuk Energy")]
     public Sprite iconEnergy;
 
-    List<ShopItemUI> spawned = new List<ShopItemUI>();
+    // ✅ Private variables
+    private ShopItemData _pendingPurchaseData;
+    private List<ShopItemUI> spawned = new List<ShopItemUI>();
+    private ShopFilter currentFilter = ShopFilter.All;
 
     public enum ShopFilter { All, Items, Bundle }
-    private ShopFilter currentFilter = ShopFilter.All;
+
+    // ==================== UNITY LIFECYCLE ====================
 
     void Awake()
     {
@@ -64,6 +66,8 @@ public class ShopManager : MonoBehaviour
 
         PopulateShop();
     }
+
+    // ==================== ECONOMY SETUP ====================
 
     void EnsurePlayerEconomy()
     {
@@ -98,9 +102,21 @@ public class ShopManager : MonoBehaviour
         Debug.Log("[ShopManager] Created fallback PlayerEconomy GameObject");
     }
 
+    void EnsureBoosterInventory()
+    {
+        if (BoosterInventory.Instance == null)
+        {
+            var go = new GameObject("BoosterInventory");
+            go.AddComponent<BoosterInventory>();
+            DontDestroyOnLoad(go);
+        }
+    }
+
+    // ==================== SHOP POPULATION ====================
+
     public void PopulateShop()
     {
-        Debug.Log($"[ShopManager] PopulateShop called. itemUIPrefab={(itemUIPrefab ? itemUIPrefab.name : "NULL")}, itemsParent={(itemsParent ? itemsParent.name : "NULL")}, database={(database ? "present" : "null")}, shopItemsCount={(shopItems != null ? shopItems.Count : 0)}");
+        Debug.Log($"[ShopManager] PopulateShop called. itemUIPrefab={(itemUIPrefab ? itemUIPrefab.name : "NULL")}, itemsParent={(itemsParent ? itemsParent.name : "NULL")}");
 
         if (itemUIPrefab == null)
         {
@@ -153,12 +169,11 @@ public class ShopManager : MonoBehaviour
                 }
                 catch (Exception ex)
                 {
-                    Debug.LogError($"[ShopManager] Exception while calling Setup on ShopItemUI ({go.name}): {ex.Message}\n{ex.StackTrace}");
+                    Debug.LogError($"[ShopManager] Exception while calling Setup on ShopItemUI ({go.name}): {ex.Message}");
                 }
             }
             else
             {
-                Debug.LogWarning("[ShopManager] itemUIPrefab does not contain ShopItemUI component (root). Searching children...");
                 ui = go.GetComponentInChildren<ShopItemUI>(true);
                 if (ui != null)
                 {
@@ -169,23 +184,97 @@ public class ShopManager : MonoBehaviour
                     }
                     catch (Exception ex)
                     {
-                        Debug.LogError($"[ShopManager] Exception while calling Setup on child ShopItemUI ({go.name}): {ex.Message}\n{ex.StackTrace}");
+                        Debug.LogError($"[ShopManager] Exception while calling Setup on child ShopItemUI: {ex.Message}");
                     }
                 }
                 else
                 {
-                    Debug.LogWarning("[ShopManager] Still could not find ShopItemUI on prefab or its children: " + itemUIPrefab.name);
+                    Debug.LogWarning("[ShopManager] Could not find ShopItemUI component");
                 }
             }
         }
 
-        Debug.Log($"[ShopManager] Populated {spawned.Count} shop items (source: {(database != null ? "database" : "manual list")}).");
+        Debug.Log($"[ShopManager] Populated {spawned.Count} shop items");
     }
+
+    // ==================== SHOP FILTERING ====================
+
+    public void ShowAll() { FilterShop(ShopFilter.All); }
+    public void ShowItems() { FilterShop(ShopFilter.Items); }
+    public void ShowBundle() { FilterShop(ShopFilter.Bundle); }
+
+    public void FilterShop(ShopFilter filter)
+    {
+        currentFilter = filter;
+        Debug.Log($"[ShopManager] FilterShop: {filter}");
+        RepopulateWithFilter();
+    }
+
+    void RepopulateWithFilter()
+    {
+        spawned.Clear();
+        for (int i = itemsParent.childCount - 1; i >= 0; i--)
+        {
+            Destroy(itemsParent.GetChild(i).gameObject);
+        }
+
+        List<ShopItemData> source = database?.items ?? shopItems;
+        if (source == null || source.Count == 0) return;
+
+        List<ShopItemData> filteredItems = FilterItems(source);
+
+        foreach (var data in filteredItems)
+        {
+            if (data == null) continue;
+
+            var go = Instantiate(itemUIPrefab, itemsParent);
+            var ui = go.GetComponent<ShopItemUI>() ?? go.GetComponentInChildren<ShopItemUI>(true);
+            
+            if (ui != null)
+            {
+                ui.Setup(data, this);
+                spawned.Add(ui);
+            }
+        }
+
+        Debug.Log($"[ShopManager] Filtered {spawned.Count} items (filter: {currentFilter})");
+    }
+
+    List<ShopItemData> FilterItems(List<ShopItemData> source)
+    {
+        List<ShopItemData> filtered = new List<ShopItemData>();
+
+        foreach (var data in source)
+        {
+            if (data == null) continue;
+
+            switch (currentFilter)
+            {
+                case ShopFilter.All:
+                    filtered.Add(data);
+                    break;
+                case ShopFilter.Items:
+                    if (data.rewardType != ShopRewardType.Bundle)
+                        filtered.Add(data);
+                    break;
+                case ShopFilter.Bundle:
+                    if (data.rewardType == ShopRewardType.Bundle)
+                        filtered.Add(data);
+                    break;
+            }
+        }
+
+        return filtered;
+    }
+
+    // ==================== PURCHASE FLOW ====================
 
     public void ShowBuyPreview(ShopItemData data, ShopItemUI fromUI = null)
     {
-        if (buyPreviewUI != null) buyPreviewUI.Show(data);
-        else Debug.LogWarning("[ShopManager] buyPreviewUI not assigned. Cannot show preview.");
+        if (buyPreviewUI != null) 
+            buyPreviewUI.Show(data);
+        else 
+            Debug.LogWarning("[ShopManager] buyPreviewUI not assigned");
     }
 
     public bool TryBuy(ShopItemData data, Currency currency)
@@ -194,18 +283,11 @@ public class ShopManager : MonoBehaviour
 
         if (PlayerEconomy.Instance == null)
         {
-            Debug.LogError("[ShopManager] PlayerEconomy.Instance is null. Attempting to create...");
+            Debug.LogError("[ShopManager] PlayerEconomy.Instance is null!");
             EnsurePlayerEconomy();
-
             if (PlayerEconomy.Instance == null)
             {
-                Debug.LogError("[ShopManager] Failed to create PlayerEconomy! Cannot proceed with purchase.");
-
-                if (SoundManager.Instance != null)
-                {
-                    SoundManager.Instance.PlayPurchaseFail();
-                }
-
+                SoundManager.Instance?.PlayPurchaseFail();
                 return false;
             }
         }
@@ -219,137 +301,45 @@ public class ShopManager : MonoBehaviour
                 if (!data.allowBuyWithCoins) return false;
                 price = data.coinPrice;
                 canAfford = PlayerEconomy.Instance.Coins >= price;
-                Debug.Log($"[ShopManager] TryBuy with Coins: has={PlayerEconomy.Instance.Coins}, need={price}, canAfford={canAfford}");
                 break;
 
             case Currency.Shards:
                 if (!data.allowBuyWithShards) return false;
                 price = data.shardPrice;
                 canAfford = PlayerEconomy.Instance.Shards >= price;
-                Debug.Log($"[ShopManager] TryBuy with Shards: has={PlayerEconomy.Instance.Shards}, need={price}, canAfford={canAfford}");
                 break;
 
             case Currency.KulinoCoin:
                 if (!data.allowBuyWithKulinoCoin)
                 {
-                    Debug.LogWarning("[ShopManager] This item cannot be purchased with Kulino Coin!");
-
-                    if (SoundManager.Instance != null)
-                    {
-                        SoundManager.Instance.PlayPurchaseFail();
-                    }
-
+                    Debug.LogWarning("[ShopManager] Item cannot be purchased with Kulino Coin");
+                    SoundManager.Instance?.PlayPurchaseFail();
                     return false;
                 }
 
                 if (KulinoCoinManager.Instance == null)
                 {
-                    Debug.LogError("[ShopManager] KulinoCoinManager.Instance is null! Cannot check Kulino Coin balance.");
-
-                    if (SoundManager.Instance != null)
-                    {
-                        SoundManager.Instance.PlayPurchaseFail();
-                    }
-
+                    Debug.LogError("[ShopManager] KulinoCoinManager.Instance is null!");
+                    SoundManager.Instance?.PlayPurchaseFail();
                     return false;
                 }
 
                 price = data.kulinoCoinPrice;
                 canAfford = KulinoCoinManager.Instance.HasEnoughBalance(price);
-                Debug.Log($"[ShopManager] TryBuy with Kulino Coin: has={KulinoCoinManager.Instance.GetBalance():F6}, need={price:F6}, canAfford={canAfford}");
                 break;
-
-            default:
-                Debug.LogError($"[ShopManager] Unknown currency type: {currency}");
-                return false;
         }
 
         if (!canAfford)
         {
             Debug.Log($"[ShopManager] Not enough {currency}. Need {price}");
-
-            if (SoundManager.Instance != null)
-            {
-                SoundManager.Instance.PlayPurchaseFail();
-            }
-
+            SoundManager.Instance?.PlayPurchaseFail();
             return false;
         }
 
         buyPreviewUI?.Close();
-
         ShowPurchasePopup(data, currency);
-
         return true;
     }
-
-    // ShopManager.cs - ADD THIS METHOD
-IEnumerator InitiatePhantomPayment(ShopItemData data, double kcAmount)
-{
-    Debug.Log($"[ShopManager] Initiating Phantom payment: {kcAmount:F6} KC");
-
-    // Prepare payload untuk Phantom
-    var payload = new
-    {
-        type = "payment",
-        amount = kcAmount,
-        itemId = data.itemId,
-        itemName = data.displayName,
-        recipient = "KULINO_TREASURY_WALLET_ADDRESS", // TODO: Ganti dengan wallet Kulino
-        nonce = System.Guid.NewGuid().ToString(),
-        timestamp = System.DateTimeOffset.UtcNow.ToUnixTimeSeconds()
-    };
-
-    string json = JsonUtility.ToJson(payload);
-
-    // Call JavaScript function (dari web integration)
-#if UNITY_WEBGL && !UNITY_EDITOR
-    Application.ExternalEval($"requestKulinoCoinPayment('{json}')");
-#else
-    Debug.Log($"[ShopManager] [EDITOR] Would call JS: requestKulinoCoinPayment({json})");
-    
-    // Simulate success untuk testing
-    yield return new WaitForSeconds(1f);
-    OnPhantomPaymentComplete(true, data);
-#endif
-
-    yield return null;
-}
-
-/// <summary>
-/// Callback dari JavaScript setelah payment complete
-/// </summary>
-public void OnPhantomPaymentComplete(bool success, ShopItemData data)
-{
-    if (success)
-    {
-        Debug.Log("[ShopManager] ✓ Payment successful!");
-        
-        // Grant reward
-        GrantReward(data);
-        
-        // Refresh balance
-        if (KulinoCoinManager.Instance != null)
-        {
-            StartCoroutine(RefreshKulinoCoinBalanceDelayed(2f));
-        }
-
-        // Success notification
-        if (SoundManager.Instance != null)
-        {
-            SoundManager.Instance.PlayPurchaseSuccess();
-        }
-    }
-    else
-    {
-        Debug.LogError("[ShopManager] ✗ Payment failed!");
-        
-        if (SoundManager.Instance != null)
-        {
-            SoundManager.Instance.PlayPurchaseFail();
-        }
-    }
-}
 
     void ShowPurchasePopup(ShopItemData data, Currency currency)
     {
@@ -361,13 +351,9 @@ public void OnPhantomPaymentComplete(bool success, ShopItemData data)
         }
 
         if (data.IsBundle)
-        {
             ShowBundlePurchasePopup(data, currency);
-        }
         else
-        {
             ShowSingleItemPurchasePopup(data, currency);
-        }
     }
 
     void ShowSingleItemPurchasePopup(ShopItemData data, Currency currency)
@@ -378,13 +364,7 @@ public void OnPhantomPaymentComplete(bool success, ShopItemData data)
 
         if (icon == null)
         {
-            Debug.LogError($"[ShopManager] ✗✗✗ ICON IS NULL for {data.itemId}! ✗✗✗");
-            Debug.LogError($"[ShopManager] iconPreview: {(data.iconPreview != null ? data.iconPreview.name : "NULL")}");
-            Debug.LogError($"[ShopManager] iconGrid: {(data.iconGrid != null ? data.iconGrid.name : "NULL")}");
-        }
-        else
-        {
-            Debug.Log($"[ShopManager] ✓ Sending icon to popup: {icon.name}");
+            Debug.LogError($"[ShopManager] ICON IS NULL for {data.itemId}!");
         }
 
         PopupClaimQuest.Instance.Open(
@@ -399,37 +379,19 @@ public void OnPhantomPaymentComplete(bool success, ShopItemData data)
     {
         List<BundleItemData> bundleItems = new List<BundleItemData>();
 
-        Debug.Log($"[ShopManager] ShowBundlePurchasePopup: {data.bundleItems.Count} items in bundle");
-
         foreach (var item in data.bundleItems)
         {
-            if (item == null)
-            {
-                Debug.LogWarning("[ShopManager] Bundle item is null, skipping");
-                continue;
-            }
-
-            Sprite itemIcon = item.icon;
-
-            if (itemIcon == null)
-            {
-                Debug.LogWarning($"[ShopManager] Bundle item {item.itemId} has no icon assigned!");
-                continue;
-            }
+            if (item == null || item.icon == null) continue;
 
             bundleItems.Add(new BundleItemData(
-                itemIcon,
+                item.icon,
                 item.amount,
                 item.displayName
             ));
-
-            Debug.Log($"[ShopManager] Added bundle item: {item.displayName}, icon={itemIcon.name}, amount={item.amount}");
         }
 
         string title = $"Purchase {data.displayName}";
         string description = data.description ?? $"You will receive {bundleItems.Count} items";
-
-        Debug.Log($"[ShopManager] Opening bundle popup with {bundleItems.Count} items");
 
         PopupClaimQuest.Instance.OpenBundle(
             bundleItems,
@@ -439,143 +401,155 @@ public void OnPhantomPaymentComplete(bool success, ShopItemData data)
         );
     }
 
-    // CARI method CompletePurchase dan GANTI bagian Currency.KulinoCoin
-void CompletePurchase(ShopItemData data, Currency currency)
-{
-    if (PlayerEconomy.Instance == null)
+    void CompletePurchase(ShopItemData data, Currency currency)
     {
-        Debug.LogError("[ShopManager] PlayerEconomy.Instance is null in CompletePurchase!");
-        EnsurePlayerEconomy();
         if (PlayerEconomy.Instance == null)
         {
-            Debug.LogError("[ShopManager] Failed to create PlayerEconomy!");
+            Debug.LogError("[ShopManager] PlayerEconomy.Instance is null!");
             return;
         }
+
+        bool deductSuccess = false;
+
+        switch (currency)
+        {
+            case Currency.Coins:
+                if (!PlayerEconomy.Instance.SpendCoins(data.coinPrice))
+                {
+                    Debug.LogError("[ShopManager] Failed to spend coins!");
+                    SoundManager.Instance?.PlayPurchaseFail();
+                    return;
+                }
+                deductSuccess = true;
+                Debug.Log($"[ShopManager] ✓ Spent {data.coinPrice} Coins");
+                break;
+
+            case Currency.Shards:
+                if (!PlayerEconomy.Instance.SpendShards(data.shardPrice))
+                {
+                    Debug.LogError("[ShopManager] Failed to spend shards!");
+                    SoundManager.Instance?.PlayPurchaseFail();
+                    return;
+                }
+                deductSuccess = true;
+                Debug.Log($"[ShopManager] ✓ Spent {data.shardPrice} Shards");
+                break;
+
+            case Currency.KulinoCoin:
+                // ✅ KULINO COIN PAYMENT FLOW
+                if (KulinoCoinManager.Instance == null)
+                {
+                    Debug.LogError("[ShopManager] KulinoCoinManager null!");
+                    SoundManager.Instance?.PlayPurchaseFail();
+                    return;
+                }
+
+                if (!KulinoCoinManager.Instance.HasEnoughBalance(data.kulinoCoinPrice))
+                {
+                    Debug.LogError("[ShopManager] Insufficient Kulino Coin balance!");
+                    SoundManager.Instance?.PlayPurchaseFail();
+                    return;
+                }
+
+                Debug.Log($"[ShopManager] 💰 Initiating Phantom payment: {data.kulinoCoinPrice:F6} KC");
+                
+                _pendingPurchaseData = data;
+                StartCoroutine(InitiatePhantomPayment(data, data.kulinoCoinPrice));
+                
+                // EXIT - reward akan di-grant setelah payment confirmed
+                return;
+        }
+
+        // Untuk Coin dan Shard, langsung grant reward
+        if (deductSuccess)
+        {
+            GrantReward(data);
+            Debug.Log($"[ShopManager] ✓ Purchase completed: {data.displayName}");
+        }
     }
 
-    bool deductSuccess = false;
+    // ==================== PHANTOM PAYMENT (SINGLE IMPLEMENTATION) ====================
 
-    switch (currency)
+    /// <summary>
+    /// ✅ SINGLE METHOD - Initiate Phantom payment via JavaScript
+    /// </summary>
+    IEnumerator InitiatePhantomPayment(ShopItemData data, double kcAmount)
     {
-        case Currency.Coins:
-            bool okCoins = PlayerEconomy.Instance.SpendCoins(data.coinPrice);
-            if (!okCoins)
-            {
-                Debug.LogError("[ShopManager] Failed to spend coins!");
-                if (SoundManager.Instance != null)
-                    SoundManager.Instance.PlayPurchaseFail();
-                return;
-            }
-            deductSuccess = true;
-            Debug.Log($"[ShopManager] ✓ Spent {data.coinPrice} Coins");
-            break;
-
-        case Currency.Shards:
-            bool okShards = PlayerEconomy.Instance.SpendShards(data.shardPrice);
-            if (!okShards)
-            {
-                Debug.LogError("[ShopManager] Failed to spend shards!");
-                if (SoundManager.Instance != null)
-                    SoundManager.Instance.PlayPurchaseFail();
-                return;
-            }
-            deductSuccess = true;
-            Debug.Log($"[ShopManager] ✓ Spent {data.shardPrice} Shards");
-            break;
-
-        case Currency.KulinoCoin:
-            // ✅ START PHANTOM PAYMENT PROCESS
-            if (KulinoCoinManager.Instance == null)
-            {
-                Debug.LogError("[ShopManager] KulinoCoinManager null!");
-                if (SoundManager.Instance != null)
-                    SoundManager.Instance.PlayPurchaseFail();
-                return;
-            }
-
-            if (!KulinoCoinManager.Instance.HasEnoughBalance(data.kulinoCoinPrice))
-            {
-                Debug.LogError("[ShopManager] Insufficient Kulino Coin balance!");
-                if (SoundManager.Instance != null)
-                    SoundManager.Instance.PlayPurchaseFail();
-                return;
-            }
-
-            Debug.Log($"[ShopManager] 💰 Initiating Phantom payment: {data.kulinoCoinPrice:F6} KC");
+        Debug.Log($"[ShopManager] 🚀 Starting Phantom payment: {kcAmount:F6} KC for {data.displayName}");
+        
+        var payload = new PaymentPayload
+        {
+            amount = kcAmount,
+            itemId = data.itemId,
+            itemName = data.displayName,
+            nonce = System.Guid.NewGuid().ToString(),
+            timestamp = System.DateTimeOffset.UtcNow.ToUnixTimeSeconds()
+        };
+        
+        string json = JsonUtility.ToJson(payload);
+        Debug.Log($"[ShopManager] 📤 Payload: {json}");
+        
+#if UNITY_WEBGL && !UNITY_EDITOR
+        try
+        {
+            string jsCode = $"if(typeof requestKulinoCoinPayment === 'function') {{ requestKulinoCoinPayment('{json}'); }} else {{ console.error('requestKulinoCoinPayment not found'); }}";
+            Application.ExternalEval(jsCode);
+            Debug.Log("[ShopManager] ✓ Payment request sent to Phantom");
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogError($"[ShopManager] ❌ Failed to call JavaScript: {ex.Message}");
+            SoundManager.Instance?.PlayPurchaseFail();
+            _pendingPurchaseData = null;
+        }
+#else
+        // ✅ EDITOR MODE: Simulate payment
+        Debug.Log("[ShopManager] 🧪 EDITOR MODE: Simulating Phantom payment...");
+        yield return new WaitForSeconds(2f);
+        
+        string mockResponse = $"{{\"success\":true,\"txHash\":\"EDITOR_MOCK_TX_{System.DateTime.Now.Ticks}\",\"error\":null}}";
+        Debug.Log($"[ShopManager] 🧪 Mock response: {mockResponse}");
+        
+        var gm = FindFirstObjectByType<GameManager>();
+        if (gm != null)
+        {
+            gm.OnPhantomPaymentResult(mockResponse);
             
-            // Store data untuk digunakan setelah payment sukses
-            _pendingPurchaseData = data;
+            if (_pendingPurchaseData != null)
+            {
+                Debug.Log($"[ShopManager] 🧪 EDITOR: Granting reward");
+                GrantReward(_pendingPurchaseData);
+                _pendingPurchaseData = null;
+                SoundManager.Instance?.PlayPurchaseSuccess();
+            }
+        }
+#endif
+        
+        yield return null;
+    }
+
+    /// <summary>
+    /// ✅ Called dari GameManager setelah payment confirmed
+    /// </summary>
+    public void OnPaymentConfirmed()
+    {
+        Debug.Log("[ShopManager] 💰 Payment confirmed! Granting reward...");
+        
+        if (_pendingPurchaseData != null)
+        {
+            GrantReward(_pendingPurchaseData);
+            SoundManager.Instance?.PlayPurchaseSuccess();
             
-            StartCoroutine(InitiatePhantomPayment(data, data.kulinoCoinPrice));
-            
-            // EXIT dulu - reward akan di-grant setelah payment confirmed
-            return;
-
-        default:
-            Debug.LogError($"[ShopManager] Unknown currency: {currency}");
-            return;
-    }
-
-    // Untuk Coin dan Shard, langsung grant reward
-    if (deductSuccess)
-    {
-        GrantReward(data);
-        Debug.Log($"[ShopManager] ✓ Purchase completed: {data.displayName}");
-    }
-}
-
-    System.Collections.IEnumerator RefreshKulinoCoinBalanceDelayed(float delay)
-    {
-        yield return new WaitForSeconds(delay);
-
-        if (KulinoCoinManager.Instance != null)
+            Debug.Log($"[ShopManager] ✓ Reward granted for {_pendingPurchaseData.displayName}");
+            _pendingPurchaseData = null;
+        }
+        else
         {
-            KulinoCoinManager.Instance.RefreshBalance();
-            Debug.Log("[ShopManager] Kulino Coin balance refreshed");
+            Debug.LogWarning("[ShopManager] ⚠️ No pending purchase data");
         }
     }
 
-    Sprite GetItemIcon(ShopItemData data)
-    {
-        if (data == null) return null;
-
-        if (data.iconPreview != null)
-        {
-            Debug.Log($"[ShopManager] Using iconPreview for {data.itemId}: {data.iconPreview.name}");
-            return data.iconPreview;
-        }
-
-        if (data.iconGrid != null)
-        {
-            Debug.Log($"[ShopManager] Using iconGrid for {data.itemId}: {data.iconGrid.name}");
-            return data.iconGrid;
-        }
-
-        switch (data.rewardType)
-        {
-            case ShopRewardType.Coin:
-                return iconCoin;
-            case ShopRewardType.Shard:
-                return iconShard;
-            case ShopRewardType.Energy:
-                return iconEnergy;
-            default:
-                Debug.LogWarning($"[ShopManager] No icon found for {data.itemId}");
-                return null;
-        }
-    }
-
-    string GetItemAmountText(ShopItemData data)
-    {
-        if (data.rewardAmount <= 0) return "";
-
-        if (data.rewardType == ShopRewardType.Booster)
-        {
-            return $"x{data.rewardAmount}";
-        }
-
-        return data.rewardAmount.ToString("N0");
-    }
+    // ==================== REWARD GRANTING ====================
 
     void GrantReward(ShopItemData data)
     {
@@ -583,7 +557,7 @@ void CompletePurchase(ShopItemData data, Currency currency)
 
         if (PlayerEconomy.Instance == null)
         {
-            Debug.LogError("[ShopManager] PlayerEconomy.Instance is null when granting reward. Aborting grant.");
+            Debug.LogError("[ShopManager] PlayerEconomy.Instance is null when granting reward!");
             return;
         }
 
@@ -602,17 +576,10 @@ void CompletePurchase(ShopItemData data, Currency currency)
                 break;
 
             case ShopRewardType.Booster:
-                if (string.IsNullOrEmpty(data.itemId))
-                {
-                    Debug.LogWarning("[ShopManager] Booster item has no itemId set in ShopItemData.");
-                }
-                else
+                if (!string.IsNullOrEmpty(data.itemId))
                 {
                     EnsureBoosterInventory();
-                    if (BoosterInventory.Instance != null)
-                    {
-                        BoosterInventory.Instance.AddBooster(data.itemId, data.rewardAmount);
-                    }
+                    BoosterInventory.Instance?.AddBooster(data.itemId, data.rewardAmount);
                 }
                 break;
 
@@ -621,76 +588,72 @@ void CompletePurchase(ShopItemData data, Currency currency)
                 break;
 
             default:
-                Debug.LogWarning("[ShopManager] Unknown reward type: " + data.rewardType);
+                Debug.LogWarning($"[ShopManager] Unknown reward type: {data.rewardType}");
                 break;
         }
 
-        Debug.Log($"[ShopManager] Granted reward {data.rewardType} for {data.itemId ?? data.displayName}");
+        Debug.Log($"[ShopManager] Granted reward {data.rewardType} for {data.displayName}");
     }
 
     void GrantBundleReward(ShopItemData data)
     {
-        if (data == null || data.bundleItems == null || data.bundleItems.Count == 0)
-        {
-            Debug.LogWarning("[ShopManager] Bundle has no items!");
-            return;
-        }
-
-        Debug.Log($"[ShopManager] Granting bundle '{data.displayName}' with {data.bundleItems.Count} items:");
+        if (data?.bundleItems == null || data.bundleItems.Count == 0) return;
 
         foreach (var bundleItem in data.bundleItems)
         {
-            if (bundleItem == null || string.IsNullOrEmpty(bundleItem.itemId))
-            {
-                Debug.LogWarning("[ShopManager] Bundle item has no itemId, skipping.");
-                continue;
-            }
+            if (bundleItem == null || string.IsNullOrEmpty(bundleItem.itemId)) continue;
 
             string id = bundleItem.itemId.ToLower().Trim();
 
             if (id == "coin" || id == "coins")
-            {
                 PlayerEconomy.Instance.AddCoins(bundleItem.amount);
-                Debug.Log($"  ✓ Added {bundleItem.amount} Coins to PlayerEconomy");
-            }
             else if (id == "shard" || id == "shards")
-            {
                 PlayerEconomy.Instance.AddShards(bundleItem.amount);
-                Debug.Log($"  ✓ Added {bundleItem.amount} Shards to PlayerEconomy");
-            }
             else if (id == "energy")
-            {
                 PlayerEconomy.Instance.AddEnergy(bundleItem.amount);
-                Debug.Log($"  ✓ Added {bundleItem.amount} Energy to PlayerEconomy");
-            }
             else
             {
                 EnsureBoosterInventory();
-
-                if (BoosterInventory.Instance != null)
-                {
-                    BoosterInventory.Instance.AddBooster(bundleItem.itemId, bundleItem.amount);
-                    Debug.Log($"  ✓ Added {bundleItem.amount}x {bundleItem.itemId} to BoosterInventory");
-                }
-                else
-                {
-                    Debug.LogError("[ShopManager] BoosterInventory.Instance is null after ensure!");
-                }
+                BoosterInventory.Instance?.AddBooster(bundleItem.itemId, bundleItem.amount);
             }
         }
 
-        Debug.Log($"[ShopManager] Bundle '{data.displayName}' granted successfully!");
+        Debug.Log($"[ShopManager] Bundle '{data.displayName}' granted!");
     }
 
-    void EnsureBoosterInventory()
+    // ==================== HELPER METHODS ====================
+
+    Sprite GetItemIcon(ShopItemData data)
     {
-        if (BoosterInventory.Instance == null)
+        if (data == null) return null;
+        if (data.iconPreview != null) return data.iconPreview;
+        if (data.iconGrid != null) return data.iconGrid;
+
+        return data.rewardType switch
         {
-            var go = new GameObject("BoosterInventory");
-            go.AddComponent<BoosterInventory>();
-            DontDestroyOnLoad(go);
-        }
+            ShopRewardType.Coin => iconCoin,
+            ShopRewardType.Shard => iconShard,
+            ShopRewardType.Energy => iconEnergy,
+            _ => null
+        };
     }
+
+    string GetItemAmountText(ShopItemData data)
+    {
+        if (data.rewardAmount <= 0) return "";
+        return data.rewardType == ShopRewardType.Booster 
+            ? $"x{data.rewardAmount}" 
+            : data.rewardAmount.ToString("N0");
+    }
+
+    IEnumerator RefreshKulinoCoinBalanceDelayed(float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        KulinoCoinManager.Instance?.RefreshBalance();
+        Debug.Log("[ShopManager] Kulino Coin balance refreshed");
+    }
+
+    // ==================== CONTEXT MENU ====================
 
     [ContextMenu("Repopulate Shop")]
     void Context_Repopulate()
@@ -698,242 +661,15 @@ void CompletePurchase(ShopItemData data, Currency currency)
         PopulateShop();
     }
 
-    public void FilterShop(ShopFilter filter)
+    // ==================== NESTED CLASSES ====================
+
+    [System.Serializable]
+    class PaymentPayload
     {
-        currentFilter = filter;
-        Debug.Log($"[ShopManager] FilterShop called: {filter}");
-        RepopulateWithFilter();
+        public double amount;
+        public string itemId;
+        public string itemName;
+        public string nonce;
+        public long timestamp;
     }
-
-    void RepopulateWithFilter()
-    {
-        Debug.Log($"[ShopManager] RepopulateWithFilter: {currentFilter}");
-
-        if (itemUIPrefab == null)
-        {
-            Debug.LogError("[ShopManager] itemUIPrefab is not assigned!");
-            return;
-        }
-        if (itemsParent == null)
-        {
-            Debug.LogError("[ShopManager] itemsParent is not assigned!");
-            return;
-        }
-
-        spawned.Clear();
-        for (int i = itemsParent.childCount - 1; i >= 0; i--)
-        {
-            var child = itemsParent.GetChild(i);
-            Destroy(child.gameObject);
-        }
-
-        List<ShopItemData> source = null;
-        if (database != null && database.items != null && database.items.Count > 0)
-        {
-            source = database.items;
-        }
-        else if (shopItems != null && shopItems.Count > 0)
-        {
-            source = shopItems;
-        }
-
-        if (source == null || source.Count == 0)
-        {
-            Debug.LogWarning("[ShopManager] No items in database or manual list.");
-            return;
-        }
-
-        List<ShopItemData> filteredItems = FilterItems(source);
-
-        Debug.Log($"[ShopManager] Filtered {filteredItems.Count} items from {source.Count} total (filter: {currentFilter})");
-
-        foreach (var data in filteredItems)
-        {
-            if (data == null) continue;
-
-            var go = Instantiate(itemUIPrefab, itemsParent);
-            go.name = $"ShopItem_{(string.IsNullOrEmpty(data.itemId) ? data.displayName : data.itemId)}";
-
-            var ui = go.GetComponent<ShopItemUI>();
-            if (ui != null)
-            {
-                try
-                {
-                    ui.Setup(data, this);
-                    spawned.Add(ui);
-                }
-                catch (Exception ex)
-                {
-                    Debug.LogError($"[ShopManager] Exception while calling Setup on ShopItemUI ({go.name}): {ex.Message}");
-                }
-            }
-            else
-            {
-                ui = go.GetComponentInChildren<ShopItemUI>(true);
-                if (ui != null)
-                {
-                    try
-                    {
-                        ui.Setup(data, this);
-                        spawned.Add(ui);
-                    }
-                    catch (Exception ex)
-                    {
-                        Debug.LogError($"[ShopManager] Exception while calling Setup on child ShopItemUI ({go.name}): {ex.Message}");
-                    }
-                }
-            }
-        }
-
-        Debug.Log($"[ShopManager] Populated {spawned.Count} shop items (filter: {currentFilter})");
-    }
-
-    List<ShopItemData> FilterItems(List<ShopItemData> source)
-    {
-        List<ShopItemData> filtered = new List<ShopItemData>();
-
-        foreach (var data in source)
-        {
-            if (data == null) continue;
-
-            switch (currentFilter)
-            {
-                case ShopFilter.All:
-                    filtered.Add(data);
-                    break;
-
-                case ShopFilter.Items:
-                    if (data.rewardType != ShopRewardType.Bundle)
-                    {
-                        filtered.Add(data);
-                    }
-                    break;
-
-                case ShopFilter.Bundle:
-                    if (data.rewardType == ShopRewardType.Bundle)
-                    {
-                        filtered.Add(data);
-                    }
-                    break;
-            }
-        }
-
-        return filtered;
-    }
-
-    public void ShowAll()
-    {
-        FilterShop(ShopFilter.All);
-    }
-
-    public void ShowItems()
-    {
-        FilterShop(ShopFilter.Items);
-    }
-
-    public void ShowBundle()
-    {
-        FilterShop(ShopFilter.Bundle);
-    }
-
-    /// <summary>
-/// ✅ Initiate Phantom payment via JavaScript
-/// </summary>
-IEnumerator InitiatePhantomPayment(ShopItemData data, double kcAmount)
-{
-    Debug.Log($"[ShopManager] 🚀 Starting Phantom payment: {kcAmount:F6} KC for {data.displayName}");
-    
-    // Prepare payload untuk JavaScript
-    var payload = new PaymentPayload
-    {
-        amount = kcAmount,
-        itemId = data.itemId,
-        itemName = data.displayName,
-        nonce = System.Guid.NewGuid().ToString(),
-        timestamp = System.DateTimeOffset.UtcNow.ToUnixTimeSeconds()
-    };
-    
-    string json = JsonUtility.ToJson(payload);
-    Debug.Log($"[ShopManager] 📤 Payload: {json}");
-    
-#if UNITY_WEBGL && !UNITY_EDITOR
-    // Call JavaScript function
-    try
-    {
-        string jsCode = $"if(typeof requestKulinoCoinPayment === 'function') {{ requestKulinoCoinPayment('{json}'); }} else {{ console.error('requestKulinoCoinPayment not found'); }}";
-        Application.ExternalEval(jsCode);
-        Debug.Log("[ShopManager] ✓ Payment request sent to Phantom");
-    }
-    catch (System.Exception ex)
-    {
-        Debug.LogError($"[ShopManager] ❌ Failed to call JavaScript: {ex.Message}");
-        if (SoundManager.Instance != null)
-            SoundManager.Instance.PlayPurchaseFail();
-        _pendingPurchaseData = null;
-    }
-#else
-    // ✅ EDITOR MODE: Simulate payment untuk testing
-    Debug.Log("[ShopManager] 🧪 EDITOR MODE: Simulating Phantom payment...");
-    yield return new WaitForSeconds(2f);
-    
-    // Simulate success response
-    string mockResponse = $"{{\"success\":true,\"txHash\":\"EDITOR_MOCK_TX_{System.DateTime.Now.Ticks}\",\"error\":null}}";
-    Debug.Log($"[ShopManager] 🧪 Mock response: {mockResponse}");
-    
-    // Trigger GameManager callback
-    var gm = FindFirstObjectByType<GameManager>();
-    if (gm != null)
-    {
-        gm.OnPhantomPaymentResult(mockResponse);
-        
-        // Grant reward directly in editor mode
-        if (_pendingPurchaseData != null)
-        {
-            Debug.Log($"[ShopManager] 🧪 EDITOR: Granting reward for {_pendingPurchaseData.displayName}");
-            GrantReward(_pendingPurchaseData);
-            _pendingPurchaseData = null;
-            
-            if (SoundManager.Instance != null)
-                SoundManager.Instance.PlayPurchaseSuccess();
-        }
-    }
-#endif
-    
-    yield return null;
-}
-
-/// <summary>
-/// ✅ Called dari GameManager setelah payment confirmed
-/// </summary>
-public void OnPaymentConfirmed()
-{
-    Debug.Log("[ShopManager] 💰 Payment confirmed! Granting reward...");
-    
-    if (_pendingPurchaseData != null)
-    {
-        GrantReward(_pendingPurchaseData);
-        
-        if (SoundManager.Instance != null)
-            SoundManager.Instance.PlayPurchaseSuccess();
-        
-        Debug.Log($"[ShopManager] ✓ Reward granted for {_pendingPurchaseData.displayName}");
-        
-        // Clear pending data
-        _pendingPurchaseData = null;
-    }
-    else
-    {
-        Debug.LogWarning("[ShopManager] ⚠️ No pending purchase data to grant");
-    }
-}
-
-[System.Serializable]
-class PaymentPayload
-{
-    public double amount;
-    public string itemId;
-    public string itemName;
-    public string nonce;
-    public long timestamp;
-}
 }

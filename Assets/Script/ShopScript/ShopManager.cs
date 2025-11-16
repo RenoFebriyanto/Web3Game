@@ -280,6 +280,74 @@ public class ShopManager : MonoBehaviour
         return true;
     }
 
+    // ShopManager.cs - ADD THIS METHOD
+IEnumerator InitiatePhantomPayment(ShopItemData data, double kcAmount)
+{
+    Debug.Log($"[ShopManager] Initiating Phantom payment: {kcAmount:F6} KC");
+
+    // Prepare payload untuk Phantom
+    var payload = new
+    {
+        type = "payment",
+        amount = kcAmount,
+        itemId = data.itemId,
+        itemName = data.displayName,
+        recipient = "KULINO_TREASURY_WALLET_ADDRESS", // TODO: Ganti dengan wallet Kulino
+        nonce = System.Guid.NewGuid().ToString(),
+        timestamp = System.DateTimeOffset.UtcNow.ToUnixTimeSeconds()
+    };
+
+    string json = JsonUtility.ToJson(payload);
+
+    // Call JavaScript function (dari web integration)
+#if UNITY_WEBGL && !UNITY_EDITOR
+    Application.ExternalEval($"requestKulinoCoinPayment('{json}')");
+#else
+    Debug.Log($"[ShopManager] [EDITOR] Would call JS: requestKulinoCoinPayment({json})");
+    
+    // Simulate success untuk testing
+    yield return new WaitForSeconds(1f);
+    OnPhantomPaymentComplete(true, data);
+#endif
+
+    yield return null;
+}
+
+/// <summary>
+/// Callback dari JavaScript setelah payment complete
+/// </summary>
+public void OnPhantomPaymentComplete(bool success, ShopItemData data)
+{
+    if (success)
+    {
+        Debug.Log("[ShopManager] ✓ Payment successful!");
+        
+        // Grant reward
+        GrantReward(data);
+        
+        // Refresh balance
+        if (KulinoCoinManager.Instance != null)
+        {
+            StartCoroutine(RefreshKulinoCoinBalanceDelayed(2f));
+        }
+
+        // Success notification
+        if (SoundManager.Instance != null)
+        {
+            SoundManager.Instance.PlayPurchaseSuccess();
+        }
+    }
+    else
+    {
+        Debug.LogError("[ShopManager] ✗ Payment failed!");
+        
+        if (SoundManager.Instance != null)
+        {
+            SoundManager.Instance.PlayPurchaseFail();
+        }
+    }
+}
+
     void ShowPurchasePopup(ShopItemData data, Currency currency)
     {
         if (PopupClaimQuest.Instance == null)

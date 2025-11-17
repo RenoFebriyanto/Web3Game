@@ -1,7 +1,7 @@
 ﻿using UnityEngine;
 
 /// <summary>
-/// UPDATED: Star collectible dengan sound
+/// ✅ UPDATED: Star pickup dengan simple popup animation
 /// </summary>
 [RequireComponent(typeof(Collider2D))]
 public class StarCollectible : MonoBehaviour
@@ -14,12 +14,19 @@ public class StarCollectible : MonoBehaviour
     {
         if (!other.CompareTag("Player")) return;
 
-        // ✅ NEW: Play star pickup sound
+        // ✅ NEW: Trigger popup animation
+        if (CollectibleAnimationManager.Instance != null)
+        {
+            CollectibleAnimationManager.Instance.AnimateStarCollect(transform.position);
+        }
+
+        // Play sound
         if (SoundManager.Instance != null)
         {
             SoundManager.Instance.PlayStarPickup();
         }
 
+        // Update star manager
         var starManager = FindFirstObjectByType<GameplayStarManager>();
         if (starManager != null)
         {
@@ -30,11 +37,13 @@ public class StarCollectible : MonoBehaviour
             Debug.LogWarning("[StarCollectible] GameplayStarManager not found in scene!");
         }
 
+        // Spawn collect effect (if assigned)
         if (collectEffect != null)
         {
             Instantiate(collectEffect, transform.position, Quaternion.identity);
         }
 
+        // Destroy star object
         Destroy(gameObject);
     }
 }

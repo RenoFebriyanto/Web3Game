@@ -139,8 +139,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   damage: 1
   playerTag: Player
-  destroyEffect: {fileID: 0}
-  hitEffect: {fileID: 0}
+  destroyEffect: {fileID: 2231738721731677847, guid: 3ac79917241372f45a8b6783e4768f20, type: 3}
+  hitEffect: {fileID: 3351375787259120190, guid: ae57322726c6d97409db9fc36a281032, type: 3}
   enableDebugLogs: 0
 --- !u!1 &3609600607063556547
 GameObject:
@@ -281,8 +281,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   damage: 1
   playerTag: Player
-  destroyEffect: {fileID: 0}
-  hitEffect: {fileID: 0}
+  destroyEffect: {fileID: 2231738721731677847, guid: 3ac79917241372f45a8b6783e4768f20, type: 3}
+  hitEffect: {fileID: 3351375787259120190, guid: ae57322726c6d97409db9fc36a281032, type: 3}
   enableDebugLogs: 0
 --- !u!1 &4411679031210948623
 GameObject:

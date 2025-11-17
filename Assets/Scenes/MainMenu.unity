@@ -1484,7 +1484,7 @@ MonoBehaviour:
   coin2xIcon: {fileID: 6664195757074223314, guid: fcd981a8393ec014bafc59768ab03aac, type: 3}
   magnetIcon: {fileID: -3385602274224838078, guid: 555246f32e3e49e439b87ad9927ca5b3, type: 3}
   fragmentRegistry: {fileID: 11400000, guid: 325c8016bc09c84428f9f8b2db5675db, type: 2}
-  enableDebugLogs: 1
+  enableDebugLogs: 0
 --- !u!224 &191072603
 RectTransform:
   m_ObjectHideFlags: 0

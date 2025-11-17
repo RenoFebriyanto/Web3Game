@@ -270,6 +270,12 @@ public class LevelCompleteUI : MonoBehaviour
         isGameOverMode = true; // Game Over mode
         earnedStars = 0; // NO STARS on game over
 
+        if (CoinCounterUI.Instance != null)
+    {
+        CoinCounterUI.Instance.SaveToPlayerEconomy();
+        Log("✓ Saved gameplay coins to PlayerEconomy (Game Over)");
+    }
+
         StopAllSpawners();
 
         currentLevelId = PlayerPrefs.GetString("SelectedLevelId", "level_1");

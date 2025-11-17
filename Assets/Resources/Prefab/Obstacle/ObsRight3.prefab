@@ -99,6 +99,14 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 3628928737138992425, guid: c570131ca4cf3484eacf07cb9266a5b5, type: 3}
+      propertyPath: hitEffect
+      value: 
+      objectReference: {fileID: 7588451268737751774, guid: 4a03a9144cef19549805524243367fed, type: 3}
+    - target: {fileID: 3628928737138992425, guid: c570131ca4cf3484eacf07cb9266a5b5, type: 3}
+      propertyPath: destroyEffect
+      value: 
+      objectReference: {fileID: 5919192979896634826, guid: e1bda0d93f729424780c373a66712f2c, type: 3}
     - target: {fileID: 5113602838793485311, guid: c570131ca4cf3484eacf07cb9266a5b5, type: 3}
       propertyPath: m_Name
       value: Mars
@@ -121,6 +129,14 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 4672645872005688598}
     m_Modifications:
+    - target: {fileID: -4534323904322536484, guid: e86a1585bd4ac85469bd4daa8002b48f, type: 3}
+      propertyPath: hitEffect
+      value: 
+      objectReference: {fileID: 7588451268737751774, guid: 4a03a9144cef19549805524243367fed, type: 3}
+    - target: {fileID: -4534323904322536484, guid: e86a1585bd4ac85469bd4daa8002b48f, type: 3}
+      propertyPath: destroyEffect
+      value: 
+      objectReference: {fileID: 5919192979896634826, guid: e1bda0d93f729424780c373a66712f2c, type: 3}
     - target: {fileID: 2580801661667695914, guid: e86a1585bd4ac85469bd4daa8002b48f, type: 3}
       propertyPath: m_LocalPosition.x
       value: 2.5
@@ -183,6 +199,14 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 4672645872005688598}
     m_Modifications:
+    - target: {fileID: -8843699516470717949, guid: 7618488fc1f01cb4eb3d3b9416b8a6aa, type: 3}
+      propertyPath: hitEffect
+      value: 
+      objectReference: {fileID: 1760918754230482380, guid: 1b643abec7a46c943bf90a798a62ea56, type: 3}
+    - target: {fileID: -8843699516470717949, guid: 7618488fc1f01cb4eb3d3b9416b8a6aa, type: 3}
+      propertyPath: destroyEffect
+      value: 
+      objectReference: {fileID: 2310412234811694789, guid: 8d7d2e9c27189094fa5d570baeab6c48, type: 3}
     - target: {fileID: 7324246460780469439, guid: 7618488fc1f01cb4eb3d3b9416b8a6aa, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0

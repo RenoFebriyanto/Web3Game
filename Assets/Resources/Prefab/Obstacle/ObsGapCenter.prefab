@@ -58,6 +58,14 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 6426613264498139941}
     m_Modifications:
+    - target: {fileID: 1226608693313669114, guid: ce82491f370c9064280ca3dad29fd2e9, type: 3}
+      propertyPath: hitEffect
+      value: 
+      objectReference: {fileID: 3351375787259120190, guid: ae57322726c6d97409db9fc36a281032, type: 3}
+    - target: {fileID: 1226608693313669114, guid: ce82491f370c9064280ca3dad29fd2e9, type: 3}
+      propertyPath: destroyEffect
+      value: 
+      objectReference: {fileID: 2231738721731677847, guid: 3ac79917241372f45a8b6783e4768f20, type: 3}
     - target: {fileID: 3506641348122442430, guid: ce82491f370c9064280ca3dad29fd2e9, type: 3}
       propertyPath: m_Name
       value: Asteroid (3)
@@ -120,6 +128,14 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 6426613264498139941}
     m_Modifications:
+    - target: {fileID: -3776310874446038655, guid: ce5ae273cec03d74b8772a3fd141a0a7, type: 3}
+      propertyPath: hitEffect
+      value: 
+      objectReference: {fileID: 3351375787259120190, guid: ae57322726c6d97409db9fc36a281032, type: 3}
+    - target: {fileID: -3776310874446038655, guid: ce5ae273cec03d74b8772a3fd141a0a7, type: 3}
+      propertyPath: destroyEffect
+      value: 
+      objectReference: {fileID: 2054803858064431036, guid: 500c1d6ddd48f2c4092af85e4e941eb2, type: 3}
     - target: {fileID: 499898331572029341, guid: ce5ae273cec03d74b8772a3fd141a0a7, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0

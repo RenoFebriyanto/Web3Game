@@ -44,30 +44,36 @@ public class GameplayStarManager : MonoBehaviour
     /// <summary>
     /// ✅ UPDATED: CompleteLevelWithStars - KulinoCoinRewardSystem sudah auto-subscribe
     /// </summary>
-    public void CompleteLevelWithStars()
+    /// <summary>
+/// ✅ UPDATED: Save gameplay coins saat level complete
+/// </summary>
+public void CompleteLevelWithStars()
+{
+    if (levelCompleted) return;
+    levelCompleted = true;
+
+    string levelId = PlayerPrefs.GetString("SelectedLevelId", "");
+    int levelNum = PlayerPrefs.GetInt("SelectedLevelNumber", 1);
+
+    if (!string.IsNullOrEmpty(levelId) && LevelProgressManager.Instance != null)
     {
-        if (levelCompleted) return;
-        levelCompleted = true;
-
-        string levelId = PlayerPrefs.GetString("SelectedLevelId", "");
-        int levelNum = PlayerPrefs.GetInt("SelectedLevelNumber", 1);
-
-        if (!string.IsNullOrEmpty(levelId) && LevelProgressManager.Instance != null)
-        {
-            LevelProgressManager.Instance.SaveBestStars(levelId, collectedStars);
-            LevelProgressManager.Instance.UnlockNextLevel(levelNum);
-            Debug.Log($"[GameplayStarManager] Saved {collectedStars} stars for {levelId}");
-        }
-
-        // ✅ Trigger event (LevelGameSession.OnLevelCompleted akan trigger)
-        OnLevelComplete?.Invoke(collectedStars);
-
-        // ❌ REMOVED: KulinoCoinRewardSystem.Instance.OnLevelComplete()
-        // ✅ Sudah auto-trigger via LevelGameSession.OnLevelCompleted event subscription
-        // KulinoCoinRewardSystem subscribe di Start(), jadi tidak perlu dipanggil manual
-
-        Debug.Log($"[GameplayStarManager] ✓ Level complete with {collectedStars} stars");
+        LevelProgressManager.Instance.SaveBestStars(levelId, collectedStars);
+        LevelProgressManager.Instance.UnlockNextLevel(levelNum);
+        Debug.Log($"[GameplayStarManager] Saved {collectedStars} stars for {levelId}");
     }
+
+    // ✅ NEW: Save gameplay coins ke PlayerEconomy
+    if (CoinCounterUI.Instance != null)
+    {
+        CoinCounterUI.Instance.SaveToPlayerEconomy();
+        Debug.Log("[GameplayStarManager] ✓ Saved gameplay coins to PlayerEconomy");
+    }
+
+    // Trigger event
+    OnLevelComplete?.Invoke(collectedStars);
+
+    Debug.Log($"[GameplayStarManager] ✓ Level complete with {collectedStars} stars");
+}
 
     public int GetCollectedStars() => collectedStars;
     public int GetTotalStars() => totalStarsInLevel;

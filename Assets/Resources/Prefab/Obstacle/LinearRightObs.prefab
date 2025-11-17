@@ -103,6 +103,14 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 8119715342260861790, guid: d159d928021a8004ca9f11b89e967767, type: 3}
+      propertyPath: hitEffect
+      value: 
+      objectReference: {fileID: 6333580165703297244, guid: d83b26aff6920c24cb73b6fa004d5c71, type: 3}
+    - target: {fileID: 8119715342260861790, guid: d159d928021a8004ca9f11b89e967767, type: 3}
+      propertyPath: destroyEffect
+      value: 
+      objectReference: {fileID: 6333580165703297244, guid: d83b26aff6920c24cb73b6fa004d5c71, type: 3}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -161,6 +169,14 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 3628928737138992425, guid: c570131ca4cf3484eacf07cb9266a5b5, type: 3}
+      propertyPath: hitEffect
+      value: 
+      objectReference: {fileID: 7588451268737751774, guid: 4a03a9144cef19549805524243367fed, type: 3}
+    - target: {fileID: 3628928737138992425, guid: c570131ca4cf3484eacf07cb9266a5b5, type: 3}
+      propertyPath: destroyEffect
+      value: 
+      objectReference: {fileID: 5919192979896634826, guid: e1bda0d93f729424780c373a66712f2c, type: 3}
     - target: {fileID: 5113602838793485311, guid: c570131ca4cf3484eacf07cb9266a5b5, type: 3}
       propertyPath: m_Name
       value: Mars
@@ -227,6 +243,14 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 8641053046261676741, guid: b9f6e8b717273aa4480dde025b6bb14f, type: 3}
+      propertyPath: hitEffect
+      value: 
+      objectReference: {fileID: 941423450186720333, guid: 1f3b12d03119f8c4a8a8474cec364b65, type: 3}
+    - target: {fileID: 8641053046261676741, guid: b9f6e8b717273aa4480dde025b6bb14f, type: 3}
+      propertyPath: destroyEffect
+      value: 
+      objectReference: {fileID: 2673769208921790750, guid: a8b31888928b59b478583fe6b878285d, type: 3}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []

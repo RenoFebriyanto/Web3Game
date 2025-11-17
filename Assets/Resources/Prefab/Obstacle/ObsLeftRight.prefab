@@ -60,6 +60,14 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 7047375635766684497}
     m_Modifications:
+    - target: {fileID: -1425204470117958972, guid: cf974aa6032c6e84980003a86d6b4bcf, type: 3}
+      propertyPath: hitEffect
+      value: 
+      objectReference: {fileID: 9023121315822885067, guid: 6fd52a5837e65874d9d43d5281a9313b, type: 3}
+    - target: {fileID: -1425204470117958972, guid: cf974aa6032c6e84980003a86d6b4bcf, type: 3}
+      propertyPath: destroyEffect
+      value: 
+      objectReference: {fileID: 1965521840068233237, guid: 9efab89188695fd409f38e41db0cadb4, type: 3}
     - target: {fileID: 279141384901392389, guid: cf974aa6032c6e84980003a86d6b4bcf, type: 3}
       propertyPath: m_Name
       value: MoonM
@@ -122,6 +130,14 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 7047375635766684497}
     m_Modifications:
+    - target: {fileID: -7304209258259688841, guid: 136b4cdf50fea674b84a1e4734461572, type: 3}
+      propertyPath: hitEffect
+      value: 
+      objectReference: {fileID: 9023121315822885067, guid: 6fd52a5837e65874d9d43d5281a9313b, type: 3}
+    - target: {fileID: -7304209258259688841, guid: 136b4cdf50fea674b84a1e4734461572, type: 3}
+      propertyPath: destroyEffect
+      value: 
+      objectReference: {fileID: 1965521840068233237, guid: 9efab89188695fd409f38e41db0cadb4, type: 3}
     - target: {fileID: 1574119638395825906, guid: 136b4cdf50fea674b84a1e4734461572, type: 3}
       propertyPath: m_Name
       value: MoonS (1)
@@ -184,6 +200,14 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 7047375635766684497}
     m_Modifications:
+    - target: {fileID: -7304209258259688841, guid: 136b4cdf50fea674b84a1e4734461572, type: 3}
+      propertyPath: hitEffect
+      value: 
+      objectReference: {fileID: 9023121315822885067, guid: 6fd52a5837e65874d9d43d5281a9313b, type: 3}
+    - target: {fileID: -7304209258259688841, guid: 136b4cdf50fea674b84a1e4734461572, type: 3}
+      propertyPath: destroyEffect
+      value: 
+      objectReference: {fileID: 1965521840068233237, guid: 9efab89188695fd409f38e41db0cadb4, type: 3}
     - target: {fileID: 1574119638395825906, guid: 136b4cdf50fea674b84a1e4734461572, type: 3}
       propertyPath: m_Name
       value: MoonS
@@ -246,6 +270,14 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 7047375635766684497}
     m_Modifications:
+    - target: {fileID: 774457049635010741, guid: e759f487421ef004bbfff58c97702927, type: 3}
+      propertyPath: hitEffect
+      value: 
+      objectReference: {fileID: 9023121315822885067, guid: 6fd52a5837e65874d9d43d5281a9313b, type: 3}
+    - target: {fileID: 774457049635010741, guid: e759f487421ef004bbfff58c97702927, type: 3}
+      propertyPath: destroyEffect
+      value: 
+      objectReference: {fileID: 1965521840068233237, guid: 9efab89188695fd409f38e41db0cadb4, type: 3}
     - target: {fileID: 2960381851400574621, guid: e759f487421ef004bbfff58c97702927, type: 3}
       propertyPath: m_LocalPosition.x
       value: -2.5

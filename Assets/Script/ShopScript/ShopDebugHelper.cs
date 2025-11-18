@@ -1,3 +1,5 @@
+// ShopDebugHelper.cs - Fixed warnings CS0414 by removing unused fields (since they are assigned but never used)
+
 using UnityEngine;
 using System.Linq;
 
@@ -12,9 +14,6 @@ public class ShopDebugHelper : MonoBehaviour
     public bool autoCheckOnStart = true;
     
     [Header("📊 Shop System Status")]
-    [SerializeField] private string shopManagerStatus = "Not Checked";
-    [SerializeField] private string kulinoCoinManagerStatus = "Not Checked";
-    [SerializeField] private string playerEconomyStatus = "Not Checked";
     [SerializeField] private int totalShopItems = 0;
     
     void Start()
@@ -82,12 +81,10 @@ public class ShopDebugHelper : MonoBehaviour
         
         if (shopManager == null)
         {
-            shopManagerStatus = "❌ NOT FOUND";
             Debug.LogError("❌ ShopManager not found in scene!");
             return;
         }
         
-        shopManagerStatus = "✅ OK";
         Debug.Log("✅ ShopManager found");
         
         // Check database
@@ -101,13 +98,11 @@ public class ShopDebugHelper : MonoBehaviour
     {
         if (KulinoCoinManager.Instance == null)
         {
-            kulinoCoinManagerStatus = "❌ NOT FOUND";
             Debug.LogError("❌ KulinoCoinManager not found!");
             Debug.LogError("   Make sure GameObject 'KulinoCoinManager' exists in scene");
             return;
         }
         
-        kulinoCoinManagerStatus = "✅ OK";
         Debug.Log("✅ KulinoCoinManager found");
         
         double balance = KulinoCoinManager.Instance.GetBalance();
@@ -123,12 +118,10 @@ public class ShopDebugHelper : MonoBehaviour
     {
         if (PlayerEconomy.Instance == null)
         {
-            playerEconomyStatus = "❌ NOT FOUND";
             Debug.LogError("❌ PlayerEconomy not found!");
             return;
         }
         
-        playerEconomyStatus = "✅ OK";
         Debug.Log("✅ PlayerEconomy found");
         Debug.Log($"   Coins: {PlayerEconomy.Instance.Coins:N0}");
         Debug.Log($"   Shards: {PlayerEconomy.Instance.Shards}");

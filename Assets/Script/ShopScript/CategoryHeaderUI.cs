@@ -2,8 +2,8 @@ using UnityEngine;
 using TMPro;
 
 /// <summary>
-/// CategoryHeaderUI - Simple header component
-/// Layout dihandle oleh ShopManager dengan dynamic grid constraint
+/// CategoryHeaderUI - Simplified untuk container system
+/// Version: 2.0 - Container System
 /// </summary>
 public class CategoryHeaderUI : MonoBehaviour
 {

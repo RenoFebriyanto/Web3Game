@@ -2,50 +2,69 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 using TMPro;
 
 public enum Currency { Coins, Shards, KulinoCoin }
 
 /// <summary>
-/// UPDATED ShopManager dengan Dynamic Category Headers
-/// Version: 4.0 - Scrollable Category Headers
+/// ShopManager - FULLY AUTOMATED dengan Dynamic Category Containers
+/// Version: 5.0 - Container System
 /// </summary>
 public class ShopManager : MonoBehaviour
 {
-    [Header("Prefabs & UI")]
-    [Tooltip("Prefab for one shop entry (BackgroundItem). Must have ShopItemUI component.")]
+    [Header("🎨 Prefabs")]
+    [Tooltip("Prefab CategoryContainer (dengan CategoryContainerUI)")]
+    public GameObject categoryContainerPrefab;
+    
+    [Tooltip("Prefab ShopItem (BackgroundItem dengan ShopItemUI)")]
     public GameObject itemUIPrefab;
     
-    [Tooltip("Prefab for category header (with CategoryHeaderUI component)")]
-    public GameObject categoryHeaderPrefab;
-    
-    [Tooltip("Parent transform (ItemsShop) where items will be instantiated.")]
+    [Tooltip("Parent transform (ItemsShop dengan Vertical Layout)")]
     public Transform itemsParent;
     
-    [Tooltip("Popup controller for buy preview (optional but recommended).")]
+    [Tooltip("Popup controller untuk buy preview")]
     public BuyPreviewController buyPreviewUI;
 
-    [Header("Data")]
-    [Tooltip("Optional: ShopDatabase ScriptableObject with items array. If null, uses shopItems list.")]
+    [Header("📦 Data")]
+    [Tooltip("ShopDatabase ScriptableObject")]
     public ShopDatabase database;
-    [Tooltip("Fallback manual list of ShopItemData if no database assigned.")]
+    
+    [Tooltip("Fallback manual list (jika database null)")]
     public List<ShopItemData> shopItems = new List<ShopItemData>();
 
-    [Header("Icons for Economy Items")]
-    [Tooltip("Icon untuk Coins")]
+    [Header("🎯 Icons")]
     public Sprite iconCoin;
-    [Tooltip("Icon untuk Shards")]
     public Sprite iconShard;
-    [Tooltip("Icon untuk Energy")]
     public Sprite iconEnergy;
 
-    // ✅ FINAL: 4 Filters Only (All, Shard, Items, Bundle)
+    [Header("⚙️ Layout Settings")]
+    [Tooltip("Grid columns untuk items (default: 3)")]
+    public int gridColumns = 3;
+    
+    [Tooltip("Cell size untuk items")]
+    public Vector2 cellSize = new Vector2(150f, 200f);
+    
+    [Tooltip("Spacing antara items")]
+    public Vector2 spacing = new Vector2(10f, 10f);
+
+    // 4 Filters
     public enum ShopFilter { All, Shard, Items, Bundle }
 
-    // Private variables
+    // Private
     private ShopItemData _pendingPurchaseData;
-    private List<GameObject> spawnedObjects = new List<GameObject>(); // Headers + Items
+    private Dictionary<ShopRewardType, CategoryContainerUI> categoryContainers = new Dictionary<ShopRewardType, CategoryContainerUI>();
     private ShopFilter currentFilter = ShopFilter.All;
+
+    // Category ordering
+    private readonly ShopRewardType[] categoryOrder = new ShopRewardType[]
+    {
+        ShopRewardType.Shard,
+        ShopRewardType.Coin,
+        ShopRewardType.Energy,
+        ShopRewardType.Booster,
+        ShopRewardType.Bundle
+    };
 
     // ==================== UNITY LIFECYCLE ====================
 
@@ -55,11 +74,7 @@ public class ShopManager : MonoBehaviour
 
         if (buyPreviewUI == null)
         {
-            try
-            {
-                buyPreviewUI = UnityEngine.Object.FindFirstObjectByType<BuyPreviewController>();
-            }
-            catch { }
+            buyPreviewUI = FindFirstObjectByType<BuyPreviewController>();
         }
     }
 
@@ -67,46 +82,62 @@ public class ShopManager : MonoBehaviour
     {
         if (buyPreviewUI != null)
         {
-            try { buyPreviewUI.Initialize(this); }
-            catch (Exception ex) { Debug.LogWarning("[ShopManager] buyPreviewUI.Initialize threw: " + ex.Message); }
+            buyPreviewUI.Initialize(this);
         }
 
+        // ✅ Setup ItemsParent Vertical Layout
+        SetupItemsParentLayout();
+
+        // ✅ AUTO-POPULATE from database
         PopulateShop();
     }
 
-    // ==================== ECONOMY SETUP ====================
+    // ==================== SETUP ====================
+
+    void SetupItemsParentLayout()
+    {
+        if (itemsParent == null)
+        {
+            Debug.LogError("[ShopManager] itemsParent not assigned!");
+            return;
+        }
+
+        var verticalLayout = itemsParent.GetComponent<VerticalLayoutGroup>();
+        
+        if (verticalLayout == null)
+        {
+            verticalLayout = itemsParent.gameObject.AddComponent<VerticalLayoutGroup>();
+        }
+
+        // Setup vertical layout properties
+        verticalLayout.childControlWidth = true;
+        verticalLayout.childControlHeight = false;
+        verticalLayout.childForceExpandWidth = true;
+        verticalLayout.childForceExpandHeight = false;
+        verticalLayout.spacing = -25f; // Space between categories
+        verticalLayout.padding = new RectOffset(10, 10, 10, 10);
+        verticalLayout.childAlignment = TextAnchor.UpperCenter;
+
+        Debug.Log("[ShopManager] ✓ ItemsParent VerticalLayout setup done");
+    }
 
     void EnsurePlayerEconomy()
     {
-        if (PlayerEconomy.Instance != null)
-        {
-            Debug.Log("[ShopManager] PlayerEconomy already exists");
-            return;
-        }
-
-        Debug.LogWarning("[ShopManager] PlayerEconomy.Instance is null! Attempting to find or create...");
+        if (PlayerEconomy.Instance != null) return;
 
         var existing = FindFirstObjectByType<PlayerEconomy>();
-        if (existing != null)
-        {
-            Debug.Log("[ShopManager] Found existing PlayerEconomy in scene");
-            return;
-        }
+        if (existing != null) return;
 
         var prefab = Resources.Load<GameObject>("EconomyManager");
         if (prefab != null)
         {
-            var instance = Instantiate(prefab);
-            instance.name = "EconomyManager";
-            DontDestroyOnLoad(instance);
-            Debug.Log("[ShopManager] Created PlayerEconomy from Resources/EconomyManager prefab");
+            Instantiate(prefab).name = "EconomyManager";
             return;
         }
 
         var go = new GameObject("PlayerEconomy");
         go.AddComponent<PlayerEconomy>();
         DontDestroyOnLoad(go);
-        Debug.Log("[ShopManager] Created fallback PlayerEconomy GameObject");
     }
 
     void EnsureBoosterInventory()
@@ -119,17 +150,17 @@ public class ShopManager : MonoBehaviour
         }
     }
 
-    // ==================== SHOP POPULATION ====================
+    // ==================== 🚀 AUTO-POPULATE SYSTEM ====================
 
     public void PopulateShop()
     {
-        Debug.Log($"[ShopManager] PopulateShop called with filter: {currentFilter}");
+        Debug.Log($"[ShopManager] 🚀 PopulateShop - Filter: {currentFilter}");
         
-        // Show ALL by default
+        // Default: Show ALL
         FilterShop(ShopFilter.All);
     }
 
-    // ==================== ✅ SHOP FILTERING - 4 BUTTONS ====================
+    // ==================== FILTERING ====================
 
     public void ShowAll() { FilterShop(ShopFilter.All); }
     public void ShowShard() { FilterShop(ShopFilter.Shard); }
@@ -140,182 +171,131 @@ public class ShopManager : MonoBehaviour
     {
         currentFilter = filter;
         Debug.Log($"[ShopManager] FilterShop: {filter}");
-        RepopulateWithCategories();
+        
+        RepopulateShop();
     }
 
-    void RepopulateWithCategories()
+    /// <summary>
+    /// ✅ CORE: Repopulate shop dengan dynamic containers
+    /// </summary>
+    void RepopulateShop()
     {
-        // Clear all spawned objects (headers + items)
-        ClearAllSpawned();
+        // Clear existing containers
+        ClearAllContainers();
 
-        if (itemUIPrefab == null || itemsParent == null)
+        if (categoryContainerPrefab == null || itemUIPrefab == null || itemsParent == null)
         {
-            Debug.LogError("[ShopManager] itemUIPrefab or itemsParent not assigned!");
+            Debug.LogError("[ShopManager] Missing prefab references!");
             return;
         }
 
         List<ShopItemData> source = database?.items ?? shopItems;
+        
         if (source == null || source.Count == 0)
         {
-            Debug.LogWarning("[ShopManager] No shop items found!");
+            Debug.LogWarning("[ShopManager] No items in ShopDatabase!");
             return;
         }
 
-        // ✅ 4 Filter System
+        // ✅ Create containers based on filter
         switch (currentFilter)
         {
             case ShopFilter.All:
-                SpawnAllCategories(source);
+                CreateAllCategories(source);
                 break;
                 
             case ShopFilter.Shard:
-                SpawnSingleCategory("SHARD", ShopRewardType.Shard, source);
+                CreateSingleCategory(ShopRewardType.Shard, source);
                 break;
                 
             case ShopFilter.Items:
-                SpawnItemsCategories(source); // Coin + Energy + Booster
+                CreateItemsCategories(source); // Coin + Energy + Booster
                 break;
                 
             case ShopFilter.Bundle:
-                SpawnSingleCategory("BUNDLE", ShopRewardType.Bundle, source);
+                CreateSingleCategory(ShopRewardType.Bundle, source);
                 break;
         }
 
-        Debug.Log($"[ShopManager] ✓ Spawned {spawnedObjects.Count} objects");
+        Debug.Log($"[ShopManager] ✓ Created {categoryContainers.Count} category containers");
     }
 
     /// <summary>
-    /// ✅ Spawn ALL categories (Shard, Coin, Energy, Booster, Bundle)
-    /// Order: Shard → Coin → Energy → Booster → Bundle
+    /// ✅ Create ALL categories
     /// </summary>
-    void SpawnAllCategories(List<ShopItemData> source)
+    void CreateAllCategories(List<ShopItemData> source)
     {
-        SpawnCategoryWithItems("SHARD", ShopRewardType.Shard, source);
-        SpawnCategoryWithItems("COIN", ShopRewardType.Coin, source);
-        SpawnCategoryWithItems("ENERGY", ShopRewardType.Energy, source);
-        SpawnCategoryWithItems("BOOSTER", ShopRewardType.Booster, source);
-        SpawnCategoryWithItems("BUNDLE", ShopRewardType.Bundle, source);
+        foreach (var rewardType in categoryOrder)
+        {
+            CreateCategoryContainer(rewardType, source);
+        }
     }
 
     /// <summary>
-    /// ✅ Spawn ITEMS categories (Coin + Energy + Booster)
-    /// Order: Coin → Energy → Booster
+    /// ✅ Create ITEMS categories (Coin + Energy + Booster)
     /// </summary>
-    void SpawnItemsCategories(List<ShopItemData> source)
+    void CreateItemsCategories(List<ShopItemData> source)
     {
-        SpawnCategoryWithItems("COIN", ShopRewardType.Coin, source);
-        SpawnCategoryWithItems("ENERGY", ShopRewardType.Energy, source);
-        SpawnCategoryWithItems("BOOSTER", ShopRewardType.Booster, source);
+        CreateCategoryContainer(ShopRewardType.Coin, source);
+        CreateCategoryContainer(ShopRewardType.Energy, source);
+        CreateCategoryContainer(ShopRewardType.Booster, source);
     }
 
     /// <summary>
-    /// ✅ Spawn category header + items untuk satu category
+    /// ✅ Create single category
     /// </summary>
-    void SpawnSingleCategory(string categoryName, ShopRewardType rewardType, List<ShopItemData> source)
+    void CreateSingleCategory(ShopRewardType rewardType, List<ShopItemData> source)
     {
-        SpawnCategoryWithItems(categoryName, rewardType, source);
+        CreateCategoryContainer(rewardType, source);
     }
 
     /// <summary>
-    /// ✅ Spawn category dengan items (hanya jika ada items)
+    /// ✅ CORE: Create category container dengan items
     /// </summary>
-    void SpawnCategoryWithItems(string categoryName, ShopRewardType rewardType, List<ShopItemData> source)
+    void CreateCategoryContainer(ShopRewardType rewardType, List<ShopItemData> source)
     {
+        // Filter items by reward type
         List<ShopItemData> filtered = FilterByRewardType(source, rewardType);
         
         if (filtered.Count == 0)
         {
-            Debug.LogWarning($"[ShopManager] No items found for category: {categoryName}");
+            Debug.Log($"[ShopManager] No items for category: {rewardType}");
             return;
         }
 
-        // ✅ Get GridLayoutGroup
-        var gridLayout = itemsParent.GetComponent<GridLayoutGroup>();
-        int originalConstraintCount = gridLayout != null ? gridLayout.constraintCount : 3;
+        // Spawn container
+        GameObject containerObj = Instantiate(categoryContainerPrefab, itemsParent);
+        containerObj.name = $"CategoryContainer_{rewardType}";
 
-        // ✅ TRICK: Set constraint ke 1 untuk header (full width)
-        if (gridLayout != null)
+        var container = containerObj.GetComponent<CategoryContainerUI>();
+        
+        if (container == null)
         {
-            gridLayout.constraintCount = 1;
+            Debug.LogError($"[ShopManager] CategoryContainerUI not found on prefab!");
+            Destroy(containerObj);
+            return;
         }
 
-        // Spawn category header
-        SpawnCategoryHeader(categoryName);
+        // Setup container
+        container.gridColumns = gridColumns;
+        container.cellSize = cellSize;
+        container.spacing = spacing;
+        container.SetHeaderText(GetCategoryDisplayName(rewardType));
 
-        // ✅ Reset constraint ke original untuk items (3 kolom)
-        if (gridLayout != null)
-        {
-            gridLayout.constraintCount = originalConstraintCount;
-        }
-
-        // Spawn items
+        // Add items to container
         foreach (var data in filtered)
         {
-            SpawnShopItem(data);
+            container.AddItem(itemUIPrefab, data, this);
         }
-        
-        Debug.Log($"[ShopManager] ✓ Spawned category '{categoryName}' with {filtered.Count} items");
+
+        // Store reference
+        categoryContainers[rewardType] = container;
+
+        Debug.Log($"[ShopManager] ✓ Created '{rewardType}' category with {filtered.Count} items");
     }
 
     /// <summary>
-    /// ✅ Spawn category header - Simple version tanpa tricks
-    /// </summary>
-    void SpawnCategoryHeader(string categoryName)
-    {
-        if (categoryHeaderPrefab == null)
-        {
-            Debug.LogWarning("[ShopManager] categoryHeaderPrefab not assigned!");
-            return;
-        }
-
-        GameObject headerObj = Instantiate(categoryHeaderPrefab, itemsParent);
-        headerObj.name = $"CategoryHeader_{categoryName}";
-
-        var headerUI = headerObj.GetComponent<CategoryHeaderUI>();
-        if (headerUI != null)
-        {
-            headerUI.SetText(categoryName);
-        }
-
-        spawnedObjects.Add(headerObj);
-        
-        Debug.Log($"[ShopManager] ✓ Spawned header: {categoryName}");
-    }
-
-    /// <summary>
-    /// ✅ Spawn shop item
-    /// </summary>
-    void SpawnShopItem(ShopItemData data)
-    {
-        if (data == null) return;
-
-        GameObject itemObj = Instantiate(itemUIPrefab, itemsParent);
-        itemObj.name = $"ShopItem_{data.itemId}";
-
-        var ui = itemObj.GetComponent<ShopItemUI>() ?? itemObj.GetComponentInChildren<ShopItemUI>(true);
-        
-        if (ui != null)
-        {
-            try
-            {
-                ui.Setup(data, this);
-                spawnedObjects.Add(itemObj);
-            }
-            catch (Exception ex)
-            {
-                Debug.LogError($"[ShopManager] Error setting up shop item: {ex.Message}");
-                Destroy(itemObj);
-            }
-        }
-        else
-        {
-            Debug.LogWarning($"[ShopManager] ShopItemUI not found in prefab!");
-            Destroy(itemObj);
-        }
-    }
-
-    /// <summary>
-    /// ✅ Filter items by reward type
+    /// Filter items by reward type
     /// </summary>
     List<ShopItemData> FilterByRewardType(List<ShopItemData> source, ShopRewardType rewardType)
     {
@@ -333,31 +313,46 @@ public class ShopManager : MonoBehaviour
     }
 
     /// <summary>
-    /// ✅ Clear all spawned objects
+    /// Get display name untuk category
     /// </summary>
-    void ClearAllSpawned()
+    string GetCategoryDisplayName(ShopRewardType type)
     {
-        foreach (var obj in spawnedObjects)
+        return type switch
         {
-            if (obj != null)
+            ShopRewardType.Shard => "SHARD",
+            ShopRewardType.Coin => "COIN",
+            ShopRewardType.Energy => "ENERGY",
+            ShopRewardType.Booster => "BOOSTER",
+            ShopRewardType.Bundle => "BUNDLE",
+            _ => type.ToString().ToUpper()
+        };
+    }
+
+    /// <summary>
+    /// Clear all containers
+    /// </summary>
+    void ClearAllContainers()
+    {
+        foreach (var kvp in categoryContainers)
+        {
+            if (kvp.Value != null && kvp.Value.gameObject != null)
             {
-                Destroy(obj);
+                Destroy(kvp.Value.gameObject);
             }
         }
         
-        spawnedObjects.Clear();
+        categoryContainers.Clear();
         
-        Debug.Log("[ShopManager] Cleared all spawned objects");
+        Debug.Log("[ShopManager] Cleared all category containers");
     }
 
     // ==================== PURCHASE FLOW ====================
+    // (Keep existing purchase code - no changes needed)
 
     public void ShowBuyPreview(ShopItemData data, ShopItemUI fromUI = null)
     {
         if (buyPreviewUI != null) 
             buyPreviewUI.Show(data);
-        else 
-            Debug.LogWarning("[ShopManager] buyPreviewUI not assigned");
     }
 
     public bool TryBuy(ShopItemData data, Currency currency)
@@ -366,7 +361,6 @@ public class ShopManager : MonoBehaviour
 
         if (PlayerEconomy.Instance == null)
         {
-            Debug.LogError("[ShopManager] PlayerEconomy.Instance is null!");
             EnsurePlayerEconomy();
             if (PlayerEconomy.Instance == null)
             {
@@ -395,42 +389,33 @@ public class ShopManager : MonoBehaviour
             case Currency.KulinoCoin:
                 if (!data.allowBuyWithKulinoCoin)
                 {
-                    Debug.LogWarning("[ShopManager] Item cannot be purchased with Kulino Coin");
                     SoundManager.Instance?.PlayPurchaseFail();
                     return false;
                 }
 
                 if (KulinoCoinManager.Instance == null)
                 {
-                    Debug.LogError("[ShopManager] KulinoCoinManager.Instance is null!");
                     SoundManager.Instance?.PlayPurchaseFail();
                     return false;
                 }
 
                 price = data.kulinoCoinPrice;
-                
                 KulinoCoinManager.Instance.RefreshBalance();
                 System.Threading.Thread.Sleep(500);
                 
                 double currentBalance = KulinoCoinManager.Instance.GetBalance();
                 canAfford = currentBalance >= price;
                 
-                Debug.Log($"[ShopManager] Kulino Coin Check:");
-                Debug.Log($"  - Required: {price:F6} KC");
-                Debug.Log($"  - Current Balance: {currentBalance:F6} KC");
-                Debug.Log($"  - Can Afford: {canAfford}");
-                
                 if (!canAfford)
                 {
-                    Debug.LogWarning($"[ShopManager] Insufficient Kulino Coin! Need {price:F6} KC, have {currentBalance:F6} KC");
+                    Debug.LogWarning($"[ShopManager] Insufficient KC! Need {price:F6}, have {currentBalance:F6}");
                 }
-                
                 break;
         }
 
         if (!canAfford)
         {
-            Debug.Log($"[ShopManager] Not enough {currency}. Need {price}");
+            Debug.Log($"[ShopManager] Not enough {currency}");
             SoundManager.Instance?.PlayPurchaseFail();
             return false;
         }
@@ -444,7 +429,6 @@ public class ShopManager : MonoBehaviour
     {
         if (PopupClaimQuest.Instance == null)
         {
-            Debug.LogError("[ShopManager] PopupClaimQuest.Instance is null! Granting reward directly.");
             CompletePurchase(data, currency);
             return;
         }
@@ -460,11 +444,6 @@ public class ShopManager : MonoBehaviour
         Sprite icon = GetItemIcon(data);
         string amountText = GetItemAmountText(data);
         string title = $"Purchase {data.displayName}";
-
-        if (icon == null)
-        {
-            Debug.LogError($"[ShopManager] ICON IS NULL for {data.itemId}!");
-        }
 
         PopupClaimQuest.Instance.Open(
             icon,
@@ -490,7 +469,7 @@ public class ShopManager : MonoBehaviour
         }
 
         string title = $"Purchase {data.displayName}";
-        string description = data.description ?? $"You will receive {bundleItems.Count} items";
+        string description = data.description ?? $"Bundle with {bundleItems.Count} items";
 
         PopupClaimQuest.Instance.OpenBundle(
             bundleItems,
@@ -502,11 +481,7 @@ public class ShopManager : MonoBehaviour
 
     void CompletePurchase(ShopItemData data, Currency currency)
     {
-        if (PlayerEconomy.Instance == null)
-        {
-            Debug.LogError("[ShopManager] PlayerEconomy.Instance is null!");
-            return;
-        }
+        if (PlayerEconomy.Instance == null) return;
 
         bool deductSuccess = false;
 
@@ -515,61 +490,47 @@ public class ShopManager : MonoBehaviour
             case Currency.Coins:
                 if (!PlayerEconomy.Instance.SpendCoins(data.coinPrice))
                 {
-                    Debug.LogError("[ShopManager] Failed to spend coins!");
                     SoundManager.Instance?.PlayPurchaseFail();
                     return;
                 }
                 deductSuccess = true;
-                Debug.Log($"[ShopManager] ✓ Spent {data.coinPrice} Coins");
                 break;
 
             case Currency.Shards:
                 if (!PlayerEconomy.Instance.SpendShards(data.shardPrice))
                 {
-                    Debug.LogError("[ShopManager] Failed to spend shards!");
                     SoundManager.Instance?.PlayPurchaseFail();
                     return;
                 }
                 deductSuccess = true;
-                Debug.Log($"[ShopManager] ✓ Spent {data.shardPrice} Shards");
                 break;
 
             case Currency.KulinoCoin:
                 if (KulinoCoinManager.Instance == null)
                 {
-                    Debug.LogError("[ShopManager] KulinoCoinManager null!");
                     SoundManager.Instance?.PlayPurchaseFail();
                     return;
                 }
 
                 if (!KulinoCoinManager.Instance.HasEnoughBalance(data.kulinoCoinPrice))
                 {
-                    Debug.LogError("[ShopManager] Insufficient Kulino Coin balance!");
                     SoundManager.Instance?.PlayPurchaseFail();
                     return;
                 }
 
-                Debug.Log($"[ShopManager] 💰 Initiating Phantom payment: {data.kulinoCoinPrice:F6} KC");
-                
                 _pendingPurchaseData = data;
                 StartCoroutine(InitiatePhantomPayment(data, data.kulinoCoinPrice));
-                
                 return;
         }
 
         if (deductSuccess)
         {
             GrantReward(data);
-            Debug.Log($"[ShopManager] ✓ Purchase completed: {data.displayName}");
         }
     }
 
-    // ==================== PHANTOM PAYMENT ====================
-
     IEnumerator InitiatePhantomPayment(ShopItemData data, double kcAmount)
     {
-        Debug.Log($"[ShopManager] 🚀 Starting Phantom payment: {kcAmount:F6} KC for {data.displayName}");
-        
         var payload = new PaymentPayload
         {
             amount = kcAmount,
@@ -580,27 +541,23 @@ public class ShopManager : MonoBehaviour
         };
         
         string json = JsonUtility.ToJson(payload);
-        Debug.Log($"[ShopManager] 📤 Payload: {json}");
         
 #if UNITY_WEBGL && !UNITY_EDITOR
         try
         {
-            string jsCode = $"if(typeof requestKulinoCoinPayment === 'function') {{ requestKulinoCoinPayment('{json}'); }} else {{ console.error('requestKulinoCoinPayment not found'); }}";
+            string jsCode = $"if(typeof requestKulinoCoinPayment === 'function') {{ requestKulinoCoinPayment('{json}'); }}";
             Application.ExternalEval(jsCode);
-            Debug.Log("[ShopManager] ✓ Payment request sent to Phantom");
         }
         catch (System.Exception ex)
         {
-            Debug.LogError($"[ShopManager] ❌ Failed to call JavaScript: {ex.Message}");
+            Debug.LogError($"[ShopManager] Failed to call JavaScript: {ex.Message}");
             SoundManager.Instance?.PlayPurchaseFail();
             _pendingPurchaseData = null;
         }
 #else
-        Debug.Log("[ShopManager] 🧪 EDITOR MODE: Simulating Phantom payment...");
         yield return new WaitForSeconds(2f);
         
-        string mockResponse = $"{{\"success\":true,\"txHash\":\"EDITOR_MOCK_TX_{System.DateTime.Now.Ticks}\",\"error\":null}}";
-        Debug.Log($"[ShopManager] 🧪 Mock response: {mockResponse}");
+        string mockResponse = $"{{\"success\":true,\"txHash\":\"MOCK_TX_{System.DateTime.Now.Ticks}\"}}";
         
         var gm = FindFirstObjectByType<GameManager>();
         if (gm != null)
@@ -609,7 +566,6 @@ public class ShopManager : MonoBehaviour
             
             if (_pendingPurchaseData != null)
             {
-                Debug.Log($"[ShopManager] 🧪 EDITOR: Granting reward");
                 GrantReward(_pendingPurchaseData);
                 _pendingPurchaseData = null;
                 SoundManager.Instance?.PlayPurchaseSuccess();
@@ -622,33 +578,17 @@ public class ShopManager : MonoBehaviour
 
     public void OnPaymentConfirmed()
     {
-        Debug.Log("[ShopManager] 💰 Payment confirmed! Granting reward...");
-        
         if (_pendingPurchaseData != null)
         {
             GrantReward(_pendingPurchaseData);
             SoundManager.Instance?.PlayPurchaseSuccess();
-            
-            Debug.Log($"[ShopManager] ✓ Reward granted for {_pendingPurchaseData.displayName}");
             _pendingPurchaseData = null;
-        }
-        else
-        {
-            Debug.LogWarning("[ShopManager] ⚠️ No pending purchase data");
         }
     }
 
-    // ==================== REWARD GRANTING ====================
-
     void GrantReward(ShopItemData data)
     {
-        if (data == null) return;
-
-        if (PlayerEconomy.Instance == null)
-        {
-            Debug.LogError("[ShopManager] PlayerEconomy.Instance is null when granting reward!");
-            return;
-        }
+        if (data == null || PlayerEconomy.Instance == null) return;
 
         switch (data.rewardType)
         {
@@ -665,52 +605,39 @@ public class ShopManager : MonoBehaviour
                 break;
 
             case ShopRewardType.Booster:
-                if (!string.IsNullOrEmpty(data.itemId))
-                {
-                    EnsureBoosterInventory();
-                    BoosterInventory.Instance?.AddBooster(data.itemId, data.rewardAmount);
-                }
+                EnsureBoosterInventory();
+                BoosterInventory.Instance?.AddBooster(data.itemId, data.rewardAmount);
                 break;
 
             case ShopRewardType.Bundle:
                 GrantBundleReward(data);
                 break;
-
-            default:
-                Debug.LogWarning($"[ShopManager] Unknown reward type: {data.rewardType}");
-                break;
         }
-
-        Debug.Log($"[ShopManager] Granted reward {data.rewardType} for {data.displayName}");
     }
 
     void GrantBundleReward(ShopItemData data)
     {
-        if (data?.bundleItems == null || data.bundleItems.Count == 0) return;
+        if (data?.bundleItems == null) return;
 
-        foreach (var bundleItem in data.bundleItems)
+        foreach (var item in data.bundleItems)
         {
-            if (bundleItem == null || string.IsNullOrEmpty(bundleItem.itemId)) continue;
+            if (item == null) continue;
 
-            string id = bundleItem.itemId.ToLower().Trim();
+            string id = item.itemId.ToLower().Trim();
 
             if (id == "coin" || id == "coins")
-                PlayerEconomy.Instance.AddCoins(bundleItem.amount);
+                PlayerEconomy.Instance.AddCoins(item.amount);
             else if (id == "shard" || id == "shards")
-                PlayerEconomy.Instance.AddShards(bundleItem.amount);
+                PlayerEconomy.Instance.AddShards(item.amount);
             else if (id == "energy")
-                PlayerEconomy.Instance.AddEnergy(bundleItem.amount);
+                PlayerEconomy.Instance.AddEnergy(item.amount);
             else
             {
                 EnsureBoosterInventory();
-                BoosterInventory.Instance?.AddBooster(bundleItem.itemId, bundleItem.amount);
+                BoosterInventory.Instance?.AddBooster(item.itemId, item.amount);
             }
         }
-
-        Debug.Log($"[ShopManager] Bundle '{data.displayName}' granted!");
     }
-
-    // ==================== HELPER METHODS ====================
 
     Sprite GetItemIcon(ShopItemData data)
     {
@@ -739,42 +666,24 @@ public class ShopManager : MonoBehaviour
     {
         yield return new WaitForSeconds(delay);
         KulinoCoinManager.Instance?.RefreshBalance();
-        Debug.Log("[ShopManager] Kulino Coin balance refreshed");
     }
 
     // ==================== CONTEXT MENU ====================
 
-    [ContextMenu("🔄 Repopulate Shop")]
-    void Context_Repopulate()
-    {
-        RepopulateWithCategories();
-    }
+    [ContextMenu("🔄 Refresh Shop")]
+    void Context_Refresh() { RepopulateShop(); }
 
-    [ContextMenu("🧪 Test: ALL Filter")]
-    void Context_TestAll()
-    {
-        FilterShop(ShopFilter.All);
-    }
+    [ContextMenu("🧪 Test: ALL")]
+    void Context_All() { FilterShop(ShopFilter.All); }
 
-    [ContextMenu("🧪 Test: SHARD Filter")]
-    void Context_TestShard()
-    {
-        FilterShop(ShopFilter.Shard);
-    }
-    
-    [ContextMenu("🧪 Test: ITEMS Filter")]
-    void Context_TestItems()
-    {
-        FilterShop(ShopFilter.Items);
-    }
-    
-    [ContextMenu("🧪 Test: BUNDLE Filter")]
-    void Context_TestBundle()
-    {
-        FilterShop(ShopFilter.Bundle);
-    }
+    [ContextMenu("🧪 Test: SHARD")]
+    void Context_Shard() { FilterShop(ShopFilter.Shard); }
 
-    // ==================== NESTED CLASSES ====================
+    [ContextMenu("🧪 Test: ITEMS")]
+    void Context_Items() { FilterShop(ShopFilter.Items); }
+
+    [ContextMenu("🧪 Test: BUNDLE")]
+    void Context_Bundle() { FilterShop(ShopFilter.Bundle); }
 
     [System.Serializable]
     class PaymentPayload

@@ -7,24 +7,23 @@ using TMPro;
 public enum Currency { Coins, Shards, KulinoCoin }
 
 /// <summary>
-/// UPDATED ShopManager dengan Category Filters (Coin, Shard, Energy, Booster, Bundle)
-/// Version: 3.0 - Category Header Support
+/// UPDATED ShopManager dengan Dynamic Category Headers
+/// Version: 4.0 - Scrollable Category Headers
 /// </summary>
 public class ShopManager : MonoBehaviour
 {
     [Header("Prefabs & UI")]
     [Tooltip("Prefab for one shop entry (BackgroundItem). Must have ShopItemUI component.")]
     public GameObject itemUIPrefab;
+    
+    [Tooltip("Prefab for category header (with CategoryHeaderUI component)")]
+    public GameObject categoryHeaderPrefab;
+    
     [Tooltip("Parent transform (ItemsShop) where items will be instantiated.")]
     public Transform itemsParent;
+    
     [Tooltip("Popup controller for buy preview (optional but recommended).")]
     public BuyPreviewController buyPreviewUI;
-
-    [Header("✨ NEW: Category Header")]
-    [Tooltip("GameObject untuk header kategori (contoh: panel dengan Text 'Shard')")]
-    public GameObject categoryHeader;
-    [Tooltip("Text component untuk menampilkan nama kategori")]
-    public TMP_Text categoryHeaderText;
 
     [Header("Data")]
     [Tooltip("Optional: ShopDatabase ScriptableObject with items array. If null, uses shopItems list.")]
@@ -40,12 +39,12 @@ public class ShopManager : MonoBehaviour
     [Tooltip("Icon untuk Energy")]
     public Sprite iconEnergy;
 
-    // ✅ UPDATED: Added new filter types
-    public enum ShopFilter { All, Coin, Shard, Energy, Booster, Bundle }
+    // ✅ FINAL: 4 Filters Only (All, Shard, Items, Bundle)
+    public enum ShopFilter { All, Shard, Items, Bundle }
 
     // Private variables
     private ShopItemData _pendingPurchaseData;
-    private List<ShopItemUI> spawned = new List<ShopItemUI>();
+    private List<GameObject> spawnedObjects = new List<GameObject>(); // Headers + Items
     private ShopFilter currentFilter = ShopFilter.All;
 
     // ==================== UNITY LIFECYCLE ====================
@@ -61,12 +60,6 @@ public class ShopManager : MonoBehaviour
                 buyPreviewUI = UnityEngine.Object.FindFirstObjectByType<BuyPreviewController>();
             }
             catch { }
-        }
-
-        // ✅ Hide category header initially
-        if (categoryHeader != null)
-        {
-            categoryHeader.SetActive(false);
         }
     }
 
@@ -130,211 +123,231 @@ public class ShopManager : MonoBehaviour
 
     public void PopulateShop()
     {
-        Debug.Log($"[ShopManager] PopulateShop called. itemUIPrefab={(itemUIPrefab ? itemUIPrefab.name : "NULL")}, itemsParent={(itemsParent ? itemsParent.name : "NULL")}");
-
-        if (itemUIPrefab == null)
-        {
-            Debug.LogError("[ShopManager] itemUIPrefab is not assigned!");
-            return;
-        }
-        if (itemsParent == null)
-        {
-            Debug.LogError("[ShopManager] itemsParent is not assigned!");
-            return;
-        }
-
-        spawned.Clear();
-        for (int i = itemsParent.childCount - 1; i >= 0; i--)
-        {
-            var child = itemsParent.GetChild(i);
-            Destroy(child.gameObject);
-        }
-
-        List<ShopItemData> source = null;
-        if (database != null && database.items != null && database.items.Count > 0)
-        {
-            source = database.items;
-        }
-        else if (shopItems != null && shopItems.Count > 0)
-        {
-            source = shopItems;
-        }
-
-        if (source == null || source.Count == 0)
-        {
-            Debug.LogWarning("[ShopManager] No items assigned in database or manual list.");
-            return;
-        }
-
-        foreach (var data in source)
-        {
-            if (data == null) continue;
-
-            var go = Instantiate(itemUIPrefab, itemsParent);
-            go.name = $"ShopItem_{(string.IsNullOrEmpty(data.itemId) ? data.displayName : data.itemId)}";
-
-            var ui = go.GetComponent<ShopItemUI>();
-            if (ui != null)
-            {
-                try
-                {
-                    ui.Setup(data, this);
-                    spawned.Add(ui);
-                }
-                catch (Exception ex)
-                {
-                    Debug.LogError($"[ShopManager] Exception while calling Setup on ShopItemUI ({go.name}): {ex.Message}");
-                }
-            }
-            else
-            {
-                ui = go.GetComponentInChildren<ShopItemUI>(true);
-                if (ui != null)
-                {
-                    try
-                    {
-                        ui.Setup(data, this);
-                        spawned.Add(ui);
-                    }
-                    catch (Exception ex)
-                    {
-                        Debug.LogError($"[ShopManager] Exception while calling Setup on child ShopItemUI: {ex.Message}");
-                    }
-                }
-                else
-                {
-                    Debug.LogWarning("[ShopManager] Could not find ShopItemUI component");
-                }
-            }
-        }
-
-        Debug.Log($"[ShopManager] Populated {spawned.Count} shop items");
-
-        // ✅ Hide header untuk "All" filter
-        UpdateCategoryHeader(ShopFilter.All);
+        Debug.Log($"[ShopManager] PopulateShop called with filter: {currentFilter}");
+        
+        // Show ALL by default
+        FilterShop(ShopFilter.All);
     }
 
-    // ==================== ✅ NEW: SHOP FILTERING WITH CATEGORIES ====================
+    // ==================== ✅ SHOP FILTERING - 4 BUTTONS ====================
 
     public void ShowAll() { FilterShop(ShopFilter.All); }
-    public void ShowCoin() { FilterShop(ShopFilter.Coin); }
     public void ShowShard() { FilterShop(ShopFilter.Shard); }
-    public void ShowEnergy() { FilterShop(ShopFilter.Energy); }
-    public void ShowBooster() { FilterShop(ShopFilter.Booster); }
+    public void ShowItems() { FilterShop(ShopFilter.Items); }
     public void ShowBundle() { FilterShop(ShopFilter.Bundle); }
 
     public void FilterShop(ShopFilter filter)
     {
         currentFilter = filter;
         Debug.Log($"[ShopManager] FilterShop: {filter}");
-        RepopulateWithFilter();
-        UpdateCategoryHeader(filter);
+        RepopulateWithCategories();
     }
 
-    void RepopulateWithFilter()
+    void RepopulateWithCategories()
     {
-        spawned.Clear();
-        for (int i = itemsParent.childCount - 1; i >= 0; i--)
+        // Clear all spawned objects (headers + items)
+        ClearAllSpawned();
+
+        if (itemUIPrefab == null || itemsParent == null)
         {
-            Destroy(itemsParent.GetChild(i).gameObject);
+            Debug.LogError("[ShopManager] itemUIPrefab or itemsParent not assigned!");
+            return;
         }
 
         List<ShopItemData> source = database?.items ?? shopItems;
-        if (source == null || source.Count == 0) return;
-
-        List<ShopItemData> filteredItems = FilterItems(source);
-
-        foreach (var data in filteredItems)
+        if (source == null || source.Count == 0)
         {
-            if (data == null) continue;
-
-            var go = Instantiate(itemUIPrefab, itemsParent);
-            var ui = go.GetComponent<ShopItemUI>() ?? go.GetComponentInChildren<ShopItemUI>(true);
-            
-            if (ui != null)
-            {
-                ui.Setup(data, this);
-                spawned.Add(ui);
-            }
+            Debug.LogWarning("[ShopManager] No shop items found!");
+            return;
         }
 
-        Debug.Log($"[ShopManager] Filtered {spawned.Count} items (filter: {currentFilter})");
+        // ✅ 4 Filter System
+        switch (currentFilter)
+        {
+            case ShopFilter.All:
+                SpawnAllCategories(source);
+                break;
+                
+            case ShopFilter.Shard:
+                SpawnSingleCategory("SHARD", ShopRewardType.Shard, source);
+                break;
+                
+            case ShopFilter.Items:
+                SpawnItemsCategories(source); // Coin + Energy + Booster
+                break;
+                
+            case ShopFilter.Bundle:
+                SpawnSingleCategory("BUNDLE", ShopRewardType.Bundle, source);
+                break;
+        }
+
+        Debug.Log($"[ShopManager] ✓ Spawned {spawnedObjects.Count} objects");
     }
 
-    List<ShopItemData> FilterItems(List<ShopItemData> source)
+    /// <summary>
+    /// ✅ Spawn ALL categories (Shard, Coin, Energy, Booster, Bundle)
+    /// Order: Shard → Coin → Energy → Booster → Bundle
+    /// </summary>
+    void SpawnAllCategories(List<ShopItemData> source)
     {
-        List<ShopItemData> filtered = new List<ShopItemData>();
+        SpawnCategoryWithItems("SHARD", ShopRewardType.Shard, source);
+        SpawnCategoryWithItems("COIN", ShopRewardType.Coin, source);
+        SpawnCategoryWithItems("ENERGY", ShopRewardType.Energy, source);
+        SpawnCategoryWithItems("BOOSTER", ShopRewardType.Booster, source);
+        SpawnCategoryWithItems("BUNDLE", ShopRewardType.Bundle, source);
+    }
 
-        foreach (var data in source)
+    /// <summary>
+    /// ✅ Spawn ITEMS categories (Coin + Energy + Booster)
+    /// Order: Coin → Energy → Booster
+    /// </summary>
+    void SpawnItemsCategories(List<ShopItemData> source)
+    {
+        SpawnCategoryWithItems("COIN", ShopRewardType.Coin, source);
+        SpawnCategoryWithItems("ENERGY", ShopRewardType.Energy, source);
+        SpawnCategoryWithItems("BOOSTER", ShopRewardType.Booster, source);
+    }
+
+    /// <summary>
+    /// ✅ Spawn category header + items untuk satu category
+    /// </summary>
+    void SpawnSingleCategory(string categoryName, ShopRewardType rewardType, List<ShopItemData> source)
+    {
+        SpawnCategoryWithItems(categoryName, rewardType, source);
+    }
+
+    /// <summary>
+    /// ✅ Spawn category dengan items (hanya jika ada items)
+    /// </summary>
+    void SpawnCategoryWithItems(string categoryName, ShopRewardType rewardType, List<ShopItemData> source)
+    {
+        List<ShopItemData> filtered = FilterByRewardType(source, rewardType);
+        
+        if (filtered.Count == 0)
         {
-            if (data == null) continue;
-
-            switch (currentFilter)
-            {
-                case ShopFilter.All:
-                    filtered.Add(data);
-                    break;
-
-                case ShopFilter.Coin:
-                    if (data.rewardType == ShopRewardType.Coin)
-                        filtered.Add(data);
-                    break;
-
-                case ShopFilter.Shard:
-                    if (data.rewardType == ShopRewardType.Shard)
-                        filtered.Add(data);
-                    break;
-
-                case ShopFilter.Energy:
-                    if (data.rewardType == ShopRewardType.Energy)
-                        filtered.Add(data);
-                    break;
-
-                case ShopFilter.Booster:
-                    if (data.rewardType == ShopRewardType.Booster)
-                        filtered.Add(data);
-                    break;
-
-                case ShopFilter.Bundle:
-                    if (data.rewardType == ShopRewardType.Bundle)
-                        filtered.Add(data);
-                    break;
-            }
+            Debug.LogWarning($"[ShopManager] No items found for category: {categoryName}");
+            return;
         }
 
+        // ✅ Get GridLayoutGroup
+        var gridLayout = itemsParent.GetComponent<GridLayoutGroup>();
+        int originalConstraintCount = gridLayout != null ? gridLayout.constraintCount : 3;
+
+        // ✅ TRICK: Set constraint ke 1 untuk header (full width)
+        if (gridLayout != null)
+        {
+            gridLayout.constraintCount = 1;
+        }
+
+        // Spawn category header
+        SpawnCategoryHeader(categoryName);
+
+        // ✅ Reset constraint ke original untuk items (3 kolom)
+        if (gridLayout != null)
+        {
+            gridLayout.constraintCount = originalConstraintCount;
+        }
+
+        // Spawn items
+        foreach (var data in filtered)
+        {
+            SpawnShopItem(data);
+        }
+        
+        Debug.Log($"[ShopManager] ✓ Spawned category '{categoryName}' with {filtered.Count} items");
+    }
+
+    /// <summary>
+    /// ✅ Spawn category header - Simple version tanpa tricks
+    /// </summary>
+    void SpawnCategoryHeader(string categoryName)
+    {
+        if (categoryHeaderPrefab == null)
+        {
+            Debug.LogWarning("[ShopManager] categoryHeaderPrefab not assigned!");
+            return;
+        }
+
+        GameObject headerObj = Instantiate(categoryHeaderPrefab, itemsParent);
+        headerObj.name = $"CategoryHeader_{categoryName}";
+
+        var headerUI = headerObj.GetComponent<CategoryHeaderUI>();
+        if (headerUI != null)
+        {
+            headerUI.SetText(categoryName);
+        }
+
+        spawnedObjects.Add(headerObj);
+        
+        Debug.Log($"[ShopManager] ✓ Spawned header: {categoryName}");
+    }
+
+    /// <summary>
+    /// ✅ Spawn shop item
+    /// </summary>
+    void SpawnShopItem(ShopItemData data)
+    {
+        if (data == null) return;
+
+        GameObject itemObj = Instantiate(itemUIPrefab, itemsParent);
+        itemObj.name = $"ShopItem_{data.itemId}";
+
+        var ui = itemObj.GetComponent<ShopItemUI>() ?? itemObj.GetComponentInChildren<ShopItemUI>(true);
+        
+        if (ui != null)
+        {
+            try
+            {
+                ui.Setup(data, this);
+                spawnedObjects.Add(itemObj);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[ShopManager] Error setting up shop item: {ex.Message}");
+                Destroy(itemObj);
+            }
+        }
+        else
+        {
+            Debug.LogWarning($"[ShopManager] ShopItemUI not found in prefab!");
+            Destroy(itemObj);
+        }
+    }
+
+    /// <summary>
+    /// ✅ Filter items by reward type
+    /// </summary>
+    List<ShopItemData> FilterByRewardType(List<ShopItemData> source, ShopRewardType rewardType)
+    {
+        List<ShopItemData> filtered = new List<ShopItemData>();
+        
+        foreach (var data in source)
+        {
+            if (data != null && data.rewardType == rewardType)
+            {
+                filtered.Add(data);
+            }
+        }
+        
         return filtered;
     }
 
-    // ✅ NEW: Update Category Header
-    void UpdateCategoryHeader(ShopFilter filter)
+    /// <summary>
+    /// ✅ Clear all spawned objects
+    /// </summary>
+    void ClearAllSpawned()
     {
-        if (categoryHeader == null || categoryHeaderText == null)
+        foreach (var obj in spawnedObjects)
         {
-            return;
+            if (obj != null)
+            {
+                Destroy(obj);
+            }
         }
-
-        // Hide header untuk "All" filter
-        if (filter == ShopFilter.All)
-        {
-            categoryHeader.SetActive(false);
-            return;
-        }
-
-        // Show header dan set text
-        categoryHeader.SetActive(true);
-
-        string headerText = filter switch
-        {
-            ShopFilter.Coin => "COIN",
-            ShopFilter.Shard => "SHARD",
-            ShopFilter.Energy => "ENERGY",
-            ShopFilter.Booster => "BOOSTER",
-            ShopFilter.Bundle => "BUNDLE",
-            _ => ""
-        };
-
-        categoryHeaderText.text = headerText;
-        Debug.Log($"[ShopManager] Category header updated: {headerText}");
+        
+        spawnedObjects.Clear();
+        
+        Debug.Log("[ShopManager] Cleared all spawned objects");
     }
 
     // ==================== PURCHASE FLOW ====================
@@ -731,10 +744,34 @@ public class ShopManager : MonoBehaviour
 
     // ==================== CONTEXT MENU ====================
 
-    [ContextMenu("Repopulate Shop")]
+    [ContextMenu("🔄 Repopulate Shop")]
     void Context_Repopulate()
     {
-        PopulateShop();
+        RepopulateWithCategories();
+    }
+
+    [ContextMenu("🧪 Test: ALL Filter")]
+    void Context_TestAll()
+    {
+        FilterShop(ShopFilter.All);
+    }
+
+    [ContextMenu("🧪 Test: SHARD Filter")]
+    void Context_TestShard()
+    {
+        FilterShop(ShopFilter.Shard);
+    }
+    
+    [ContextMenu("🧪 Test: ITEMS Filter")]
+    void Context_TestItems()
+    {
+        FilterShop(ShopFilter.Items);
+    }
+    
+    [ContextMenu("🧪 Test: BUNDLE Filter")]
+    void Context_TestBundle()
+    {
+        FilterShop(ShopFilter.Bundle);
     }
 
     // ==================== NESTED CLASSES ====================

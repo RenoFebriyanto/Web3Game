@@ -3,20 +3,19 @@ using UnityEngine.UI;
 using TMPro;
 
 /// <summary>
-/// UPDATED TabButtonManager dengan filter Coin, Shard, Energy, Booster, Bundle
-/// Version: 2.0 - Category Filters
+/// TabButtonManager - 4 Filters Only
+/// ALL | SHARD | ITEMS | BUNDLE
+/// Version: 4.0 - Final Version
 /// </summary>
 public class TabButtonManager : MonoBehaviour
 {
-    [Header("🆕 Category Tab Buttons")]
-    public Button allButton;
-    public Button coinButton;
-    public Button shardButton;
-    public Button energyButton;
-    public Button boosterButton;
-    public Button bundleButton;
+    [Header("⭐ 4 Filter Buttons (Final)")]
+    public Button allButton;      // ALL - Show semua category
+    public Button shardButton;    // SHARD - Hanya category Shard
+    public Button itemsButton;    // ITEMS - Coin + Energy + Booster
+    public Button bundleButton;   // BUNDLE - Hanya category Bundle
 
-    [Header("Active Colors (optional)")]
+    [Header("Active Colors")]
     public Color activeColor = Color.white;
     public Color inactiveColor = new Color(1f, 1f, 1f, 0.5f);
 
@@ -32,15 +31,10 @@ public class TabButtonManager : MonoBehaviour
             return;
         }
 
-        // ✅ Setup button listeners untuk semua filter
+        // ✅ Setup 4 button listeners
         if (allButton != null)
         {
             allButton.onClick.AddListener(() => OnTabClicked(allButton, "All"));
-        }
-
-        if (coinButton != null)
-        {
-            coinButton.onClick.AddListener(() => OnTabClicked(coinButton, "Coin"));
         }
 
         if (shardButton != null)
@@ -48,14 +42,9 @@ public class TabButtonManager : MonoBehaviour
             shardButton.onClick.AddListener(() => OnTabClicked(shardButton, "Shard"));
         }
 
-        if (energyButton != null)
+        if (itemsButton != null)
         {
-            energyButton.onClick.AddListener(() => OnTabClicked(energyButton, "Energy"));
-        }
-
-        if (boosterButton != null)
-        {
-            boosterButton.onClick.AddListener(() => OnTabClicked(boosterButton, "Booster"));
+            itemsButton.onClick.AddListener(() => OnTabClicked(itemsButton, "Items"));
         }
 
         if (bundleButton != null)
@@ -65,6 +54,8 @@ public class TabButtonManager : MonoBehaviour
 
         // Set ALL as active by default
         SetActiveButton(allButton);
+        
+        Debug.Log("[TabButtonManager] ✓ Initialized with 4 filter buttons");
     }
 
     void OnTabClicked(Button clickedButton, string tab)
@@ -77,34 +68,26 @@ public class TabButtonManager : MonoBehaviour
             case "All":
                 shopManager.ShowAll();
                 break;
-            case "Coin":
-                shopManager.ShowCoin();
-                break;
             case "Shard":
                 shopManager.ShowShard();
                 break;
-            case "Energy":
-                shopManager.ShowEnergy();
-                break;
-            case "Booster":
-                shopManager.ShowBooster();
+            case "Items":
+                shopManager.ShowItems();
                 break;
             case "Bundle":
                 shopManager.ShowBundle();
                 break;
         }
 
-        Debug.Log($"[TabButtonManager] Switched to: {tab}");
+        Debug.Log($"[TabButtonManager] ✓ Switched to filter: {tab}");
     }
 
     void SetActiveButton(Button activeButton)
     {
-        // Reset all buttons
+        // Reset all 4 buttons
         SetButtonState(allButton, false);
-        SetButtonState(coinButton, false);
         SetButtonState(shardButton, false);
-        SetButtonState(energyButton, false);
-        SetButtonState(boosterButton, false);
+        SetButtonState(itemsButton, false);
         SetButtonState(bundleButton, false);
 
         // Set active button
@@ -115,17 +98,37 @@ public class TabButtonManager : MonoBehaviour
     {
         if (btn == null) return;
 
+        // Change button image color
         var graphic = btn.GetComponent<Image>();
         if (graphic != null)
         {
             graphic.color = active ? activeColor : inactiveColor;
         }
 
-        // Optional: juga ubah text color
+        // Change button text color
         var text = btn.GetComponentInChildren<TMP_Text>();
         if (text != null)
         {
             text.color = active ? activeColor : inactiveColor;
         }
+    }
+    
+    // ==================== PUBLIC API ====================
+    
+    /// <summary>
+    /// Manually set active filter (untuk call dari code)
+    /// </summary>
+    public void SetFilter(string filterName)
+    {
+        Button targetButton = filterName.ToLower() switch
+        {
+            "all" => allButton,
+            "shard" => shardButton,
+            "items" => itemsButton,
+            "bundle" => bundleButton,
+            _ => allButton
+        };
+        
+        OnTabClicked(targetButton, filterName);
     }
 }

@@ -2,12 +2,13 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using TMPro;
 
 public enum Currency { Coins, Shards, KulinoCoin }
 
 /// <summary>
-/// COMPLETE ShopManager dengan Kulino Coin Payment Integration
-/// Version: 2.0 - Fixed Duplicate Method
+/// UPDATED ShopManager dengan Category Filters (Coin, Shard, Energy, Booster, Bundle)
+/// Version: 3.0 - Category Header Support
 /// </summary>
 public class ShopManager : MonoBehaviour
 {
@@ -18,6 +19,12 @@ public class ShopManager : MonoBehaviour
     public Transform itemsParent;
     [Tooltip("Popup controller for buy preview (optional but recommended).")]
     public BuyPreviewController buyPreviewUI;
+
+    [Header("✨ NEW: Category Header")]
+    [Tooltip("GameObject untuk header kategori (contoh: panel dengan Text 'Shard')")]
+    public GameObject categoryHeader;
+    [Tooltip("Text component untuk menampilkan nama kategori")]
+    public TMP_Text categoryHeaderText;
 
     [Header("Data")]
     [Tooltip("Optional: ShopDatabase ScriptableObject with items array. If null, uses shopItems list.")]
@@ -33,12 +40,13 @@ public class ShopManager : MonoBehaviour
     [Tooltip("Icon untuk Energy")]
     public Sprite iconEnergy;
 
-    // ✅ Private variables
+    // ✅ UPDATED: Added new filter types
+    public enum ShopFilter { All, Coin, Shard, Energy, Booster, Bundle }
+
+    // Private variables
     private ShopItemData _pendingPurchaseData;
     private List<ShopItemUI> spawned = new List<ShopItemUI>();
     private ShopFilter currentFilter = ShopFilter.All;
-
-    public enum ShopFilter { All, Items, Bundle }
 
     // ==================== UNITY LIFECYCLE ====================
 
@@ -53,6 +61,12 @@ public class ShopManager : MonoBehaviour
                 buyPreviewUI = UnityEngine.Object.FindFirstObjectByType<BuyPreviewController>();
             }
             catch { }
+        }
+
+        // ✅ Hide category header initially
+        if (categoryHeader != null)
+        {
+            categoryHeader.SetActive(false);
         }
     }
 
@@ -195,12 +209,18 @@ public class ShopManager : MonoBehaviour
         }
 
         Debug.Log($"[ShopManager] Populated {spawned.Count} shop items");
+
+        // ✅ Hide header untuk "All" filter
+        UpdateCategoryHeader(ShopFilter.All);
     }
 
-    // ==================== SHOP FILTERING ====================
+    // ==================== ✅ NEW: SHOP FILTERING WITH CATEGORIES ====================
 
     public void ShowAll() { FilterShop(ShopFilter.All); }
-    public void ShowItems() { FilterShop(ShopFilter.Items); }
+    public void ShowCoin() { FilterShop(ShopFilter.Coin); }
+    public void ShowShard() { FilterShop(ShopFilter.Shard); }
+    public void ShowEnergy() { FilterShop(ShopFilter.Energy); }
+    public void ShowBooster() { FilterShop(ShopFilter.Booster); }
     public void ShowBundle() { FilterShop(ShopFilter.Bundle); }
 
     public void FilterShop(ShopFilter filter)
@@ -208,6 +228,7 @@ public class ShopManager : MonoBehaviour
         currentFilter = filter;
         Debug.Log($"[ShopManager] FilterShop: {filter}");
         RepopulateWithFilter();
+        UpdateCategoryHeader(filter);
     }
 
     void RepopulateWithFilter()
@@ -253,10 +274,27 @@ public class ShopManager : MonoBehaviour
                 case ShopFilter.All:
                     filtered.Add(data);
                     break;
-                case ShopFilter.Items:
-                    if (data.rewardType != ShopRewardType.Bundle)
+
+                case ShopFilter.Coin:
+                    if (data.rewardType == ShopRewardType.Coin)
                         filtered.Add(data);
                     break;
+
+                case ShopFilter.Shard:
+                    if (data.rewardType == ShopRewardType.Shard)
+                        filtered.Add(data);
+                    break;
+
+                case ShopFilter.Energy:
+                    if (data.rewardType == ShopRewardType.Energy)
+                        filtered.Add(data);
+                    break;
+
+                case ShopFilter.Booster:
+                    if (data.rewardType == ShopRewardType.Booster)
+                        filtered.Add(data);
+                    break;
+
                 case ShopFilter.Bundle:
                     if (data.rewardType == ShopRewardType.Bundle)
                         filtered.Add(data);
@@ -265,6 +303,38 @@ public class ShopManager : MonoBehaviour
         }
 
         return filtered;
+    }
+
+    // ✅ NEW: Update Category Header
+    void UpdateCategoryHeader(ShopFilter filter)
+    {
+        if (categoryHeader == null || categoryHeaderText == null)
+        {
+            return;
+        }
+
+        // Hide header untuk "All" filter
+        if (filter == ShopFilter.All)
+        {
+            categoryHeader.SetActive(false);
+            return;
+        }
+
+        // Show header dan set text
+        categoryHeader.SetActive(true);
+
+        string headerText = filter switch
+        {
+            ShopFilter.Coin => "COIN",
+            ShopFilter.Shard => "SHARD",
+            ShopFilter.Energy => "ENERGY",
+            ShopFilter.Booster => "BOOSTER",
+            ShopFilter.Bundle => "BUNDLE",
+            _ => ""
+        };
+
+        categoryHeaderText.text = headerText;
+        Debug.Log($"[ShopManager] Category header updated: {headerText}");
     }
 
     // ==================== PURCHASE FLOW ====================
@@ -326,10 +396,7 @@ public class ShopManager : MonoBehaviour
 
                 price = data.kulinoCoinPrice;
                 
-                // ✅ Force refresh balance before checking
                 KulinoCoinManager.Instance.RefreshBalance();
-                
-                // Wait a bit for refresh
                 System.Threading.Thread.Sleep(500);
                 
                 double currentBalance = KulinoCoinManager.Instance.GetBalance();
@@ -455,7 +522,6 @@ public class ShopManager : MonoBehaviour
                 break;
 
             case Currency.KulinoCoin:
-                // ✅ KULINO COIN PAYMENT FLOW
                 if (KulinoCoinManager.Instance == null)
                 {
                     Debug.LogError("[ShopManager] KulinoCoinManager null!");
@@ -475,11 +541,9 @@ public class ShopManager : MonoBehaviour
                 _pendingPurchaseData = data;
                 StartCoroutine(InitiatePhantomPayment(data, data.kulinoCoinPrice));
                 
-                // EXIT - reward akan di-grant setelah payment confirmed
                 return;
         }
 
-        // Untuk Coin dan Shard, langsung grant reward
         if (deductSuccess)
         {
             GrantReward(data);
@@ -487,11 +551,8 @@ public class ShopManager : MonoBehaviour
         }
     }
 
-    // ==================== PHANTOM PAYMENT (SINGLE IMPLEMENTATION) ====================
+    // ==================== PHANTOM PAYMENT ====================
 
-    /// <summary>
-    /// ✅ SINGLE METHOD - Initiate Phantom payment via JavaScript
-    /// </summary>
     IEnumerator InitiatePhantomPayment(ShopItemData data, double kcAmount)
     {
         Debug.Log($"[ShopManager] 🚀 Starting Phantom payment: {kcAmount:F6} KC for {data.displayName}");
@@ -522,7 +583,6 @@ public class ShopManager : MonoBehaviour
             _pendingPurchaseData = null;
         }
 #else
-        // ✅ EDITOR MODE: Simulate payment
         Debug.Log("[ShopManager] 🧪 EDITOR MODE: Simulating Phantom payment...");
         yield return new WaitForSeconds(2f);
         
@@ -547,9 +607,6 @@ public class ShopManager : MonoBehaviour
         yield return null;
     }
 
-    /// <summary>
-    /// ✅ Called dari GameManager setelah payment confirmed
-    /// </summary>
     public void OnPaymentConfirmed()
     {
         Debug.Log("[ShopManager] 💰 Payment confirmed! Granting reward...");

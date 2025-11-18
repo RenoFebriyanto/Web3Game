@@ -1,8 +1,11 @@
-// ShopItemUI.cs - FIXED VERSION
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
+/// <summary>
+/// UPDATED ShopItemUI - Displays amount as title for currency items
+/// Version: 2.0 - Smart Title Display
+/// </summary>
 public class ShopItemUI : MonoBehaviour
 {
     [Header("UI refs (assign in prefab)")]
@@ -28,19 +31,24 @@ public class ShopItemUI : MonoBehaviour
 
         if (data == null) return;
 
-        // Set icon & name
+        // Set icon
         if (iconImage != null) iconImage.sprite = data.iconGrid;
-        if (nameText != null) nameText.text = data.displayName;
 
-        // ✅ NEW LOGIC: Show ALL enabled payment methods
+        // ✅ SMART TITLE: Display amount untuk currency items (Coin, Shard, Energy)
+        if (nameText != null)
+        {
+            string displayTitle = GetSmartTitle(data);
+            nameText.text = displayTitle;
+            Debug.Log($"[ShopItemUI] {data.itemId} title set to: {displayTitle}");
+        }
+
+        // ✅ Show ALL enabled payment methods
         bool hasKulinoCoin = data.allowBuyWithKulinoCoin && data.kulinoCoinPrice > 0;
         bool hasShard = data.allowBuyWithShards && data.shardPrice > 0;
         bool hasCoin = data.allowBuyWithCoins && data.coinPrice > 0;
 
-        // Jika item HANYA bisa dibeli dengan Kulino Coin, sembunyikan yang lain
         bool isKulinoCoinOnly = hasKulinoCoin && !hasShard && !hasCoin;
 
-        // Tampilkan semua yang enabled, kecuali jika Kulino Coin only
         bool showKulinoCoin = hasKulinoCoin;
         bool showShard = hasShard && !isKulinoCoinOnly;
         bool showCoin = hasCoin && !isKulinoCoinOnly;
@@ -88,5 +96,25 @@ public class ShopItemUI : MonoBehaviour
                 manager?.ShowBuyPreview(currentData, this);
             });
         }
+    }
+
+    /// <summary>
+    /// ✅ NEW: Smart title - Show amount for currency items, original name for others
+    /// </summary>
+    string GetSmartTitle(ShopItemData data)
+    {
+        // Untuk currency items (Coin, Shard, Energy) - tampilkan nilai
+        if (data.rewardType == ShopRewardType.Coin ||
+            data.rewardType == ShopRewardType.Shard ||
+            data.rewardType == ShopRewardType.Energy)
+        {
+            if (data.rewardAmount > 0)
+            {
+                return data.rewardAmount.ToString("N0"); // Contoh: "100" atau "1,000"
+            }
+        }
+
+        // Untuk Booster dan Bundle - gunakan displayName
+        return data.displayName;
     }
 }

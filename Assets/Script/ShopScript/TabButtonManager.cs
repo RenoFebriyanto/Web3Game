@@ -3,13 +3,17 @@ using UnityEngine.UI;
 using TMPro;
 
 /// <summary>
-/// Manages tab button visual states (optional)
+/// UPDATED TabButtonManager dengan filter Coin, Shard, Energy, Booster, Bundle
+/// Version: 2.0 - Category Filters
 /// </summary>
 public class TabButtonManager : MonoBehaviour
 {
-    [Header("Tab Buttons")]
+    [Header("🆕 Category Tab Buttons")]
     public Button allButton;
-    public Button itemsButton;
+    public Button coinButton;
+    public Button shardButton;
+    public Button energyButton;
+    public Button boosterButton;
     public Button bundleButton;
 
     [Header("Active Colors (optional)")]
@@ -28,15 +32,30 @@ public class TabButtonManager : MonoBehaviour
             return;
         }
 
-        // Setup button listeners
+        // ✅ Setup button listeners untuk semua filter
         if (allButton != null)
         {
             allButton.onClick.AddListener(() => OnTabClicked(allButton, "All"));
         }
 
-        if (itemsButton != null)
+        if (coinButton != null)
         {
-            itemsButton.onClick.AddListener(() => OnTabClicked(itemsButton, "Items"));
+            coinButton.onClick.AddListener(() => OnTabClicked(coinButton, "Coin"));
+        }
+
+        if (shardButton != null)
+        {
+            shardButton.onClick.AddListener(() => OnTabClicked(shardButton, "Shard"));
+        }
+
+        if (energyButton != null)
+        {
+            energyButton.onClick.AddListener(() => OnTabClicked(energyButton, "Energy"));
+        }
+
+        if (boosterButton != null)
+        {
+            boosterButton.onClick.AddListener(() => OnTabClicked(boosterButton, "Booster"));
         }
 
         if (bundleButton != null)
@@ -58,20 +77,34 @@ public class TabButtonManager : MonoBehaviour
             case "All":
                 shopManager.ShowAll();
                 break;
-            case "Items":
-                shopManager.ShowItems();
+            case "Coin":
+                shopManager.ShowCoin();
+                break;
+            case "Shard":
+                shopManager.ShowShard();
+                break;
+            case "Energy":
+                shopManager.ShowEnergy();
+                break;
+            case "Booster":
+                shopManager.ShowBooster();
                 break;
             case "Bundle":
                 shopManager.ShowBundle();
                 break;
         }
+
+        Debug.Log($"[TabButtonManager] Switched to: {tab}");
     }
 
     void SetActiveButton(Button activeButton)
     {
         // Reset all buttons
         SetButtonState(allButton, false);
-        SetButtonState(itemsButton, false);
+        SetButtonState(coinButton, false);
+        SetButtonState(shardButton, false);
+        SetButtonState(energyButton, false);
+        SetButtonState(boosterButton, false);
         SetButtonState(bundleButton, false);
 
         // Set active button

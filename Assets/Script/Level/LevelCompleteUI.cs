@@ -1,4 +1,4 @@
-﻿// LevelCompleteUI.cs - UPDATED: Game Over Mode + Particle Effects
+﻿// LevelCompleteUI.cs - UPDATED: Game Over with Replay Button
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -27,11 +27,10 @@ public class LevelCompleteUI : MonoBehaviour
 
     [Header("✨ NEW: Star Particle Effects")]
     [Tooltip("Particle effect yang muncul saat star terisi (level complete)")]
-    public GameObject[] starParticleEffects; // Array untuk 3 stars
+    public GameObject[] starParticleEffects;
 
     [Tooltip("Canvas tempat stars berada")]
-    public Canvas targetCanvas; // ✅ NEW: Reference ke Canvas
-
+    public Canvas targetCanvas;
 
     [Header("🎉 LEVEL COMPLETE Popup")]
     public GameObject lvlPopup;
@@ -80,6 +79,13 @@ public class LevelCompleteUI : MonoBehaviour
     public string mainMenuSceneName = "MainMenu";
     public string gameplaySceneName = "Gameplay";
 
+    [Header("🔄 NEW: Game Over Button Sprites")]
+    [Tooltip("Sprite untuk button Continue (default - next level)")]
+    public Sprite continueButtonSprite;
+    
+    [Tooltip("Sprite untuk button Replay (game over mode)")]
+    public Sprite replayButtonSprite;
+
     [Header("Debug")]
     public bool enableDebugLogs = true;
 
@@ -95,6 +101,10 @@ public class LevelCompleteUI : MonoBehaviour
     private List<RewardData> generatedRewards = new List<RewardData>();
     private bool isFirstCompletion = false;
 
+    // ✅ NEW: Store original button sprite
+    private Image continueButtonImage;
+    private Sprite originalContinueSprite;
+
     void Awake()
     {
         if (Instance != null && Instance != this)
@@ -108,10 +118,10 @@ public class LevelCompleteUI : MonoBehaviour
     void Start()
     {
         // ✅ Auto-find canvas if not assigned
-    if (targetCanvas == null)
-    {
-        targetCanvas = levelCompletePanel.GetComponentInParent<Canvas>();
-    }
+        if (targetCanvas == null)
+        {
+            targetCanvas = levelCompletePanel.GetComponentInParent<Canvas>();
+        }
 
         if (levelCompletePanel != null)
             levelCompletePanel.SetActive(false);
@@ -136,8 +146,23 @@ public class LevelCompleteUI : MonoBehaviour
             fadeImage.gameObject.SetActive(false);
         }
 
+        // ✅ NEW: Get button image component and store original sprite
         if (continueButton != null)
         {
+            continueButtonImage = continueButton.GetComponent<Image>();
+            
+            if (continueButtonImage != null && continueButtonImage.sprite != null)
+            {
+                originalContinueSprite = continueButtonImage.sprite;
+                Log("✓ Stored original continue button sprite");
+            }
+            
+            // If continueButtonSprite is not assigned, use current sprite as default
+            if (continueButtonSprite == null && continueButtonImage != null)
+            {
+                continueButtonSprite = continueButtonImage.sprite;
+            }
+
             continueButton.onClick.RemoveAllListeners();
             continueButton.onClick.AddListener(OnContinueClicked);
             continueButton.interactable = false;
@@ -270,11 +295,12 @@ public class LevelCompleteUI : MonoBehaviour
         isGameOverMode = true; // Game Over mode
         earnedStars = 0; // NO STARS on game over
 
+        // ✅ CRITICAL: Reset gameplay coins (player tidak dapat apa-apa saat game over)
         if (CoinCounterUI.Instance != null)
-    {
-        CoinCounterUI.Instance.SaveToPlayerEconomy();
-        Log("✓ Saved gameplay coins to PlayerEconomy (Game Over)");
-    }
+        {
+            CoinCounterUI.Instance.ResetCounter();
+            Log("✓ Reset gameplay coins (Game Over - no rewards)");
+        }
 
         StopAllSpawners();
 
@@ -318,119 +344,109 @@ public class LevelCompleteUI : MonoBehaviour
     }
 
     void GenerateImprovedRewards()
-{
-    generatedRewards.Clear();
-
-    // ✅ CRITICAL FIX: Gunakan key yang SAMA dengan LevelPreviewController
-    string savedRewardsJson = PlayerPrefs.GetString($"Kulino_LevelRewards_{currentLevelId}", "");
-    
-    if (!string.IsNullOrEmpty(savedRewardsJson))
     {
-        try
+        generatedRewards.Clear();
+
+        string savedRewardsJson = PlayerPrefs.GetString($"Kulino_LevelRewards_{currentLevelId}", "");
+        
+        if (!string.IsNullOrEmpty(savedRewardsJson))
         {
-            RewardDataList rewardList = JsonUtility.FromJson<RewardDataList>(savedRewardsJson);
-            if (rewardList != null && rewardList.rewards != null && rewardList.rewards.Count > 0)
+            try
             {
-                generatedRewards.AddRange(rewardList.rewards);
-                
-                // ✅ Re-assign icons (karena Sprite tidak tersimpan di JSON)
-                foreach (var reward in generatedRewards)
+                RewardDataList rewardList = JsonUtility.FromJson<RewardDataList>(savedRewardsJson);
+                if (rewardList != null && rewardList.rewards != null && rewardList.rewards.Count > 0)
                 {
-                    AssignRewardIcon(reward);
+                    generatedRewards.AddRange(rewardList.rewards);
+                    
+                    foreach (var reward in generatedRewards)
+                    {
+                        AssignRewardIcon(reward);
+                    }
+                    
+                    PlayerPrefs.DeleteKey($"Kulino_LevelRewards_{currentLevelId}");
+                    PlayerPrefs.Save();
+                    
+                    Log($"✅ Loaded cached rewards from LevelPreview: {generatedRewards.Count} items");
+                    return;
                 }
-                
-                // ✅ IMPORTANT: Delete saved rewards setelah di-load (HANYA JIKA BERHASIL)
-                PlayerPrefs.DeleteKey($"Kulino_LevelRewards_{currentLevelId}");
-                PlayerPrefs.Save();
-                
-                Log($"✅ Loaded cached rewards from LevelPreview: {generatedRewards.Count} items");
-                return; // ✅ CRITICAL: STOP disini, jangan generate random!
+            }
+            catch (System.Exception e)
+            {
+                LogWarning($"Failed to parse saved rewards: {e.Message}");
             }
         }
-        catch (System.Exception e)
+
+        Log($"⚠️ No cached rewards found - generating FALLBACK rewards");
+
+        float roll = Random.Range(0f, 100f);
+
+        if (roll < singleRewardChance)
         {
-            LogWarning($"Failed to parse saved rewards: {e.Message}");
+            int coinAmount = Random.Range(coinRewardRange.x, coinRewardRange.y + 1);
+            generatedRewards.Add(new RewardData(
+                RewardType.Coin, 
+                coinAmount,
+                coinIcon,
+                "Coins"
+            ));
+            Log($"✓ Fallback reward: Coin x{coinAmount}");
+        }
+        else
+        {
+            int coinAmount = Random.Range(coinRewardRange.x, coinRewardRange.y + 1);
+            generatedRewards.Add(new RewardData(
+                RewardType.Coin,
+                coinAmount,
+                coinIcon,
+                "Coins"
+            ));
+
+            int energyAmount = Random.Range(energyRewardRange.x, energyRewardRange.y + 1);
+            generatedRewards.Add(new RewardData(
+                RewardType.Energy,
+                energyAmount,
+                energyIcon,
+                "Energy"
+            ));
+
+            Log($"✓ Fallback double reward: Coin x{coinAmount} + Energy x{energyAmount}");
         }
     }
 
-    // ✅ FALLBACK: Generate new rewards HANYA jika tidak ada cache
-    Log($"⚠️ No cached rewards found - generating FALLBACK rewards");
-
-    float roll = Random.Range(0f, 100f);
-
-    if (roll < singleRewardChance)
+    void AssignRewardIcon(RewardData reward)
     {
-        int coinAmount = Random.Range(coinRewardRange.x, coinRewardRange.y + 1);
-        generatedRewards.Add(new RewardData(
-            RewardType.Coin, 
-            coinAmount,
-            coinIcon,
-            "Coins"
-        ));
-        Log($"✓ Fallback reward: Coin x{coinAmount}");
+        if (reward == null) return;
+
+        switch (reward.type)
+        {
+            case RewardType.Coin:
+                reward.icon = coinIcon;
+                break;
+
+            case RewardType.Energy:
+                reward.icon = energyIcon;
+                break;
+
+            case RewardType.Booster:
+                reward.icon = GetBoosterIcon(reward.boosterId);
+                break;
+        }
     }
-    else
+
+    Sprite GetBoosterIcon(string boosterId)
     {
-        int coinAmount = Random.Range(coinRewardRange.x, coinRewardRange.y + 1);
-        generatedRewards.Add(new RewardData(
-            RewardType.Coin,
-            coinAmount,
-            coinIcon,
-            "Coins"
-        ));
+        if (string.IsNullOrEmpty(boosterId)) return null;
 
-        int energyAmount = Random.Range(energyRewardRange.x, energyRewardRange.y + 1);
-        generatedRewards.Add(new RewardData(
-            RewardType.Energy,
-            energyAmount,
-            energyIcon,
-            "Energy"
-        ));
-
-        Log($"✓ Fallback double reward: Coin x{coinAmount} + Energy x{energyAmount}");
+        switch (boosterId.ToLower())
+        {
+            case "speedboost": return speedBoostIcon;
+            case "timefreeze": return timeFreezeIcon;
+            case "shield": return shieldIcon;
+            case "coin2x": return coin2xIcon;
+            case "magnet": return magnetIcon;
+            default: return null;
+        }
     }
-}
-
-/// <summary>
-/// ✅ NEW: Re-assign icon sprite ke reward (karena Sprite tidak bisa disimpan di JSON)
-/// </summary>
-void AssignRewardIcon(RewardData reward)
-{
-    if (reward == null) return;
-
-    switch (reward.type)
-    {
-        case RewardType.Coin:
-            reward.icon = coinIcon;
-            break;
-
-        case RewardType.Energy:
-            reward.icon = energyIcon;
-            break;
-
-        case RewardType.Booster:
-            reward.icon = GetBoosterIcon(reward.boosterId);
-            break;
-    }
-}
-
-/// <summary>
-/// ✅ NEW: Get booster icon by ID
-/// </summary>
-Sprite GetBoosterIcon(string boosterId)
-{
-    if (string.IsNullOrEmpty(boosterId)) return null;
-
-    switch (boosterId.ToLower())
-    {
-        case "speedboost": return speedBoostIcon;
-        case "timefreeze": return timeFreezeIcon;
-        case "shield": return shieldIcon;
-        case "coin2x": return coin2xIcon;
-        case "magnet": return magnetIcon;
-        default: return null;
-    }
-}
 
     void ApplyRewards()
     {
@@ -506,9 +522,52 @@ Sprite GetBoosterIcon(string boosterId)
             ShowAlreadyCompletedMessage();
         }
 
+        // ✅ NEW: Update button sprite based on mode
+        UpdateContinueButtonSprite();
+
         EnableButtons();
 
         Log("✓ Level complete UI fully shown");
+    }
+
+    /// <summary>
+    /// ✅ NEW: Update Continue button sprite based on game mode
+    /// </summary>
+    void UpdateContinueButtonSprite()
+    {
+        if (continueButtonImage == null)
+        {
+            LogWarning("Continue button image not found!");
+            return;
+        }
+
+        if (isGameOverMode)
+        {
+            // ✅ Game Over Mode: Use REPLAY sprite
+            if (replayButtonSprite != null)
+            {
+                continueButtonImage.sprite = replayButtonSprite;
+                Log("✓ Changed button sprite to REPLAY (Game Over mode)");
+            }
+            else
+            {
+                LogWarning("⚠️ Replay button sprite not assigned! Using default.");
+            }
+        }
+        else
+        {
+            // ✅ Level Complete Mode: Use CONTINUE sprite
+            if (continueButtonSprite != null)
+            {
+                continueButtonImage.sprite = continueButtonSprite;
+                Log("✓ Changed button sprite to CONTINUE (Level Complete mode)");
+            }
+            else if (originalContinueSprite != null)
+            {
+                continueButtonImage.sprite = originalContinueSprite;
+                Log("✓ Restored original continue button sprite");
+            }
+        }
     }
 
     IEnumerator AnimateLevelCompletePopup()
@@ -623,147 +682,67 @@ Sprite GetBoosterIcon(string boosterId)
     }
 
     IEnumerator AnimateStars()
-{
-    if (starImages == null || starFilled == null)
     {
-        LogWarning("Star images or starFilled sprite not assigned!");
-        yield break;
-    }
-
-    int starsToShow = isGameOverMode ? 0 : earnedStars;
-
-    // ✅ DEBUG: Print stars info
-    Debug.Log($"[AnimateStars] Starting animation - Stars to show: {starsToShow}");
-    Debug.Log($"[AnimateStars] starParticleEffects null? {starParticleEffects == null}");
-    
-    if (starParticleEffects != null)
-    {
-        Debug.Log($"[AnimateStars] starParticleEffects.Length = {starParticleEffects.Length}");
-        for (int i = 0; i < starParticleEffects.Length; i++)
+        if (starImages == null || starFilled == null)
         {
-            Debug.Log($"[AnimateStars] Particle[{i}] = {(starParticleEffects[i] != null ? starParticleEffects[i].name : "NULL")}");
-        }
-    }
-
-    for (int i = 0; i < starsToShow && i < starImages.Length; i++)
-    {
-        if (starImages[i] == null) continue;
-
-        yield return new WaitForSeconds(starAnimationDelay);
-
-        starImages[i].sprite = starFilled;
-        StartCoroutine(PunchScale(starImages[i].transform));
-
-        if (SoundManager.Instance != null)
-        {
-            SoundManager.Instance.PlayStarPickup();
+            LogWarning("Star images or starFilled sprite not assigned!");
+            yield break;
         }
 
-        // ✅ DEBUG: Detailed particle spawn logging
-        Debug.Log($"[AnimateStars] Attempting to spawn particle for star {i + 1}");
-        Debug.Log($"[AnimateStars] - isGameOverMode: {isGameOverMode}");
-        Debug.Log($"[AnimateStars] - starParticleEffects null? {starParticleEffects == null}");
-        
-        if (!isGameOverMode && starParticleEffects != null && i < starParticleEffects.Length)
+        int starsToShow = isGameOverMode ? 0 : earnedStars;
+
+        for (int i = 0; i < starsToShow && i < starImages.Length; i++)
         {
-            Debug.Log($"[AnimateStars] - Passed null checks");
-            
-            if (starParticleEffects[i] != null && starImages[i] != null)
+            if (starImages[i] == null) continue;
+
+            yield return new WaitForSeconds(starAnimationDelay);
+
+            starImages[i].sprite = starFilled;
+            StartCoroutine(PunchScale(starImages[i].transform));
+
+            if (SoundManager.Instance != null)
             {
-                Debug.Log($"[AnimateStars] - Particle GameObject: {starParticleEffects[i].name}");
-                Debug.Log($"[AnimateStars] - Particle active before: {starParticleEffects[i].activeSelf}");
-                Debug.Log($"[AnimateStars] - targetCanvas: {(targetCanvas != null ? targetCanvas.name : "NULL")}");
-                
-                Vector3 worldPos = ConvertUIToWorldPosition(starImages[i].rectTransform, targetCanvas);
-                
-                Debug.Log($"[AnimateStars] - Calculated worldPos: {worldPos}");
-                
-                starParticleEffects[i].transform.position = worldPos;
-                
-                Debug.Log($"[AnimateStars] - Set position to: {starParticleEffects[i].transform.position}");
-                
-                starParticleEffects[i].SetActive(true);
-                
-                Debug.Log($"[AnimateStars] - Particle active after: {starParticleEffects[i].activeSelf}");
-                Debug.Log($"[AnimateStars] ✓ Particle {i} activated successfully!");
-                
-                StartCoroutine(DisableParticleAfterDelay(starParticleEffects[i], 2f));
+                SoundManager.Instance.PlayStarPickup();
             }
-            else
+
+            // Spawn particle effects (only on level complete, not game over)
+            if (!isGameOverMode && starParticleEffects != null && i < starParticleEffects.Length)
             {
-                Debug.LogError($"[AnimateStars] - Particle[{i}] or starImage[{i}] is NULL!");
+                if (starParticleEffects[i] != null && starImages[i] != null)
+                {
+                    Vector3 worldPos = ConvertUIToWorldPosition(starImages[i].rectTransform, targetCanvas);
+                    
+                    starParticleEffects[i].transform.position = worldPos;
+                    starParticleEffects[i].SetActive(true);
+                    
+                    StartCoroutine(DisableParticleAfterDelay(starParticleEffects[i], 2f));
+                }
             }
-        }
-        else
-        {
-            if (isGameOverMode)
-                Debug.Log($"[AnimateStars] - Skipped (Game Over Mode)");
-            else if (starParticleEffects == null)
-                Debug.LogError($"[AnimateStars] - starParticleEffects array is NULL!");
-            else if (i >= starParticleEffects.Length)
-                Debug.LogError($"[AnimateStars] - Index {i} out of range (Length: {starParticleEffects.Length})");
+
+            Log($"✓ Star {i + 1} animated");
         }
 
-        Log($"✓ Star {i + 1} animated");
+        Log($"✓ All {starsToShow} stars animated");
     }
-
-    Log($"✓ All {starsToShow} stars animated");
-}
 
     Vector3 ConvertUIToWorldPosition(RectTransform uiElement, Canvas canvas)
-{
-    Debug.Log($"[ConvertUIToWorldPosition] ===== START =====");
-    
-    if (canvas == null)
     {
-        Debug.LogError("[ConvertUIToWorldPosition] Canvas is NULL!");
-        return Vector3.zero;
+        if (canvas == null || uiElement == null) return Vector3.zero;
+        
+        Vector3 screenPos = RectTransformUtility.WorldToScreenPoint(
+            canvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : canvas.worldCamera,
+            uiElement.position
+        );
+        
+        Camera mainCam = Camera.main;
+        if (mainCam == null) return Vector3.zero;
+        
+        float zDistance = 10f;
+        Vector3 worldPos = mainCam.ScreenToWorldPoint(new Vector3(screenPos.x, screenPos.y, zDistance));
+        
+        return worldPos;
     }
-    
-    if (uiElement == null)
-    {
-        Debug.LogError("[ConvertUIToWorldPosition] UI Element is NULL!");
-        return Vector3.zero;
-    }
-    
-    Debug.Log($"[ConvertUIToWorldPosition] Canvas: {canvas.name}");
-    Debug.Log($"[ConvertUIToWorldPosition] Canvas Render Mode: {canvas.renderMode}");
-    Debug.Log($"[ConvertUIToWorldPosition] UI Element: {uiElement.name}");
-    Debug.Log($"[ConvertUIToWorldPosition] UI Element position: {uiElement.position}");
-    
-    // Get screen position of UI element
-    Vector3 screenPos = RectTransformUtility.WorldToScreenPoint(
-        canvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : canvas.worldCamera,
-        uiElement.position
-    );
-    
-    Debug.Log($"[ConvertUIToWorldPosition] Screen Pos: {screenPos}");
-    
-    // Convert screen position to world position
-    Camera mainCam = Camera.main;
-    if (mainCam == null)
-    {
-        Debug.LogError("[ConvertUIToWorldPosition] Main camera not found!");
-        return Vector3.zero;
-    }
-    
-    Debug.Log($"[ConvertUIToWorldPosition] Main Camera: {mainCam.name}");
-    Debug.Log($"[ConvertUIToWorldPosition] Camera Pos: {mainCam.transform.position}");
-    
-    // Convert to world space (at specific Z distance for particles)
-    float zDistance = 10f; // Adjust ini sesuai kebutuhan
-    Vector3 worldPos = mainCam.ScreenToWorldPoint(new Vector3(screenPos.x, screenPos.y, zDistance));
-    
-    Debug.Log($"[ConvertUIToWorldPosition] zDistance: {zDistance}");
-    Debug.Log($"[ConvertUIToWorldPosition] Final World Pos: {worldPos}");
-    Debug.Log($"[ConvertUIToWorldPosition] ===== END =====");
-    
-    return worldPos;
-}
 
-
-
-    // ✅ NEW: Disable particle effect after delay
     IEnumerator DisableParticleAfterDelay(GameObject particleFX, float delay)
     {
         yield return new WaitForSeconds(delay);
@@ -1146,45 +1125,4 @@ Sprite GetBoosterIcon(string boosterId)
     {
         OnLevelComplete();
     }
-
-    [ContextMenu("Debug: Print Saved Rewards for Current Level")]
-void Debug_PrintSavedRewards()
-{
-    if (string.IsNullOrEmpty(currentLevelId))
-    {
-        Debug.Log("No current level ID!");
-        return;
-    }
-
-    string json = PlayerPrefs.GetString($"LevelRewards_{currentLevelId}", "");
-    
-    if (string.IsNullOrEmpty(json))
-    {
-        Debug.Log($"❌ NO SAVED REWARDS for {currentLevelId}");
-    }
-    else
-    {
-        Debug.Log($"=== SAVED REWARDS FOR {currentLevelId} ===");
-        Debug.Log(json);
-        
-        try
-        {
-            RewardDataList list = JsonUtility.FromJson<RewardDataList>(json);
-            if (list != null && list.rewards != null)
-            {
-                Debug.Log($"\n✓ Parsed {list.rewards.Count} rewards:");
-                foreach (var r in list.rewards)
-                {
-                    Debug.Log($"  - {r.type}: {r.displayName} x{r.amount} (boosterId: {r.boosterId})");
-                }
-            }
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogError($"Failed to parse: {e.Message}");
-        }
-        
-        Debug.Log("========================================");
-    }
-}
 }

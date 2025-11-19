@@ -8,29 +8,19 @@ using TMPro;
 public enum Currency { Coins, Shards, KulinoCoin }
 
 /// <summary>
-/// ShopManager - FULLY AUTOMATED dengan Dynamic Category Containers
-/// Version: 5.0 - Container System
+/// ShopManager - COMPLETE FIX
+/// Version: 5.2 - All Issues Fixed
 /// </summary>
 public class ShopManager : MonoBehaviour
 {
     [Header("🎨 Prefabs")]
-    [Tooltip("Prefab CategoryContainer (dengan CategoryContainerUI)")]
     public GameObject categoryContainerPrefab;
-    
-    [Tooltip("Prefab ShopItem (BackgroundItem dengan ShopItemUI)")]
     public GameObject itemUIPrefab;
-    
-    [Tooltip("Parent transform (ItemsShop dengan Vertical Layout)")]
     public Transform itemsParent;
-    
-    [Tooltip("Popup controller untuk buy preview")]
     public BuyPreviewController buyPreviewUI;
 
     [Header("📦 Data")]
-    [Tooltip("ShopDatabase ScriptableObject")]
     public ShopDatabase database;
-    
-    [Tooltip("Fallback manual list (jika database null)")]
     public List<ShopItemData> shopItems = new List<ShopItemData>();
 
     [Header("🎯 Icons")]
@@ -39,24 +29,27 @@ public class ShopManager : MonoBehaviour
     public Sprite iconEnergy;
 
     [Header("⚙️ Layout Settings")]
-    [Tooltip("Grid columns untuk items (default: 3)")]
+    [Tooltip("Spacing antara category containers")]
+    public float categorySpacing = 20f;
+    
+    [Tooltip("Padding atas untuk first category")]
+    public float topPadding = 20f;
+    
+    [Tooltip("Grid columns untuk items")]
     public int gridColumns = 3;
     
     [Tooltip("Cell size untuk items")]
-    public Vector2 cellSize = new Vector2(150f, 200f);
+    public Vector2 cellSize = new Vector2(200f, 200f);
     
     [Tooltip("Spacing antara items")]
-    public Vector2 spacing = new Vector2(10f, 10f);
+    public Vector2 itemSpacing = new Vector2(10f, 10f);
 
-    // 4 Filters
     public enum ShopFilter { All, Shard, Items, Bundle }
 
-    // Private
     private ShopItemData _pendingPurchaseData;
     private Dictionary<ShopRewardType, CategoryContainerUI> categoryContainers = new Dictionary<ShopRewardType, CategoryContainerUI>();
     private ShopFilter currentFilter = ShopFilter.All;
 
-    // Category ordering
     private readonly ShopRewardType[] categoryOrder = new ShopRewardType[]
     {
         ShopRewardType.Shard,
@@ -65,8 +58,6 @@ public class ShopManager : MonoBehaviour
         ShopRewardType.Booster,
         ShopRewardType.Bundle
     };
-
-    // ==================== UNITY LIFECYCLE ====================
 
     void Awake()
     {
@@ -85,14 +76,9 @@ public class ShopManager : MonoBehaviour
             buyPreviewUI.Initialize(this);
         }
 
-        // ✅ Setup ItemsParent Vertical Layout
         SetupItemsParentLayout();
-
-        // ✅ AUTO-POPULATE from database
         PopulateShop();
     }
-
-    // ==================== SETUP ====================
 
     void SetupItemsParentLayout()
     {
@@ -109,16 +95,16 @@ public class ShopManager : MonoBehaviour
             verticalLayout = itemsParent.gameObject.AddComponent<VerticalLayoutGroup>();
         }
 
-        // Setup vertical layout properties
+        // ✅ ALWAYS update these settings (don't rely on prefab)
         verticalLayout.childControlWidth = true;
         verticalLayout.childControlHeight = false;
         verticalLayout.childForceExpandWidth = true;
         verticalLayout.childForceExpandHeight = false;
-        verticalLayout.spacing = -25f; // Space between categories
-        verticalLayout.padding = new RectOffset(10, 10, 10, 10);
+        verticalLayout.spacing = categorySpacing;
+        verticalLayout.padding = new RectOffset(0, 0, (int)topPadding, 0); // ✅ TOP PADDING
         verticalLayout.childAlignment = TextAnchor.UpperCenter;
 
-        Debug.Log("[ShopManager] ✓ ItemsParent VerticalLayout setup done");
+        Debug.Log($"[ShopManager] ✓ VerticalLayout: spacing={categorySpacing}, topPadding={topPadding}");
     }
 
     void EnsurePlayerEconomy()
@@ -150,17 +136,10 @@ public class ShopManager : MonoBehaviour
         }
     }
 
-    // ==================== 🚀 AUTO-POPULATE SYSTEM ====================
-
     public void PopulateShop()
     {
-        Debug.Log($"[ShopManager] 🚀 PopulateShop - Filter: {currentFilter}");
-        
-        // Default: Show ALL
         FilterShop(ShopFilter.All);
     }
-
-    // ==================== FILTERING ====================
 
     public void ShowAll() { FilterShop(ShopFilter.All); }
     public void ShowShard() { FilterShop(ShopFilter.Shard); }
@@ -171,16 +150,11 @@ public class ShopManager : MonoBehaviour
     {
         currentFilter = filter;
         Debug.Log($"[ShopManager] FilterShop: {filter}");
-        
         RepopulateShop();
     }
 
-    /// <summary>
-    /// ✅ CORE: Repopulate shop dengan dynamic containers
-    /// </summary>
     void RepopulateShop()
     {
-        // Clear existing containers
         ClearAllContainers();
 
         if (categoryContainerPrefab == null || itemUIPrefab == null || itemsParent == null)
@@ -197,7 +171,6 @@ public class ShopManager : MonoBehaviour
             return;
         }
 
-        // ✅ Create containers based on filter
         switch (currentFilter)
         {
             case ShopFilter.All:
@@ -209,7 +182,7 @@ public class ShopManager : MonoBehaviour
                 break;
                 
             case ShopFilter.Items:
-                CreateItemsCategories(source); // Coin + Energy + Booster
+                CreateItemsCategories(source);
                 break;
                 
             case ShopFilter.Bundle:
@@ -217,12 +190,13 @@ public class ShopManager : MonoBehaviour
                 break;
         }
 
-        Debug.Log($"[ShopManager] ✓ Created {categoryContainers.Count} category containers");
+        // ✅ Force layout refresh after spawn
+        Canvas.ForceUpdateCanvases();
+        LayoutRebuilder.ForceRebuildLayoutImmediate(itemsParent.GetComponent<RectTransform>());
+
+        Debug.Log($"[ShopManager] ✓ Created {categoryContainers.Count} categories");
     }
 
-    /// <summary>
-    /// ✅ Create ALL categories
-    /// </summary>
     void CreateAllCategories(List<ShopItemData> source)
     {
         foreach (var rewardType in categoryOrder)
@@ -231,9 +205,6 @@ public class ShopManager : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// ✅ Create ITEMS categories (Coin + Energy + Booster)
-    /// </summary>
     void CreateItemsCategories(List<ShopItemData> source)
     {
         CreateCategoryContainer(ShopRewardType.Coin, source);
@@ -241,29 +212,21 @@ public class ShopManager : MonoBehaviour
         CreateCategoryContainer(ShopRewardType.Booster, source);
     }
 
-    /// <summary>
-    /// ✅ Create single category
-    /// </summary>
     void CreateSingleCategory(ShopRewardType rewardType, List<ShopItemData> source)
     {
         CreateCategoryContainer(rewardType, source);
     }
 
-    /// <summary>
-    /// ✅ CORE: Create category container dengan items
-    /// </summary>
     void CreateCategoryContainer(ShopRewardType rewardType, List<ShopItemData> source)
     {
-        // Filter items by reward type
         List<ShopItemData> filtered = FilterByRewardType(source, rewardType);
         
         if (filtered.Count == 0)
         {
-            Debug.Log($"[ShopManager] No items for category: {rewardType}");
+            Debug.Log($"[ShopManager] No items for: {rewardType}");
             return;
         }
 
-        // Spawn container
         GameObject containerObj = Instantiate(categoryContainerPrefab, itemsParent);
         containerObj.name = $"CategoryContainer_{rewardType}";
 
@@ -271,32 +234,36 @@ public class ShopManager : MonoBehaviour
         
         if (container == null)
         {
-            Debug.LogError($"[ShopManager] CategoryContainerUI not found on prefab!");
+            Debug.LogError($"[ShopManager] CategoryContainerUI not found!");
             Destroy(containerObj);
             return;
         }
 
-        // Setup container
+        // ✅ Pass layout settings BEFORE adding items
         container.gridColumns = gridColumns;
         container.cellSize = cellSize;
-        container.spacing = spacing;
+        container.spacing = itemSpacing;
+        
+        // ✅ Setup header
         container.SetHeaderText(GetCategoryDisplayName(rewardType));
+        
+        // ✅ Clear dummy items BEFORE adding real items
+        container.ClearDummyItems();
+        
+        // ✅ Setup grid layout
+        container.SetupGridLayout();
 
-        // Add items to container
+        // ✅ Add items
         foreach (var data in filtered)
         {
             container.AddItem(itemUIPrefab, data, this);
         }
 
-        // Store reference
         categoryContainers[rewardType] = container;
 
-        Debug.Log($"[ShopManager] ✓ Created '{rewardType}' category with {filtered.Count} items");
+        Debug.Log($"[ShopManager] ✓ '{rewardType}' with {filtered.Count} items");
     }
 
-    /// <summary>
-    /// Filter items by reward type
-    /// </summary>
     List<ShopItemData> FilterByRewardType(List<ShopItemData> source, ShopRewardType rewardType)
     {
         List<ShopItemData> filtered = new List<ShopItemData>();
@@ -312,9 +279,6 @@ public class ShopManager : MonoBehaviour
         return filtered;
     }
 
-    /// <summary>
-    /// Get display name untuk category
-    /// </summary>
     string GetCategoryDisplayName(ShopRewardType type)
     {
         return type switch
@@ -328,9 +292,6 @@ public class ShopManager : MonoBehaviour
         };
     }
 
-    /// <summary>
-    /// Clear all containers
-    /// </summary>
     void ClearAllContainers()
     {
         foreach (var kvp in categoryContainers)
@@ -342,12 +303,7 @@ public class ShopManager : MonoBehaviour
         }
         
         categoryContainers.Clear();
-        
-        Debug.Log("[ShopManager] Cleared all category containers");
     }
-
-    // ==================== PURCHASE FLOW ====================
-    // (Keep existing purchase code - no changes needed)
 
     public void ShowBuyPreview(ShopItemData data, ShopItemUI fromUI = null)
     {
@@ -662,28 +618,8 @@ public class ShopManager : MonoBehaviour
             : data.rewardAmount.ToString("N0");
     }
 
-    IEnumerator RefreshKulinoCoinBalanceDelayed(float delay)
-    {
-        yield return new WaitForSeconds(delay);
-        KulinoCoinManager.Instance?.RefreshBalance();
-    }
-
-    // ==================== CONTEXT MENU ====================
-
     [ContextMenu("🔄 Refresh Shop")]
     void Context_Refresh() { RepopulateShop(); }
-
-    [ContextMenu("🧪 Test: ALL")]
-    void Context_All() { FilterShop(ShopFilter.All); }
-
-    [ContextMenu("🧪 Test: SHARD")]
-    void Context_Shard() { FilterShop(ShopFilter.Shard); }
-
-    [ContextMenu("🧪 Test: ITEMS")]
-    void Context_Items() { FilterShop(ShopFilter.Items); }
-
-    [ContextMenu("🧪 Test: BUNDLE")]
-    void Context_Bundle() { FilterShop(ShopFilter.Bundle); }
 
     [System.Serializable]
     class PaymentPayload

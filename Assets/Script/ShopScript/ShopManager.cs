@@ -8,8 +8,10 @@ using TMPro;
 public enum Currency { Coins, Shards, KulinoCoin }
 
 /// <summary>
-/// ShopManager - COMPLETE FIX
-/// Version: 5.2 - All Issues Fixed
+/// ShopManager - FINAL FIX v8.0
+/// ✅ Multiple frames wait untuk Canvas layout
+/// ✅ Proper initialization sequence
+/// ✅ Force layout rebuild dengan delay
 /// </summary>
 public class ShopManager : MonoBehaviour
 {
@@ -28,20 +30,17 @@ public class ShopManager : MonoBehaviour
     public Sprite iconShard;
     public Sprite iconEnergy;
 
-    [Header("⚙️ Layout Settings")]
-    [Tooltip("Spacing antara category containers")]
+    [Header("🔄 Scroll Settings")]
+    public ScrollRect scrollRect;
+    
+    [Range(0.1f, 1f)]
+    public float scrollSpeed = 0.3f;
+
+    [Header("⚠️ Layout Settings (Read Only)")]
     public float categorySpacing = 20f;
-    
-    [Tooltip("Padding atas untuk first category")]
     public float topPadding = 20f;
-    
-    [Tooltip("Grid columns untuk items")]
     public int gridColumns = 3;
-    
-    [Tooltip("Cell size untuk items")]
     public Vector2 cellSize = new Vector2(200f, 200f);
-    
-    [Tooltip("Spacing antara items")]
     public Vector2 itemSpacing = new Vector2(10f, 10f);
 
     public enum ShopFilter { All, Shard, Items, Bundle }
@@ -49,6 +48,8 @@ public class ShopManager : MonoBehaviour
     private ShopItemData _pendingPurchaseData;
     private Dictionary<ShopRewardType, CategoryContainerUI> categoryContainers = new Dictionary<ShopRewardType, CategoryContainerUI>();
     private ShopFilter currentFilter = ShopFilter.All;
+    private Coroutine scrollCoroutine;
+    private bool isInitialized = false;
 
     private readonly ShopRewardType[] categoryOrder = new ShopRewardType[]
     {
@@ -67,6 +68,16 @@ public class ShopManager : MonoBehaviour
         {
             buyPreviewUI = FindFirstObjectByType<BuyPreviewController>();
         }
+
+        if (scrollRect == null && itemsParent != null)
+        {
+            scrollRect = itemsParent.GetComponentInParent<ScrollRect>();
+            
+            if (scrollRect != null)
+            {
+                Debug.Log("[ShopManager] ✓ ScrollRect auto-found");
+            }
+        }
     }
 
     void Start()
@@ -76,35 +87,109 @@ public class ShopManager : MonoBehaviour
             buyPreviewUI.Initialize(this);
         }
 
-        SetupItemsParentLayout();
-        PopulateShop();
+        // ✅ DO NOT populate here - tunggu OnEnable
     }
 
-    void SetupItemsParentLayout()
+    void OnEnable()
     {
-        if (itemsParent == null)
+        // ✅ Populate saat panel shop dibuka
+        if (!isInitialized)
         {
-            Debug.LogError("[ShopManager] itemsParent not assigned!");
-            return;
+            StartCoroutine(InitializeShopSequence());
         }
+        else
+        {
+            // Refresh layout jika sudah pernah init
+            StartCoroutine(RefreshLayoutSequence());
+        }
+    }
 
-        var verticalLayout = itemsParent.GetComponent<VerticalLayoutGroup>();
+    /// <summary>
+    /// ✅ CRITICAL: Multi-frame initialization sequence
+    /// </summary>
+    IEnumerator InitializeShopSequence()
+    {
+        Debug.Log("[ShopManager] === Starting initialization sequence ===");
         
-        if (verticalLayout == null)
+        // Frame 1: Wait untuk Canvas ready
+        yield return null;
+        
+        // Frame 2: Populate shop
+        Debug.Log("[ShopManager] Frame 2: Populating shop...");
+        PopulateShopInternal();
+        
+        // Frame 3: Wait untuk items spawn
+        yield return null;
+        
+        // Frame 4: First layout pass
+        Debug.Log("[ShopManager] Frame 4: First layout pass...");
+        Canvas.ForceUpdateCanvases();
+        
+        // Frame 5: Second layout pass
+        yield return null;
+        Debug.Log("[ShopManager] Frame 5: Second layout pass...");
+        ForceRebuildAllLayouts();
+        
+        // Frame 6: Final refresh
+        yield return null;
+        Debug.Log("[ShopManager] Frame 6: Final refresh...");
+        ForceRebuildAllLayouts();
+        
+        // Frame 7: Scroll to top
+        yield return null;
+        if (scrollRect != null)
         {
-            verticalLayout = itemsParent.gameObject.AddComponent<VerticalLayoutGroup>();
+            scrollRect.verticalNormalizedPosition = 1f;
+        }
+        
+        isInitialized = true;
+        Debug.Log("[ShopManager] ✅ Initialization complete!");
+    }
+
+    /// <summary>
+    /// ✅ Refresh layout saat panel reopened
+    /// </summary>
+    IEnumerator RefreshLayoutSequence()
+    {
+        yield return null;
+        yield return null;
+        
+        ForceRebuildAllLayouts();
+        
+        if (scrollRect != null)
+        {
+            scrollRect.verticalNormalizedPosition = 1f;
+        }
+    }
+
+    /// <summary>
+    /// ✅ Force rebuild SEMUA layouts
+    /// </summary>
+    void ForceRebuildAllLayouts()
+    {
+        // Rebuild parent
+        if (itemsParent != null)
+        {
+            var parentRect = itemsParent.GetComponent<RectTransform>();
+            if (parentRect != null)
+            {
+                LayoutRebuilder.ForceRebuildLayoutImmediate(parentRect);
+            }
         }
 
-        // ✅ ALWAYS update these settings (don't rely on prefab)
-        verticalLayout.childControlWidth = true;
-        verticalLayout.childControlHeight = false;
-        verticalLayout.childForceExpandWidth = true;
-        verticalLayout.childForceExpandHeight = false;
-        verticalLayout.spacing = categorySpacing;
-        verticalLayout.padding = new RectOffset(0, 0, (int)topPadding, 0); // ✅ TOP PADDING
-        verticalLayout.childAlignment = TextAnchor.UpperCenter;
+        // Rebuild semua category containers
+        foreach (var kvp in categoryContainers)
+        {
+            if (kvp.Value != null && kvp.Value.gameObject != null)
+            {
+                kvp.Value.RefreshLayout();
+            }
+        }
 
-        Debug.Log($"[ShopManager] ✓ VerticalLayout: spacing={categorySpacing}, topPadding={topPadding}");
+        // Force Canvas update
+        Canvas.ForceUpdateCanvases();
+        
+        Debug.Log("[ShopManager] ✓ All layouts rebuilt");
     }
 
     void EnsurePlayerEconomy()
@@ -138,22 +223,59 @@ public class ShopManager : MonoBehaviour
 
     public void PopulateShop()
     {
-        FilterShop(ShopFilter.All);
+        StartCoroutine(PopulateShopSequence());
     }
 
-    public void ShowAll() { FilterShop(ShopFilter.All); }
-    public void ShowShard() { FilterShop(ShopFilter.Shard); }
-    public void ShowItems() { FilterShop(ShopFilter.Items); }
-    public void ShowBundle() { FilterShop(ShopFilter.Bundle); }
+    IEnumerator PopulateShopSequence()
+    {
+        FilterShop(ShopFilter.All);
+        
+        yield return null;
+        yield return null;
+        
+        ForceRebuildAllLayouts();
+        ScrollToTop();
+    }
+
+    public void ShowAll() 
+    { 
+        StartCoroutine(FilterSequence(ShopFilter.All));
+    }
+    
+    public void ShowShard() 
+    { 
+        StartCoroutine(FilterSequence(ShopFilter.Shard));
+    }
+    
+    public void ShowItems() 
+    { 
+        StartCoroutine(FilterSequence(ShopFilter.Items));
+    }
+    
+    public void ShowBundle() 
+    { 
+        StartCoroutine(FilterSequence(ShopFilter.Bundle));
+    }
+
+    IEnumerator FilterSequence(ShopFilter filter)
+    {
+        FilterShop(filter);
+        
+        yield return null;
+        yield return null;
+        
+        ForceRebuildAllLayouts();
+        ScrollToTop();
+    }
 
     public void FilterShop(ShopFilter filter)
     {
         currentFilter = filter;
         Debug.Log($"[ShopManager] FilterShop: {filter}");
-        RepopulateShop();
+        PopulateShopInternal();
     }
 
-    void RepopulateShop()
+    void PopulateShopInternal()
     {
         ClearAllContainers();
 
@@ -189,10 +311,6 @@ public class ShopManager : MonoBehaviour
                 CreateSingleCategory(ShopRewardType.Bundle, source);
                 break;
         }
-
-        // ✅ Force layout refresh after spawn
-        Canvas.ForceUpdateCanvases();
-        LayoutRebuilder.ForceRebuildLayoutImmediate(itemsParent.GetComponent<RectTransform>());
 
         Debug.Log($"[ShopManager] ✓ Created {categoryContainers.Count} categories");
     }
@@ -239,25 +357,16 @@ public class ShopManager : MonoBehaviour
             return;
         }
 
-        // ✅ Pass layout settings BEFORE adding items
-        container.gridColumns = gridColumns;
-        container.cellSize = cellSize;
-        container.spacing = itemSpacing;
-        
-        // ✅ Setup header
         container.SetHeaderText(GetCategoryDisplayName(rewardType));
-        
-        // ✅ Clear dummy items BEFORE adding real items
         container.ClearDummyItems();
-        
-        // ✅ Setup grid layout
-        container.SetupGridLayout();
 
-        // ✅ Add items
         foreach (var data in filtered)
         {
             container.AddItem(itemUIPrefab, data, this);
         }
+
+        // ✅ Notify container bahwa semua items sudah added
+        container.OnAllItemsAdded();
 
         categoryContainers[rewardType] = container;
 
@@ -303,6 +412,39 @@ public class ShopManager : MonoBehaviour
         }
         
         categoryContainers.Clear();
+    }
+
+    public void ScrollToTop()
+    {
+        if (scrollRect == null)
+        {
+            Debug.LogWarning("[ShopManager] ScrollRect not assigned!");
+            return;
+        }
+
+        if (scrollCoroutine != null)
+        {
+            StopCoroutine(scrollCoroutine);
+        }
+
+        scrollCoroutine = StartCoroutine(SmoothScrollToTop());
+    }
+
+    IEnumerator SmoothScrollToTop()
+    {
+        float currentPos = scrollRect.verticalNormalizedPosition;
+        float targetPos = 1f;
+        float elapsed = 0f;
+
+        while (elapsed < 1f)
+        {
+            elapsed += Time.deltaTime / scrollSpeed;
+            scrollRect.verticalNormalizedPosition = Mathf.Lerp(currentPos, targetPos, elapsed);
+            yield return null;
+        }
+
+        scrollRect.verticalNormalizedPosition = targetPos;
+        scrollCoroutine = null;
     }
 
     public void ShowBuyPreview(ShopItemData data, ShopItemUI fromUI = null)
@@ -619,7 +761,25 @@ public class ShopManager : MonoBehaviour
     }
 
     [ContextMenu("🔄 Refresh Shop")]
-    void Context_Refresh() { RepopulateShop(); }
+    void Context_Refresh() 
+    { 
+        StartCoroutine(PopulateShopSequence());
+    }
+
+    [ContextMenu("🔧 Force Layout Rebuild")]
+    void Context_ForceLayout()
+    {
+        StartCoroutine(ForceLayoutSequence());
+    }
+
+    IEnumerator ForceLayoutSequence()
+    {
+        yield return null;
+        yield return null;
+        ForceRebuildAllLayouts();
+        yield return null;
+        ForceRebuildAllLayouts();
+    }
 
     [System.Serializable]
     class PaymentPayload

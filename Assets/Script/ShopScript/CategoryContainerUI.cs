@@ -1,11 +1,12 @@
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using System.Collections;
 using System.Collections.Generic;
 
 /// <summary>
-/// CategoryContainerUI - COMPLETE FIX
-/// Version: 1.2 - All Issues Fixed
+/// CategoryContainerUI - FIXED v3.0
+/// ✅ Auto refresh layout setelah items added
 /// </summary>
 public class CategoryContainerUI : MonoBehaviour
 {
@@ -14,13 +15,37 @@ public class CategoryContainerUI : MonoBehaviour
     public Transform itemsGrid;
     public TMP_Text headerText;
 
-    [Header("Layout Settings")]
+    [Header("⚠️ DO NOT MODIFY - Layout sudah diatur di Prefab")]
     public int gridColumns = 3;
     public Vector2 cellSize = new Vector2(200f, 200f);
     public Vector2 spacing = new Vector2(10f, 10f);
 
     private List<GameObject> spawnedItems = new List<GameObject>();
     private GridLayoutGroup gridLayout;
+    private bool needsRefresh = false;
+
+    void Awake()
+    {
+        if (itemsGrid != null)
+        {
+            gridLayout = itemsGrid.GetComponent<GridLayoutGroup>();
+            
+            if (gridLayout != null)
+            {
+                Debug.Log($"[CategoryContainer] ✓ GridLayout found");
+            }
+        }
+    }
+
+    void LateUpdate()
+    {
+        // ✅ Refresh layout di LateUpdate jika perlu
+        if (needsRefresh)
+        {
+            needsRefresh = false;
+            RefreshLayout();
+        }
+    }
 
     public void SetHeaderText(string text)
     {
@@ -35,14 +60,10 @@ public class CategoryContainerUI : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// ✅ NEW: Clear dummy items from prefab
-    /// </summary>
     public void ClearDummyItems()
     {
         if (itemsGrid == null) return;
 
-        // Destroy all existing children (dummy items from prefab)
         int childCount = itemsGrid.childCount;
         for (int i = childCount - 1; i >= 0; i--)
         {
@@ -58,36 +79,6 @@ public class CategoryContainerUI : MonoBehaviour
         }
 
         Debug.Log($"[CategoryContainer] Cleared {childCount} dummy items");
-    }
-
-    /// <summary>
-    /// ✅ Setup grid layout - called AFTER ClearDummyItems
-    /// </summary>
-    public void SetupGridLayout()
-    {
-        if (itemsGrid == null)
-        {
-            Debug.LogError($"[CategoryContainer] itemsGrid not assigned!");
-            return;
-        }
-
-        gridLayout = itemsGrid.GetComponent<GridLayoutGroup>();
-        
-        if (gridLayout == null)
-        {
-            gridLayout = itemsGrid.gameObject.AddComponent<GridLayoutGroup>();
-        }
-
-        // ✅ ALWAYS update settings (don't trust prefab values)
-        gridLayout.cellSize = cellSize;
-        gridLayout.spacing = spacing;
-        gridLayout.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
-        gridLayout.constraintCount = gridColumns;
-        gridLayout.childAlignment = TextAnchor.UpperLeft;
-        gridLayout.startCorner = GridLayoutGroup.Corner.UpperLeft;
-        gridLayout.startAxis = GridLayoutGroup.Axis.Horizontal;
-
-        Debug.Log($"[CategoryContainer] GridLayout: {gridColumns}cols, cell={cellSize}, spacing={spacing}");
     }
 
     public void AddItem(GameObject itemPrefab, ShopItemData data, ShopManager manager)
@@ -106,12 +97,54 @@ public class CategoryContainerUI : MonoBehaviour
         {
             ui.Setup(data, manager);
             spawnedItems.Add(itemObj);
+            
+            // ✅ Mark untuk refresh di LateUpdate
+            needsRefresh = true;
         }
         else
         {
             Debug.LogWarning($"[CategoryContainer] ShopItemUI not found on {itemObj.name}!");
             Destroy(itemObj);
         }
+    }
+
+    /// <summary>
+    /// ✅ NEW: Refresh layout setelah items added
+    /// </summary>
+    public void RefreshLayout()
+    {
+        if (itemsGrid == null) return;
+
+        // Force rebuild grid layout
+        var gridRect = itemsGrid.GetComponent<RectTransform>();
+        if (gridRect != null)
+        {
+            LayoutRebuilder.ForceRebuildLayoutImmediate(gridRect);
+        }
+
+        // Force rebuild container
+        var containerRect = GetComponent<RectTransform>();
+        if (containerRect != null)
+        {
+            LayoutRebuilder.ForceRebuildLayoutImmediate(containerRect);
+        }
+    }
+
+    /// <summary>
+    /// ✅ NEW: Call setelah semua items added
+    /// </summary>
+    public void OnAllItemsAdded()
+    {
+        StartCoroutine(RefreshLayoutDelayed());
+    }
+
+    IEnumerator RefreshLayoutDelayed()
+    {
+        // Wait 2 frames untuk Canvas selesai layout
+        yield return null;
+        yield return null;
+        
+        RefreshLayout();
     }
 
     public void ClearItems()

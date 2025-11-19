@@ -5,7 +5,8 @@ using System.Collections;
 using System.Collections.Generic;
 
 /// <summary>
-/// CategoryContainerUI - FIXED v3.0
+/// CategoryContainerUI - FIXED v4.0
+/// ✅ Fixed coroutine error saat GameObject inactive
 /// ✅ Auto refresh layout setelah items added
 /// </summary>
 public class CategoryContainerUI : MonoBehaviour
@@ -14,11 +15,6 @@ public class CategoryContainerUI : MonoBehaviour
     public GameObject headerObject;
     public Transform itemsGrid;
     public TMP_Text headerText;
-
-    [Header("⚠️ DO NOT MODIFY - Layout sudah diatur di Prefab")]
-    public int gridColumns = 3;
-    public Vector2 cellSize = new Vector2(200f, 200f);
-    public Vector2 spacing = new Vector2(10f, 10f);
 
     private List<GameObject> spawnedItems = new List<GameObject>();
     private GridLayoutGroup gridLayout;
@@ -109,7 +105,7 @@ public class CategoryContainerUI : MonoBehaviour
     }
 
     /// <summary>
-    /// ✅ NEW: Refresh layout setelah items added
+    /// ✅ Refresh layout setelah items added
     /// </summary>
     public void RefreshLayout()
     {
@@ -131,11 +127,20 @@ public class CategoryContainerUI : MonoBehaviour
     }
 
     /// <summary>
-    /// ✅ NEW: Call setelah semua items added
+    /// ✅ FIXED: Call setelah semua items added - check GameObject active sebelum StartCoroutine
     /// </summary>
     public void OnAllItemsAdded()
     {
-        StartCoroutine(RefreshLayoutDelayed());
+        // ✅ FIX: Jangan start coroutine jika GameObject inactive
+        if (gameObject.activeInHierarchy)
+        {
+            StartCoroutine(RefreshLayoutDelayed());
+        }
+        else
+        {
+            // Jika inactive, langsung mark untuk refresh di LateUpdate saat active
+            needsRefresh = true;
+        }
     }
 
     IEnumerator RefreshLayoutDelayed()
@@ -168,5 +173,11 @@ public class CategoryContainerUI : MonoBehaviour
     public void SetActive(bool active)
     {
         gameObject.SetActive(active);
+        
+        // ✅ Refresh layout saat diaktifkan
+        if (active && needsRefresh)
+        {
+            RefreshLayout();
+        }
     }
 }

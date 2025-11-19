@@ -3,15 +3,14 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
-using TMPro;
 
 public enum Currency { Coins, Shards, KulinoCoin }
 
 /// <summary>
-/// ShopManager - FINAL FIX v8.0
-/// ✅ Multiple frames wait untuk Canvas layout
-/// ✅ Proper initialization sequence
-/// ✅ Force layout rebuild dengan delay
+/// ShopManager - CLEANED v9.0
+/// ✅ Removed unused layout settings
+/// ✅ Improved scroll functionality
+/// ✅ Better initialization sequence
 /// </summary>
 public class ShopManager : MonoBehaviour
 {
@@ -35,13 +34,6 @@ public class ShopManager : MonoBehaviour
     
     [Range(0.1f, 1f)]
     public float scrollSpeed = 0.3f;
-
-    [Header("⚠️ Layout Settings (Read Only)")]
-    public float categorySpacing = 20f;
-    public float topPadding = 20f;
-    public int gridColumns = 3;
-    public Vector2 cellSize = new Vector2(200f, 200f);
-    public Vector2 itemSpacing = new Vector2(10f, 10f);
 
     public enum ShopFilter { All, Shard, Items, Bundle }
 
@@ -86,56 +78,45 @@ public class ShopManager : MonoBehaviour
         {
             buyPreviewUI.Initialize(this);
         }
-
-        // ✅ DO NOT populate here - tunggu OnEnable
     }
 
     void OnEnable()
     {
-        // ✅ Populate saat panel shop dibuka
         if (!isInitialized)
         {
             StartCoroutine(InitializeShopSequence());
         }
         else
         {
-            // Refresh layout jika sudah pernah init
             StartCoroutine(RefreshLayoutSequence());
         }
     }
 
     /// <summary>
-    /// ✅ CRITICAL: Multi-frame initialization sequence
+    /// ✅ Multi-frame initialization sequence
     /// </summary>
     IEnumerator InitializeShopSequence()
     {
         Debug.Log("[ShopManager] === Starting initialization sequence ===");
         
-        // Frame 1: Wait untuk Canvas ready
         yield return null;
         
-        // Frame 2: Populate shop
         Debug.Log("[ShopManager] Frame 2: Populating shop...");
         PopulateShopInternal();
         
-        // Frame 3: Wait untuk items spawn
         yield return null;
         
-        // Frame 4: First layout pass
         Debug.Log("[ShopManager] Frame 4: First layout pass...");
         Canvas.ForceUpdateCanvases();
         
-        // Frame 5: Second layout pass
         yield return null;
         Debug.Log("[ShopManager] Frame 5: Second layout pass...");
         ForceRebuildAllLayouts();
         
-        // Frame 6: Final refresh
         yield return null;
         Debug.Log("[ShopManager] Frame 6: Final refresh...");
         ForceRebuildAllLayouts();
         
-        // Frame 7: Scroll to top
         yield return null;
         if (scrollRect != null)
         {
@@ -167,7 +148,6 @@ public class ShopManager : MonoBehaviour
     /// </summary>
     void ForceRebuildAllLayouts()
     {
-        // Rebuild parent
         if (itemsParent != null)
         {
             var parentRect = itemsParent.GetComponent<RectTransform>();
@@ -177,7 +157,6 @@ public class ShopManager : MonoBehaviour
             }
         }
 
-        // Rebuild semua category containers
         foreach (var kvp in categoryContainers)
         {
             if (kvp.Value != null && kvp.Value.gameObject != null)
@@ -186,7 +165,6 @@ public class ShopManager : MonoBehaviour
             }
         }
 
-        // Force Canvas update
         Canvas.ForceUpdateCanvases();
         
         Debug.Log("[ShopManager] ✓ All layouts rebuilt");
@@ -365,7 +343,6 @@ public class ShopManager : MonoBehaviour
             container.AddItem(itemUIPrefab, data, this);
         }
 
-        // ✅ Notify container bahwa semua items sudah added
         container.OnAllItemsAdded();
 
         categoryContainers[rewardType] = container;

@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 20f7cb6a08990104ba74ca0580d03930, type: 3}
+  m_Name: Energy10
+  m_EditorClassIdentifier: 
+  itemId: energy_10
+  displayName: Energy
+  iconGrid: {fileID: 6132651842909860728, guid: aa93ae8787a4adf409f84799302e1cfd, type: 3}
+  iconPreview: {fileID: -7213742777133032008, guid: ecb8ef9b287f24e4fb5ce589825d2010, type: 3}
+  coinPrice: 500
+  shardPrice: 10
+  allowBuyWithCoins: 1
+  allowBuyWithShards: 1
+  kulinoCoinPrice: 0
+  allowBuyWithKulinoCoin: 0
+  rewardType: 0
+  rewardAmount: 10
+  bundleItems: []
+  description: 'bisa didapatkan dari menyelesaikan event
+
+    atau dibeli di shop'

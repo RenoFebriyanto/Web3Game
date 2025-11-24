@@ -1,7 +1,7 @@
 ﻿using UnityEngine;
 
 /// <summary>
-/// ✅ UPDATED: Fragment pickup dengan animation system
+/// ✅ FIXED: Fragment pickup dengan proper mission box matching
 /// </summary>
 public class FragmentCollectible : MonoBehaviour
 {
@@ -18,13 +18,13 @@ public class FragmentCollectible : MonoBehaviour
     {
         if (!other.CompareTag("Player")) return;
 
-        // ✅ NEW: Get sprite untuk animation
+        // Get sprite untuk animation
         Sprite fragmentSprite = GetFragmentSprite();
 
-        // ✅ NEW: Find mission box index
+        // Find mission box index yang match dengan fragment ini
         int missionBoxIndex = FindMissionBoxIndex();
 
-        // ✅ NEW: Trigger animation
+        // Trigger animation
         if (CollectibleAnimationManager.Instance != null && fragmentSprite != null)
         {
             CollectibleAnimationManager.Instance.AnimateFragmentCollect(
@@ -62,22 +62,41 @@ public class FragmentCollectible : MonoBehaviour
         return null;
     }
 
+    /// <summary>
+    /// ✅ FIXED: Find mission box index yang match dengan fragment type & variant
+    /// </summary>
     int FindMissionBoxIndex()
     {
         var missionUI = FindFirstObjectByType<FragmentMissionUI>();
-        if (missionUI == null) return 0;
-
-        // Find matching requirement index
-        if (missionUI.missionBoxes != null)
+        if (missionUI == null) 
         {
-            for (int i = 0; i < missionUI.missionBoxes.Count; i++)
+            Debug.LogWarning("[FragmentCollectible] FragmentMissionUI not found!");
+            return 0;
+        }
+
+        // ✅ FIX: Cari box yang match dengan fragment type & variant
+        if (LevelGameSession.Instance != null && LevelGameSession.Instance.currentLevel != null)
+        {
+            var requirements = LevelGameSession.Instance.currentLevel.requirements;
+            
+            if (requirements != null)
             {
-                // Check if this fragment matches requirement
-                // (This is simplified - adjust based on your FragmentMissionUI implementation)
-                return i; // Return first available box for now
+                for (int i = 0; i < requirements.Count; i++)
+                {
+                    var req = requirements[i];
+                    
+                    // Match fragment type & variant dengan requirement
+                    if (req.type == fragmentType && req.colorVariant == colorVariant)
+                    {
+                        Debug.Log($"[FragmentCollectible] ✓ Matched fragment {fragmentType} variant {colorVariant} to box {i}");
+                        return i;
+                    }
+                }
             }
         }
 
+        // Fallback: Return first box
+        Debug.LogWarning($"[FragmentCollectible] No matching requirement for {fragmentType} variant {colorVariant}, using box 0");
         return 0;
     }
 }

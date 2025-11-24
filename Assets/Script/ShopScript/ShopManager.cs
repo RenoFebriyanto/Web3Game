@@ -29,6 +29,8 @@ public class ShopManager : MonoBehaviour
     public Sprite iconShard;
     public Sprite iconEnergy;
 
+    
+
     [Header("🔄 Scroll Settings")]
     public ScrollRect scrollRect;
     
@@ -70,6 +72,8 @@ public class ShopManager : MonoBehaviour
                 Debug.Log("[ShopManager] ✓ ScrollRect auto-found");
             }
         }
+
+        
     }
 
     void Start()

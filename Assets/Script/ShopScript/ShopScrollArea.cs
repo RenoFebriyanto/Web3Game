@@ -1,9 +1,12 @@
 using UnityEngine;
-using UnityEngine.UI;
 using UnityEngine.EventSystems;
+using UnityEngine.UI;
+using System.Collections.Generic;
 
 /// <summary>
-/// ShopScrollArea - Component untuk memperluas area scroll di Shop
+/// Popup Alert untuk menampilkan pesan "Not Enough Energy"
+/// Singleton pattern - hanya 1 instance di scene
+/// Auto-hide setelah beberapa detik
 /// 
 /// CARA SETUP:
 /// 1. Buat GameObject baru di Canvas Shop (misal: "ShopScrollArea")

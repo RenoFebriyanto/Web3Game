@@ -1,6 +1,7 @@
 using UnityEngine;
 using TMPro;
 using UnityEngine.UI;
+using System.Collections;
 
 /// <summary>
 /// FIXED: UI Controller untuk Kulino Coin dengan proper initialization
@@ -48,27 +49,41 @@ public class KulinoCoinUI : MonoBehaviour
     }
 
     void Start()
-    {
-        SubscribeToManager();
+{
+    SubscribeToManager();
     
-    // ✅ FIX: Force update display immediately
-    if (KulinoCoinManager.Instance != null)
-    {
-        double currentBalance = KulinoCoinManager.Instance.GetBalance();
-        UpdateBalanceDisplay(currentBalance);
-        Debug.Log($"[KulinoCoinUI] ✓ Initial balance: {currentBalance:F6}");
-    }
-    else
-    {
-        Debug.LogWarning("[KulinoCoinUI] ⚠️ KulinoCoinManager not found at Start");
-    }
+    // ✅ FIX: Force update display immediately dengan retry mechanism
+    StartCoroutine(InitializeUIWithRetry());
 
-        // Auto refresh jika enabled
-        if (autoRefreshInterval > 0)
-        {
-            InvokeRepeating(nameof(RefreshBalance), autoRefreshInterval, autoRefreshInterval);
-        }
+    // Auto refresh jika enabled
+    if (autoRefreshInterval > 0)
+    {
+        InvokeRepeating(nameof(RefreshBalance), autoRefreshInterval, autoRefreshInterval);
     }
+}
+
+IEnumerator InitializeUIWithRetry()
+{
+    int maxRetries = 5;
+    int retryCount = 0;
+    
+    while (retryCount < maxRetries)
+    {
+        if (KulinoCoinManager.Instance != null)
+        {
+            double currentBalance = KulinoCoinManager.Instance.GetBalance();
+            UpdateBalanceDisplay(currentBalance);
+            Log($"✓ UI initialized with balance: {currentBalance:F6}");
+            yield break;
+        }
+        
+        retryCount++;
+        Log($"⏳ Waiting for KulinoCoinManager... (attempt {retryCount}/{maxRetries})");
+        yield return new WaitForSeconds(1f);
+    }
+    
+    LogWarning("⚠️ Failed to initialize UI - KulinoCoinManager not found after retries");
+}
 
     void SubscribeToManager()
 {

@@ -77,33 +77,79 @@ public class KulinoCoinManager : MonoBehaviour
     }
 
     /// <summary>
-    /// ✅ NEW: Wait untuk wallet dari GameManager
-    /// </summary>
-    IEnumerator WaitForGameManagerWallet()
+/// ✅ UPDATED: Wait untuk wallet dari GameManager dengan timeout lebih lama
+/// </summary>
+IEnumerator WaitForGameManagerWallet()
+{
+    Log("🔄 Waiting for wallet from GameManager...");
+    
+    // Wait maksimal 15 detik (lebih lama dari sebelumnya)
+    float timeout = 15f;
+    float elapsed = 0f;
+
+    while (elapsed < timeout)
     {
-        // Wait maksimal 5 detik
-        float timeout = 5f;
-        float elapsed = 0f;
-
-        while (elapsed < timeout)
+        if (GameManager.Instance != null)
         {
-            if (GameManager.Instance != null)
+            string address = GameManager.Instance.GetWalletAddress();
+            if (!string.IsNullOrEmpty(address))
             {
-                string address = GameManager.Instance.GetWalletAddress();
-                if (!string.IsNullOrEmpty(address))
-                {
-                    Log($"✓ Got wallet from GameManager: {ShortenAddress(address)}");
-                    Initialize(address);
-                    yield break;
-                }
+                Log($"✅ Got wallet from GameManager: {ShortenAddress(address)}");
+                Initialize(address);
+                yield break;
             }
-
-            yield return new WaitForSeconds(0.5f);
-            elapsed += 0.5f;
         }
 
-        LogWarning("⚠️ No wallet address found after 5 seconds. Waiting for manual initialization.");
+        yield return new WaitForSeconds(0.5f);
+        elapsed += 0.5f;
     }
+
+    LogWarning("⚠️ No wallet address found after 15 seconds. Waiting for manual initialization.");
+    
+    // Coba cek dari PlayerPrefs sebagai fallback
+    string savedWallet = PlayerPrefs.GetString("WalletAddress", "");
+    if (!string.IsNullOrEmpty(savedWallet))
+    {
+        Log($"📦 Found saved wallet in PlayerPrefs: {ShortenAddress(savedWallet)}");
+        Initialize(savedWallet);
+    }
+}
+
+// ==================== TAMBAHKAN DI AKHIR CLASS ====================
+
+[ContextMenu("🔍 Debug: Force Check Wallet")]
+void Context_ForceCheckWallet()
+{
+    Debug.Log("=== WALLET CHECK ===");
+    Debug.Log($"GameManager exists: {(GameManager.Instance != null)}");
+    
+    if (GameManager.Instance != null)
+    {
+        string addr = GameManager.Instance.GetWalletAddress();
+        Debug.Log($"Wallet from GameManager: {(string.IsNullOrEmpty(addr) ? "NULL" : addr)}");
+    }
+    
+    string savedAddr = PlayerPrefs.GetString("WalletAddress", "");
+    Debug.Log($"Saved wallet in PlayerPrefs: {(string.IsNullOrEmpty(savedAddr) ? "NULL" : savedAddr)}");
+    
+    Debug.Log($"Current initialized: {isInitialized}");
+    Debug.Log($"Current wallet: {(string.IsNullOrEmpty(walletAddress) ? "NULL" : walletAddress)}");
+    Debug.Log($"Current balance: {kulinoCoinBalance:F6}");
+    Debug.Log("====================");
+}
+
+[ContextMenu("🔄 Force Initialize with Test Wallet")]
+void Context_ForceInitWithTestWallet()
+{
+    if (string.IsNullOrEmpty(testWalletAddress))
+    {
+        testWalletAddress = "44kmkWSoRYPgTf7hsmVRx7GTHyaCdpZNeX9rg82Uy6dM";
+        Debug.Log("[KulinoCoin] 🧪 Using default test wallet");
+    }
+    
+    Initialize(testWalletAddress);
+    Debug.Log($"[KulinoCoin] 🧪 Force initialized with: {testWalletAddress}");
+}
 
     /// <summary>
     /// Initialize dengan wallet address

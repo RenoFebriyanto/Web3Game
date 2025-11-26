@@ -18,6 +18,10 @@ public class ButtonManager : MonoBehaviour
     public GameObject Quest;
     public GameObject Shop;
 
+    [Header("⌨️ Keyboard Shortcuts (Desktop Only)")]
+[Tooltip("Enable keyboard shortcuts? (Auto-disabled on mobile)")]
+public bool enableKeyboardShortcuts = true;
+
     [Header("Exit Settings (for WebGL)")]
     [Tooltip("URL to redirect when Exit button is clicked (for WebGL builds)")]
     public string exitURL = "https://your-game-website.com";
@@ -202,21 +206,25 @@ public class ButtonManager : MonoBehaviour
         ExitGame();
     }
 
-    // ========================================
-    // KEYBOARD SHORTCUTS (for testing)
-    // ========================================
-
     void Update()
+{
+    // ✅ Skip keyboard input on mobile devices
+    bool isMobile = Application.isMobilePlatform;
+    if (isMobile || !enableKeyboardShortcuts)
     {
-        if (Input.GetKeyDown(KeyCode.Alpha1)) ShowLevel();
-        if (Input.GetKeyDown(KeyCode.Alpha2)) ShowQuest();
-        if (Input.GetKeyDown(KeyCode.Alpha3)) ShowShop();
-
-        // ESC untuk exit (testing)
-        if (Input.GetKeyDown(KeyCode.Escape))
-        {
-            Debug.Log("[ButtonManager] ESC pressed - triggering exit");
-            OnExitButtonClicked();
-        }
+        return;
     }
+
+    // Keyboard shortcuts (desktop only)
+    if (Input.GetKeyDown(KeyCode.Alpha1)) ShowLevel();
+    if (Input.GetKeyDown(KeyCode.Alpha2)) ShowQuest();
+    if (Input.GetKeyDown(KeyCode.Alpha3)) ShowShop();
+
+    // ESC untuk exit (testing)
+    if (Input.GetKeyDown(KeyCode.Escape))
+    {
+        Debug.Log("[ButtonManager] ESC pressed - triggering exit");
+        OnExitButtonClicked();
+    }
+}
 }

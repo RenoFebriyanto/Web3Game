@@ -1491,6 +1491,8 @@ MonoBehaviour:
   laneOffset: 2.5
   laneCount: 3
   moveSpeed: 10
+  minSwipeDistance: 50
+  debugSwipe: 0
 --- !u!114 &486920332
 MonoBehaviour:
   m_ObjectHideFlags: 0

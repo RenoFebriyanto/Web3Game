@@ -1981,7 +1981,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1a4afe6d589daed4d88980fffd02d4e5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  scrollRect: {fileID: 0}
+  scrollRect: {fileID: 1320226058}
   showDebugOverlay: 0
   debugColor: {r: 0, g: 1, b: 0, a: 0.1}
   autoScrollOnEnable: 1
@@ -2011,7 +2011,7 @@ MonoBehaviour:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
-  levelItemsContainer: {fileID: 0}
+  levelItemsContainer: {fileID: 1857851583}
   enableDebugLogs: 0
 --- !u!114 &230887852
 MonoBehaviour:

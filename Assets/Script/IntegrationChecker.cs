@@ -74,30 +74,45 @@ public class IntegrationChecker : MonoBehaviour
         PrintSummary();
     }
 
-    void CheckWalletConnection()
+    // Di IntegrationChecker.cs - REPLACE CheckWalletConnection() method
+
+void CheckWalletConnection()
+{
+    LogSection("1️⃣ WALLET CONNECTION");
+
+    // ✅ FIX: Better null checking
+    if (GameManager.Instance == null || GameManager.Instance.gameObject == null)
     {
-        LogSection("1️⃣ WALLET CONNECTION");
+        LogError("❌ GameManager.Instance is NULL or destroyed!");
+        LogInfo("💡 This usually happens during scene transitions");
+        LogInfo("💡 GameManager should auto-recreate on next frame");
+        walletConnected = false;
+        walletAddress = "";
+        return;
+    }
 
-        if (GameManager.Instance != null)
+    try
+    {
+        walletAddress = GameManager.Instance.GetWalletAddress();
+        walletConnected = !string.IsNullOrEmpty(walletAddress);
+
+        if (walletConnected)
         {
-            walletAddress = GameManager.Instance.GetWalletAddress();
-            walletConnected = !string.IsNullOrEmpty(walletAddress);
-
-            if (walletConnected)
-            {
-                LogSuccess($"✓ Wallet Connected: {ShortenAddress(walletAddress)}");
-            }
-            else
-            {
-                LogWarning("⚠️ Wallet NOT connected");
-                LogInfo("💡 User needs to connect wallet on website first");
-            }
+            LogSuccess($"✓ Wallet Connected: {ShortenAddress(walletAddress)}");
         }
         else
         {
-            LogError("❌ GameManager.Instance is NULL!");
+            LogWarning("⚠️ Wallet NOT connected");
+            LogInfo("💡 User needs to connect wallet on website first");
         }
     }
+    catch (System.Exception ex)
+    {
+        LogError($"❌ Error checking wallet: {ex.Message}");
+        walletConnected = false;
+        walletAddress = "";
+    }
+}
 
     void CheckKulinoCoinManager()
     {

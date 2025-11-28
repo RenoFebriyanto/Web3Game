@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using System.Collections;
 
 #if UNITY_WEBGL && !UNITY_EDITOR
 using System.Runtime.InteropServices;
@@ -69,22 +70,62 @@ public class OrientationManager : MonoBehaviour
     private static extern void HideRotationPromptJS();
 #endif
 
-    void Awake()
+    // Di OrientationManager.cs - REPLACE Awake() method
+
+void Awake()
+{
+    // ✅ FIX: Improved singleton with scene persistence
+    if (Instance != null)
     {
-        if (Instance != null && Instance != this)
+        if (Instance != this)
         {
+            Debug.LogWarning($"[OrientationManager] Duplicate found on '{gameObject.name}' - destroying");
             Destroy(gameObject);
             return;
         }
-
-        Instance = this;
-        DontDestroyOnLoad(gameObject);
-
-        DetectPlatform();
-        SetupOrientation();
-        
-        Log("✅ OrientationManager initialized");
     }
+
+    Instance = this;
+    
+    // ✅ CRITICAL: Mark as persistent
+    DontDestroyOnLoad(gameObject);
+    gameObject.name = "[OrientationManager - PERSISTENT]";
+
+    DetectPlatform();
+    SetupOrientation();
+    
+    Log("✅ OrientationManager initialized and marked persistent");
+}
+
+// ✅ NEW: Add scene change handler
+void OnEnable()
+{
+    UnityEngine.SceneManagement.SceneManager.sceneLoaded += OnSceneLoaded;
+}
+
+void OnDisable()
+{
+    UnityEngine.SceneManagement.SceneManager.sceneLoaded -= OnSceneLoaded;
+}
+
+// ✅ NEW: Re-check orientation when scene loads
+void OnSceneLoaded(UnityEngine.SceneManagement.Scene scene, UnityEngine.SceneManagement.LoadSceneMode mode)
+{
+    Log($"Scene loaded: {scene.name} - Re-checking orientation");
+    
+    // Re-check orientation immediately
+    CheckOrientation();
+    
+    // Double-check after delay (for UI setup)
+    StartCoroutine(DelayedOrientationCheck());
+}
+
+IEnumerator DelayedOrientationCheck()
+{
+    yield return new WaitForSeconds(0.5f);
+    CheckOrientation();
+    Log("✓ Delayed orientation check complete");
+}
 
     void Start()
     {

@@ -55,21 +55,51 @@ public class GameManager : MonoBehaviour
     // ========================================
     // UNITY LIFECYCLE
     // ========================================
-    void Awake()
+    // Di GameManager.cs - REPLACE Awake() method
+
+void Awake()
+{
+    // ✅ FIX: Stronger singleton pattern
+    if (Instance != null)
     {
-        // Singleton setup
-        if (Instance != null && Instance != this)
+        if (Instance != this)
         {
-            Debug.LogWarning("[GameManager] Duplicate instance found! Destroying...");
-            Destroy(gameObject);
-            return;
+            // Check if previous instance is destroyed
+            if (Instance.gameObject == null)
+            {
+                Debug.LogWarning("[GameManager] Previous instance was destroyed - taking over");
+                Instance = this;
+            }
+            else
+            {
+                Debug.LogWarning($"[GameManager] Duplicate found on '{gameObject.name}' - destroying");
+                Destroy(gameObject);
+                return;
+            }
         }
-
-        Instance = this;
-        DontDestroyOnLoad(gameObject);
-
-        Debug.Log("[GameManager] ✓ Singleton initialized");
     }
+    else
+    {
+        Instance = this;
+    }
+
+    // ✅ CRITICAL: Mark as persistent
+    DontDestroyOnLoad(gameObject);
+    gameObject.name = "[GameManager - PERSISTENT]";
+    gameObject.tag = "GameManager"; // Add unique tag
+
+    Debug.Log("[GameManager] ✓ Singleton initialized and marked persistent");
+}
+
+// ✅ NEW: Prevent accidental destruction
+void OnDestroy()
+{
+    if (Instance == this)
+    {
+        Debug.LogWarning("[GameManager] ⚠️ Instance being destroyed!");
+        // Don't clear instance immediately - let new scene create new one if needed
+    }
+}
 
     void Start()
     {

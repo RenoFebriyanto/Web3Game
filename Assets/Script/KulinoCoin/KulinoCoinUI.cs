@@ -4,7 +4,8 @@ using UnityEngine.UI;
 using System.Collections;
 
 /// <summary>
-/// FIXED: UI Controller untuk Kulino Coin dengan proper initialization
+/// ✅ FIXED: UI Controller untuk Kulino Coin dengan proper initialization
+/// REPLACE existing KulinoCoinUI.cs dengan script ini
 /// </summary>
 public class KulinoCoinUI : MonoBehaviour
 {
@@ -30,98 +31,83 @@ public class KulinoCoinUI : MonoBehaviour
     private double targetBalance = 0;
     private float animationTime = 0.5f;
     private float animationTimer = 0;
+    private bool isSubscribed = false;
+
+    void Start()
+    {
+        Log("🎮 KulinoCoinUI Started");
+        
+        // Wait for managers then subscribe
+        StartCoroutine(InitializeWithRetry());
+    }
 
     void OnEnable()
     {
-        // ✅ Subscribe saat enable (penting untuk UI yang di-toggle)
-        SubscribeToManager();
-        // Force refresh display
-    if (KulinoCoinManager.Instance != null)
-    {
-        UpdateBalanceDisplay(KulinoCoinManager.Instance.GetBalance());
-    }
+        // Re-subscribe when enabled
+        StartCoroutine(InitializeWithRetry());
     }
 
     void OnDisable()
     {
-        // ✅ Unsubscribe saat disable
         UnsubscribeFromManager();
     }
 
-    void Start()
-{
-    SubscribeToManager();
-    
-    // ✅ FIX: Force update display immediately dengan retry mechanism
-    StartCoroutine(InitializeUIWithRetry());
-
-    // Auto refresh jika enabled
-    if (autoRefreshInterval > 0)
+    void OnDestroy()
     {
-        InvokeRepeating(nameof(RefreshBalance), autoRefreshInterval, autoRefreshInterval);
+        UnsubscribeFromManager();
     }
-}
 
-IEnumerator InitializeUIWithRetry()
-{
-    int maxRetries = 5;
-    int retryCount = 0;
-    
-    while (retryCount < maxRetries)
+    /// <summary>
+    /// ✅ FIX: Retry mechanism untuk ensure manager ready
+    /// </summary>
+    IEnumerator InitializeWithRetry()
     {
-        if (KulinoCoinManager.Instance != null)
+        int maxRetries = 10;
+        int retryCount = 0;
+        
+        while (retryCount < maxRetries)
         {
-            double currentBalance = KulinoCoinManager.Instance.GetBalance();
-            UpdateBalanceDisplay(currentBalance);
-            Log($"✓ UI initialized with balance: {currentBalance:F6}");
-            yield break;
+            if (KulinoCoinManager.Instance != null)
+            {
+                Log("✅ KulinoCoinManager found!");
+                SubscribeToManager();
+                
+                // Initial display update
+                yield return new WaitForSeconds(0.5f);
+                ForceUpdateDisplay();
+                
+                // Setup auto-refresh
+                if (autoRefreshInterval > 0)
+                {
+                    InvokeRepeating(nameof(RefreshDisplay), autoRefreshInterval, autoRefreshInterval);
+                }
+                
+                yield break; // Success, exit coroutine
+            }
+            
+            retryCount++;
+            Log($"⏳ Waiting for KulinoCoinManager... ({retryCount}/{maxRetries})");
+            yield return new WaitForSeconds(1f);
         }
         
-        retryCount++;
-        Log($"⏳ Waiting for KulinoCoinManager... (attempt {retryCount}/{maxRetries})");
-        yield return new WaitForSeconds(1f);
+        LogError("❌ KulinoCoinManager not found after retries!");
     }
-    
-    LogWarning("⚠️ Failed to initialize UI - KulinoCoinManager not found after retries");
-}
 
-    void SubscribeToManager()
-{
-    if (KulinoCoinManager.Instance != null)
-    {
-        // Unsubscribe dulu untuk hindari duplicate
-        KulinoCoinManager.Instance.OnBalanceUpdated -= OnBalanceUpdated;
-        // Subscribe
-        KulinoCoinManager.Instance.OnBalanceUpdated += OnBalanceUpdated;
-        Debug.Log("[KulinoCoinUI] ✓ Subscribed to KulinoCoinManager");
-    }
-    else
-    {
-        Debug.LogWarning("[KulinoCoinUI] ⚠️ Cannot subscribe - KulinoCoinManager not found");
-    }
-}
-
-void UnsubscribeFromManager()
-{
-    if (KulinoCoinManager.Instance != null)
-    {
-        KulinoCoinManager.Instance.OnBalanceUpdated -= OnBalanceUpdated;
-        Debug.Log("[KulinoCoinUI] ✓ Unsubscribed");
-    }
-}
     void Update()
     {
-        // Animate balance jika enabled
+        // Handle animation
         if (animateOnUpdate && animationTimer > 0)
         {
             animationTimer -= Time.deltaTime;
             float t = 1f - (animationTimer / animationTime);
-            double displayBalance = Mathf.Lerp((float)currentBalance, (float)targetBalance, t);
+            
+            double displayBalance = Mathf.Lerp(
+                (float)currentBalance, 
+                (float)targetBalance, 
+                t
+            );
 
-            if (kulinoCoinText != null)
-            {
-                kulinoCoinText.text = FormatBalance(displayBalance);
-            }
+            UpdateTextDisplay(displayBalance);
 
             if (animationTimer <= 0)
             {
@@ -130,37 +116,92 @@ void UnsubscribeFromManager()
         }
     }
 
-    /// <summary>
-    /// Callback saat balance updated dari KulinoCoinManager
-    /// </summary>
-    void OnBalanceUpdated(double newBalance)
+    void SubscribeToManager()
     {
-        Log($"Balance updated: {newBalance:F6}");
-        UpdateBalanceDisplay(newBalance);
+        if (KulinoCoinManager.Instance == null)
+        {
+            LogWarning("⚠️ Cannot subscribe - Manager is null");
+            return;
+        }
+
+        if (isSubscribed)
+        {
+            Log("ℹ️ Already subscribed");
+            return;
+        }
+
+        // Unsubscribe first (safety)
+        KulinoCoinManager.Instance.OnBalanceUpdated -= OnBalanceUpdated;
+        KulinoCoinManager.Instance.OnWalletInitialized -= OnWalletInitialized;
+        
+        // Subscribe
+        KulinoCoinManager.Instance.OnBalanceUpdated += OnBalanceUpdated;
+        KulinoCoinManager.Instance.OnWalletInitialized += OnWalletInitialized;
+        
+        isSubscribed = true;
+        Log("✅ Subscribed to KulinoCoinManager events");
+    }
+
+    void UnsubscribeFromManager()
+    {
+        if (KulinoCoinManager.Instance != null && isSubscribed)
+        {
+            KulinoCoinManager.Instance.OnBalanceUpdated -= OnBalanceUpdated;
+            KulinoCoinManager.Instance.OnWalletInitialized -= OnWalletInitialized;
+            isSubscribed = false;
+            Log("✓ Unsubscribed from KulinoCoinManager");
+        }
     }
 
     /// <summary>
-    /// Update tampilan balance di UI
+    /// Callback when balance updated
     /// </summary>
-    void UpdateBalanceDisplay(double balance)
+    void OnBalanceUpdated(double newBalance)
     {
+        Log($"💰 Balance updated: {newBalance:F6} KC");
+        
         if (animateOnUpdate)
         {
-            // Animate dari current ke target
-            targetBalance = balance;
+            targetBalance = newBalance;
             animationTimer = animationTime;
         }
         else
         {
-            // Direct update
-            currentBalance = balance;
-            targetBalance = balance;
-
-            if (kulinoCoinText != null)
-            {
-                kulinoCoinText.text = FormatBalance(balance);
-            }
+            currentBalance = newBalance;
+            targetBalance = newBalance;
+            UpdateTextDisplay(newBalance);
         }
+    }
+
+    /// <summary>
+    /// Callback when wallet initialized
+    /// </summary>
+    void OnWalletInitialized(string walletAddress)
+    {
+        Log($"👛 Wallet initialized: {ShortenAddress(walletAddress)}");
+        
+        // Trigger immediate refresh after wallet init
+        StartCoroutine(RefreshAfterDelay(1f));
+    }
+
+    IEnumerator RefreshAfterDelay(float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        ForceUpdateDisplay();
+    }
+
+    /// <summary>
+    /// Update UI text dengan format yang benar
+    /// </summary>
+    void UpdateTextDisplay(double balance)
+    {
+        if (kulinoCoinText == null)
+        {
+            LogWarning("⚠️ kulinoCoinText is NULL!");
+            return;
+        }
+
+        kulinoCoinText.text = FormatBalance(balance);
     }
 
     /// <summary>
@@ -168,37 +209,53 @@ void UnsubscribeFromManager()
     /// </summary>
     string FormatBalance(double balance)
     {
-        if (balance >= 1000)
-        {
-            return balance.ToString("N2"); // 1,234.56
-        }
+        // Format sesuai magnitude
+        if (balance >= 1000000)
+            return $"{(balance / 1000000):F2}M KC";
+        else if (balance >= 1000)
+            return $"{(balance / 1000):F2}K KC";
         else if (balance >= 1)
-        {
-            return balance.ToString("F2"); // 12.34
-        }
+            return $"{balance:F2} KC";
+        else if (balance > 0)
+            return $"{balance:F6} KC";
         else
-        {
-            return balance.ToString("F6"); // 0.123456
-        }
+            return "0.00 KC";
     }
 
     /// <summary>
-    /// Manual refresh balance
+    /// Manual refresh display
     /// </summary>
-    void RefreshBalance()
+    void RefreshDisplay()
+    {
+        ForceUpdateDisplay();
+    }
+
+    /// <summary>
+    /// Force update display from manager
+    /// </summary>
+    void ForceUpdateDisplay()
     {
         if (KulinoCoinManager.Instance != null)
         {
-            KulinoCoinManager.Instance.RefreshBalance();
+            double balance = KulinoCoinManager.Instance.GetBalance();
+            currentBalance = balance;
+            targetBalance = balance;
+            UpdateTextDisplay(balance);
+            
+            Log($"🔄 Force updated: {balance:F6} KC");
+        }
+        else
+        {
+            LogWarning("⚠️ Cannot force update - Manager is null");
+            UpdateTextDisplay(0);
         }
     }
 
-    /// <summary>
-    /// Public method untuk manual update (dari button dll)
-    /// </summary>
-    public void OnRefreshButtonClick()
+    string ShortenAddress(string addr)
     {
-        RefreshBalance();
+        if (string.IsNullOrEmpty(addr) || addr.Length < 10)
+            return addr;
+        return $"{addr.Substring(0, 4)}...{addr.Substring(addr.Length - 4)}";
     }
 
     void Log(string msg)
@@ -212,13 +269,58 @@ void UnsubscribeFromManager()
         Debug.LogWarning($"[KulinoCoinUI] {msg}");
     }
 
-    [ContextMenu("🧪 Test: Force Update Display")]
-    void Test_ForceUpdateDisplay()
+    void LogError(string msg)
     {
+        Debug.LogError($"[KulinoCoinUI] {msg}");
+    }
+
+    // ========================================
+    // PUBLIC API
+    // ========================================
+
+    public double GetCurrentBalance()
+    {
+        return currentBalance;
+    }
+
+    public void ManualRefresh()
+    {
+        Log("🔄 Manual refresh triggered");
+        ForceUpdateDisplay();
+    }
+
+    // ========================================
+    // CONTEXT MENU (DEBUG)
+    // ========================================
+
+    [ContextMenu("🔄 Force Refresh Now")]
+    void Context_ForceRefresh()
+    {
+        ForceUpdateDisplay();
+    }
+
+    [ContextMenu("📊 Print Status")]
+    void Context_PrintStatus()
+    {
+        Debug.Log("=== KULINO COIN UI STATUS ===");
+        Debug.Log($"Subscribed: {isSubscribed}");
+        Debug.Log($"Current Balance: {currentBalance:F6}");
+        Debug.Log($"Target Balance: {targetBalance:F6}");
+        Debug.Log($"Text Component: {(kulinoCoinText != null ? "OK" : "NULL")}");
+        Debug.Log($"Manager Exists: {(KulinoCoinManager.Instance != null ? "YES" : "NO")}");
         if (KulinoCoinManager.Instance != null)
         {
-            UpdateBalanceDisplay(KulinoCoinManager.Instance.GetBalance());
-            Debug.Log($"[KulinoCoinUI] 🧪 Forced update: {KulinoCoinManager.Instance.GetBalance():F6}");
+            Debug.Log($"Manager Balance: {KulinoCoinManager.Instance.GetBalance():F6}");
+            Debug.Log($"Manager Initialized: {KulinoCoinManager.Instance.IsInitialized()}");
         }
+        Debug.Log("============================");
+    }
+
+    [ContextMenu("🧪 Test: Set Mock Balance")]
+    void Context_TestMockBalance()
+    {
+        double testBalance = Random.Range(50f, 500f);
+        OnBalanceUpdated(testBalance);
+        Debug.Log($"[KulinoCoinUI] 🧪 Test balance: {testBalance:F2}");
     }
 }

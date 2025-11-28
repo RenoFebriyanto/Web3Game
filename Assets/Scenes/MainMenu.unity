@@ -8890,7 +8890,7 @@ MonoBehaviour:
   testWalletAddress: 44kmkWSoRYPgft7hsmVRx7GTHyaQ5CesBDyFMLbBkjsP
   mockBalance: 100.5
   useMockData: 0
-  kulinoCoinMintAddress: 2tWC4JAdL4AxEFJXGKjPqPkLJZqfvxzHmBdWVBBc9TmL
+  kulinoCoinMintAddress: E5chNtjGFvCMVYoTwcP9DtrdMdctRCGdGahAAhnHbHc1
   solanaRpcUrl: https://api.mainnet-beta.solana.com
   kulinoCoinBalance: 0
   autoRefreshInterval: 30

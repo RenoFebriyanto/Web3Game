@@ -6,20 +6,98 @@
     <title>TestingWeb3 - Kulino</title>
     <link rel="shortcut icon" href="TemplateData/favicon.ico" />
     <link rel="stylesheet" href="TemplateData/style.css" />
+    
+    <!-- ✅ EXISTING META TAG (KEPT) -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    
+    <!-- ✅ NEW: LANDSCAPE META TAGS (ADDED) -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-fullscreen" />
+    <meta name="screen-orientation" content="landscape" />
+    <meta name="x5-orientation" content="landscape" />
+    <meta name="x5-fullscreen" content="true" />
+    
     <style>
-      /* minimal safe CSS if TemplateData/style.css missing */
+      /* ===== EXISTING STYLES (KEPT) ===== */
       html,body { height:100%; margin:0; background:#222; color:#fff; }
       #unity-container.unity-desktop { width:100%; height:100%; display:flex; align-items:center; justify-content:center; }
       #unity-loading-bar { position:absolute; top:20px; left:20px; right:20px; max-width:720px; }
+      
+      /* ✅ NEW: LANDSCAPE ENFORCEMENT (ADDED) */
+      @media screen and (orientation: portrait) {
+        html {
+          transform: rotate(-90deg);
+          transform-origin: left top;
+          width: 100vh;
+          height: 100vw;
+          overflow-x: hidden;
+          position: absolute;
+          top: 100%;
+          left: 0;
+        }
+      }
+      
+      /* ✅ NEW: ROTATION PROMPT OVERLAY (ADDED) */
+      #rotation-prompt {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.95);
+        z-index: 9999;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 20px;
+      }
+      
+      #rotation-prompt.show {
+        display: flex;
+      }
+      
+      .rotation-icon {
+        font-size: 80px;
+        margin-bottom: 20px;
+        animation: rotate-icon 2s infinite;
+      }
+      
+      @keyframes rotate-icon {
+        0%, 100% { transform: rotate(0deg); }
+        50% { transform: rotate(90deg); }
+      }
+      
+      .rotation-text {
+        font-size: 24px;
+        font-weight: bold;
+        color: #fff;
+        margin-bottom: 10px;
+      }
+      
+      .rotation-subtext {
+        font-size: 16px;
+        color: #aaa;
+      }
     </style>
 
-    <!-- ✅ ADD: Solana & SPL Token Libraries -->
+    <!-- EXISTING LIBRARIES (KEPT) -->
     <script src="https://unpkg.com/@solana/web3.js@latest/lib/index.iife.min.js"></script>
     <script src="https://unpkg.com/@solana/spl-token@latest/lib/index.iife.min.js"></script>
     <script src="https://unpkg.com/bs58@4.0.1/dist/index.min.js"></script>
   </head>
+  
   <body>
+    <!-- ✅ NEW: ROTATION PROMPT OVERLAY (ADDED) -->
+    <div id="rotation-prompt">
+      <div class="rotation-icon">📱➡️🖥️</div>
+      <div class="rotation-text">Please rotate your device</div>
+      <div class="rotation-subtext">This game works best in landscape mode</div>
+    </div>
+
+    <!-- EXISTING UNITY CONTAINER (KEPT) -->
     <div id="unity-container" class="unity-desktop">
       <canvas id="unity-canvas" width="1280" height="720" tabindex="-1"></canvas>
       <div id="unity-loading-bar" style="display:none">
@@ -34,14 +112,14 @@
     </div>
 
     <!-- ===========================
-         KULINO BRIDGE START (paste BEFORE Unity loader)
+         KULINO BRIDGE START
          =========================== -->
 
-    <!-- bs58 (for base58 encoding) -->
+    <!-- EXISTING bs58 (KEPT) -->
     <script src="https://unpkg.com/bs58@4.0.1/dist/index.min.js"></script>
 
+    <!-- EXISTING unityShowBanner (KEPT) -->
     <script>
-    /***** minimal banner helper used by Unity loader *****/
     function unityShowBanner(msg, type) {
       try {
         var warningBanner = document.querySelector("#unity-warning");
@@ -66,19 +144,54 @@
     }
     </script>
 
+    <!-- ✅ NEW: ORIENTATION DETECTION (ADDED) -->
     <script>
-    /*
-      Kulino Bridge
-      - Defines window.requestClaimFromUnity(messageJson)
-      - Signs with Phantom, posts to server, returns result back to Unity via SendMessage('GameManager','OnClaimResult', json)
-      - Also exposes window.__kulino_unity_ready() to be called by loader-then-Unity (we call it in createUnityInstance callback).
-      - NOTE: Server endpoint is http://localhost:3000/api/claim (change if needed).
-    */
+    // Detect mobile & orientation
+    function isMobileBrowser() {
+      return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    }
+    
+    function isPortraitMode() {
+      return window.innerHeight > window.innerWidth;
+    }
+    
+    function checkOrientation() {
+      var prompt = document.getElementById('rotation-prompt');
+      var canvas = document.getElementById('unity-canvas');
+      
+      if (isMobileBrowser() && isPortraitMode()) {
+        prompt.classList.add('show');
+        if (canvas) canvas.style.display = 'none';
+      } else {
+        prompt.classList.remove('show');
+        if (canvas) canvas.style.display = 'block';
+      }
+    }
+    
+    // Check on load and resize
+    window.addEventListener('load', checkOrientation);
+    window.addEventListener('resize', checkOrientation);
+    window.addEventListener('orientationchange', checkOrientation);
+    
+    // Make functions available to Unity
+    window.IsMobileBrowser = isMobileBrowser;
+    window.IsPortraitMode = isPortraitMode;
+    window.ShowRotationPromptJS = function() {
+      document.getElementById('rotation-prompt').classList.add('show');
+    };
+    window.HideRotationPromptJS = function() {
+      document.getElementById('rotation-prompt').classList.remove('show');
+    };
+    
+    console.log('[ORIENTATION] Detection loaded');
+    </script>
+
+    <!-- EXISTING KULINO BRIDGE (KEPT - NO CHANGES) -->
+    <script>
     (function(){
       const LOGPREF = '[KULINO-BRIDGE]';
       function dlog(...a){ console.log(LOGPREF, ...a); }
 
-      // queue to send messages to Unity before unityInstance ready
       const sendQueue = [];
       let unityReady = false;
 
@@ -98,7 +211,6 @@
             window.unityInstance.SendMessage('GameManager', methodName, payloadJson);
           } else {
             console.warn(LOGPREF, 'unityInstance.SendMessage not available, queueing');
-            // fallback: queue
             sendQueue.push({ method: methodName, payload: payloadJson });
           }
         } catch(e){ console.error(LOGPREF, 'SendMessage exception', e); }
@@ -110,11 +222,9 @@
         else _doSendToUnity('OnClaimResult', js);
       }
 
-      // main function called from Unity
       window.requestClaimFromUnity = async function(messageJson) {
         dlog('requestClaimFromUnity called with:', messageJson);
         try {
-          // provider detection (Phantom)
           const provider = (window.solana && window.solana.isPhantom) ? window.solana :
                            (window.phantom && window.phantom.solana && window.phantom.solana.isPhantom) ? window.phantom.solana : null;
           if (!provider) {
@@ -123,17 +233,14 @@
             return;
           }
 
-          // parse payload
           let payloadObj = (typeof messageJson === 'string') ? JSON.parse(messageJson) : messageJson;
 
-          // connect (if not connected)
           if (!provider.isConnected) {
             dlog('connecting to phantom...');
             await provider.connect();
             dlog('connected, pk=', provider.publicKey?.toString?.());
           }
 
-          // attach address and canonicalize fields for signing
           payloadObj.address = provider.publicKey.toString();
           const canonical = {
             address: payloadObj.address,
@@ -145,13 +252,11 @@
           const messageStr = JSON.stringify(canonical);
           dlog('message to sign:', messageStr);
 
-          // sign message (Phantom)
           const encoded = new TextEncoder().encode(messageStr);
           dlog('calling provider.signMessage(...)');
-          const signed = await provider.signMessage(encoded, 'utf8'); // Phantom will show confirm
+          const signed = await provider.signMessage(encoded, 'utf8');
           dlog('signMessage returned', signed);
 
-          // bs58 must be available (we included it). If not -> error returned.
           if (typeof bs58 === 'undefined' && typeof window.bs58 === 'undefined') {
             dlog('bs58 missing');
             sendToUnity({ success:false, error:'bs58_lib_missing' });
@@ -159,7 +264,6 @@
           }
           const sig = (typeof bs58 !== 'undefined') ? bs58.encode(signed.signature) : window.bs58.encode(signed.signature);
 
-          // POST to server
           dlog('POSTing to server /api/claim');
           const resp = await fetch('http://localhost:3000/api/claim', {
             method: 'POST',
@@ -185,7 +289,6 @@
         }
       };
 
-      // quick test helper callable from browser console inside the Unity tab
       window.testClaimFromConsole = async function(){
         const payload = { gameId:'unity-demo', amount:1, nonce: crypto.randomUUID(), ts: Date.now() };
         await window.requestClaimFromUnity(JSON.stringify(payload));
@@ -197,50 +300,31 @@
     })();
     </script>
 
-    <!-- ===========================
-         KULINO BRIDGE END
-         =========================== -->
-
-
-      <script>
-  // Wrapper small: expose RequestClaim to be called from Unity C#
-  function RequestClaim(message) {
-    if (window.requestClaimFromUnity && typeof window.requestClaimFromUnity === 'function') {
-      try {
-        window.requestClaimFromUnity(message);
-      } catch (e) {
-        console.error('[RequestClaim wrapper] error', e);
-      }
-    } else {
-      console.error('[RequestClaim wrapper] requestClaimFromUnity missing');
-      // if unity wants a callback, send failure back:
-      if (window.unityInstance && typeof window.unityInstance.SendMessage === 'function') {
-        const err = JSON.stringify({ success:false, error:'requestClaimFromUnity_missing' });
-        window.unityInstance.SendMessage('GameManager','OnClaimResult', err);
+    <!-- EXISTING RequestClaim wrapper (KEPT) -->
+    <script>
+    function RequestClaim(message) {
+      if (window.requestClaimFromUnity && typeof window.requestClaimFromUnity === 'function') {
+        try {
+          window.requestClaimFromUnity(message);
+        } catch (e) {
+          console.error('[RequestClaim wrapper] error', e);
+        }
+      } else {
+        console.error('[RequestClaim wrapper] requestClaimFromUnity missing');
+        if (window.unityInstance && typeof window.unityInstance.SendMessage === 'function') {
+          const err = JSON.stringify({ success:false, error:'requestClaimFromUnity_missing' });
+          window.unityInstance.SendMessage('GameManager','OnClaimResult', err);
+        }
       }
     }
-  }
-</script>
-
-
+    </script>
 
     <!-- ===========================
-         UNITY LOADER (do not remove)
-         - The loader script reference will be in the generated build.
-         - Keep the createUnityInstance code below as in Unity's default index.html.
-         - If you copy a default index.html into template, keep its loader lines.
+         UNITY LOADER (KEPT - NO CHANGES)
          =========================== -->
-
     <script>
-      // NOTE:
-      // Unity's build generates Build/<PROJECT>.loader.js etc.
-      // When Unity creates the final index.html from this template it will
-      // place correct loader filenames. Keep the pattern below but if your
-      // Unity adds different filenames, make sure they're present in the Build folder.
       var canvas = document.querySelector("#unity-canvas");
       var buildUrl = "Build";
-      // loader name: if your actual loader is e.g. WebUnity.loader.js keep it,
-      // otherwise Unity will substitute actual filenames on build.
       var loaderUrl = buildUrl + "/WebUnity.loader.js";
       var config = {
         dataUrl: buildUrl + "/WebUnity.data",
@@ -265,8 +349,12 @@
         }).then((unityInstance) => {
           document.querySelector("#unity-loading-bar").style.display = "none";
           window.unityInstance = unityInstance;
-          // tell bridge unity is ready to receive messages
+          
+          // EXISTING: tell bridge unity is ready
           if (typeof window.__kulino_unity_ready === 'function') window.__kulino_unity_ready();
+          
+          // ✅ NEW: Final orientation check (ADDED)
+          checkOrientation();
         }).catch((message) => {
           console.error('createUnityInstance failed', message);
           alert('Unity failed to load: ' + message);

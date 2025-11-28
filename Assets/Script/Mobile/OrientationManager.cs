@@ -2,19 +2,23 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
+#if UNITY_WEBGL && !UNITY_EDITOR
+using System.Runtime.InteropServices;
+#endif
+
 /// <summary>
-/// 📱 ORIENTATION MANAGER - Force Landscape untuk Mobile Web
+/// 📱 FIXED ORIENTATION MANAGER - Force Landscape untuk Mobile Web
+/// v2.0 - WebGL Compatible
 /// 
 /// FITUR:
-/// ✅ Auto-detect mobile device
-/// ✅ Force landscape orientation
-/// ✅ Show rotation prompt jika portrait
-/// ✅ Works di WebGL build
+/// ✅ Force landscape via HTML/CSS (WebGL compatible)
+/// ✅ JavaScript integration untuk rotation prompt
+/// ✅ Auto-detect mobile browser
+/// ✅ Rotation prompt overlay
 /// 
-/// SETUP:
-/// 1. Attach ke GameObject di scene pertama (MainMenu)
-/// 2. Assign rotationPromptCanvas di Inspector
-/// 3. Build Settings → Player → Resolution & Presentation → Default Orientation = Landscape Left
+/// CARA KERJA:
+/// - Di WebGL: Gunakan JavaScript untuk detect orientation
+/// - Di Native: Gunakan Screen.orientation
 /// </summary>
 [DefaultExecutionOrder(-800)]
 public class OrientationManager : MonoBehaviour
@@ -22,33 +26,51 @@ public class OrientationManager : MonoBehaviour
     public static OrientationManager Instance { get; private set; }
 
     [Header("🎨 Rotation Prompt UI")]
-    [Tooltip("Canvas yang muncul saat device dalam portrait mode")]
+    [Tooltip("Canvas untuk rotation prompt (buat di Unity)")]
     public Canvas rotationPromptCanvas;
-
-    [Tooltip("Text untuk instruksi rotasi")]
+    
+    [Tooltip("Text instruksi")]
     public TextMeshProUGUI rotationPromptText;
+    
+    [Tooltip("Icon rotasi (optional)")]
+    public Image rotationIcon;
 
     [Header("⚙️ Settings")]
-    [Tooltip("Force landscape mode?")]
-    public bool forceLandscape = true;
-
     [Tooltip("Check interval (detik)")]
-    public float checkInterval = 0.5f;
+    public float checkInterval = 0.3f;
+    
+    [Tooltip("Minimum aspect ratio untuk landscape (width/height)")]
+    public float minLandscapeAspect = 1.3f;
 
     [Header("📊 Status (Read-Only)")]
     [SerializeField] private bool isMobileDevice = false;
     [SerializeField] private bool isLandscape = true;
     [SerializeField] private int screenWidth = 0;
     [SerializeField] private int screenHeight = 0;
+    [SerializeField] private float aspectRatio = 1.0f;
 
     [Header("🐛 Debug")]
     public bool enableDebugLogs = true;
 
     private float lastCheckTime = 0f;
+    
+#if UNITY_WEBGL && !UNITY_EDITOR
+    // Import JavaScript functions
+    [DllImport("__Internal")]
+    private static extern bool IsPortraitMode();
+    
+    [DllImport("__Internal")]
+    private static extern bool IsMobileBrowser();
+    
+    [DllImport("__Internal")]
+    private static extern void ShowRotationPromptJS();
+    
+    [DllImport("__Internal")]
+    private static extern void HideRotationPromptJS();
+#endif
 
     void Awake()
     {
-        // Singleton
         if (Instance != null && Instance != this)
         {
             Destroy(gameObject);
@@ -58,12 +80,9 @@ public class OrientationManager : MonoBehaviour
         Instance = this;
         DontDestroyOnLoad(gameObject);
 
-        // Detect mobile
-        DetectMobile();
-
-        // Initial setup
+        DetectPlatform();
         SetupOrientation();
-
+        
         Log("✅ OrientationManager initialized");
     }
 
@@ -73,6 +92,12 @@ public class OrientationManager : MonoBehaviour
         if (rotationPromptCanvas != null)
         {
             rotationPromptCanvas.gameObject.SetActive(false);
+        }
+
+        // Setup prompt text
+        if (rotationPromptText != null)
+        {
+            rotationPromptText.text = "📱 Please rotate your device\nto landscape mode";
         }
 
         // Initial check
@@ -90,31 +115,29 @@ public class OrientationManager : MonoBehaviour
     }
 
     // ========================================
-    // MOBILE DETECTION
+    // PLATFORM DETECTION
     // ========================================
 
-    void DetectMobile()
-    {
-#if UNITY_ANDROID || UNITY_IOS
-        isMobileDevice = true;
-#elif UNITY_WEBGL
-        // WebGL: Check user agent via JavaScript
-        isMobileDevice = IsMobileWebGL();
-#else
-        isMobileDevice = false;
-#endif
-
-        Log($"Device type: {(isMobileDevice ? "MOBILE" : "DESKTOP")}");
-    }
-
-    bool IsMobileWebGL()
+    void DetectPlatform()
     {
 #if UNITY_WEBGL && !UNITY_EDITOR
-        // Call JavaScript to check user agent
-        return Application.isMobilePlatform;
+        // WebGL: Use JavaScript to detect mobile
+        try
+        {
+            isMobileDevice = IsMobileBrowser();
+        }
+        catch
+        {
+            // Fallback
+            isMobileDevice = Application.isMobilePlatform;
+        }
+#elif UNITY_ANDROID || UNITY_IOS
+        isMobileDevice = true;
 #else
-        return false;
+        isMobileDevice = Application.isMobilePlatform;
 #endif
+
+        Log($"Platform: {(isMobileDevice ? "MOBILE" : "DESKTOP")}");
     }
 
     // ========================================
@@ -123,26 +146,17 @@ public class OrientationManager : MonoBehaviour
 
     void SetupOrientation()
     {
-        if (!forceLandscape)
-        {
-            Log("Landscape mode disabled");
-            return;
-        }
-
-        // Unity settings (for standalone builds)
-#if UNITY_STANDALONE || UNITY_EDITOR
-        Screen.orientation = ScreenOrientation.LandscapeLeft;
-        Log("✓ Set orientation: Landscape (Standalone)");
-#elif UNITY_ANDROID || UNITY_IOS
+#if UNITY_ANDROID || UNITY_IOS
+        // Native mobile: Use Unity's Screen.orientation
         Screen.orientation = ScreenOrientation.Landscape;
         Screen.autorotateToLandscapeLeft = true;
         Screen.autorotateToLandscapeRight = true;
         Screen.autorotateToPortrait = false;
         Screen.autorotateToPortraitUpsideDown = false;
-        Log("✓ Set orientation: Landscape (Mobile)");
+        Log("✓ Native orientation: Landscape");
 #endif
-
-        // For WebGL, orientation is handled via HTML/CSS meta tags
+        
+        // WebGL: Handled by HTML/CSS + JavaScript
         Log("✓ Orientation setup complete");
     }
 
@@ -152,40 +166,62 @@ public class OrientationManager : MonoBehaviour
 
     void CheckOrientation()
     {
-        // Update screen dimensions
+        // Update screen info
         screenWidth = Screen.width;
         screenHeight = Screen.height;
+        aspectRatio = (float)screenWidth / screenHeight;
 
-        // Check if landscape
         bool wasLandscape = isLandscape;
-        isLandscape = screenWidth > screenHeight;
 
-        // Only process if mobile
-        if (!isMobileDevice)
+        // Detect landscape
+#if UNITY_WEBGL && !UNITY_EDITOR
+        // WebGL: Use JavaScript
+        if (isMobileDevice)
         {
-            HideRotationPrompt();
-            return;
-        }
-
-        // Show/hide rotation prompt
-        if (!isLandscape)
-        {
-            ShowRotationPrompt();
-
-            // Log only on change
-            if (wasLandscape != isLandscape)
+            try
             {
-                LogWarning($"⚠️ PORTRAIT MODE DETECTED - Screen: {screenWidth}x{screenHeight}");
+                bool isPortrait = IsPortraitMode();
+                isLandscape = !isPortrait;
+            }
+            catch
+            {
+                // Fallback: aspect ratio
+                isLandscape = aspectRatio >= minLandscapeAspect;
             }
         }
         else
         {
-            HideRotationPrompt();
+            isLandscape = true; // Desktop always OK
+        }
+#else
+        // Native or Editor: Use aspect ratio
+        isLandscape = aspectRatio >= minLandscapeAspect;
+#endif
 
-            // Log only on change
+        // Only process if mobile
+        if (!isMobileDevice)
+        {
+            HidePrompt();
+            return;
+        }
+
+        // Show/hide prompt
+        if (!isLandscape)
+        {
+            ShowPrompt();
+            
             if (wasLandscape != isLandscape)
             {
-                Log($"✓ Landscape mode - Screen: {screenWidth}x{screenHeight}");
+                LogWarning($"⚠️ PORTRAIT MODE - {screenWidth}x{screenHeight} (aspect: {aspectRatio:F2})");
+            }
+        }
+        else
+        {
+            HidePrompt();
+            
+            if (wasLandscape != isLandscape)
+            {
+                Log($"✓ Landscape mode - {screenWidth}x{screenHeight} (aspect: {aspectRatio:F2})");
             }
         }
     }
@@ -194,38 +230,42 @@ public class OrientationManager : MonoBehaviour
     // UI PROMPT
     // ========================================
 
-    void ShowRotationPrompt()
+    void ShowPrompt()
     {
-        if (rotationPromptCanvas == null) return;
-
-        if (!rotationPromptCanvas.gameObject.activeSelf)
+        // Unity Canvas
+        if (rotationPromptCanvas != null && !rotationPromptCanvas.gameObject.activeSelf)
         {
             rotationPromptCanvas.gameObject.SetActive(true);
-
-            if (rotationPromptText != null)
-            {
-                rotationPromptText.text = "📱 Please rotate your device\nto landscape mode";
-            }
-
-            Log("✓ Rotation prompt shown");
+            Log("✓ Unity rotation prompt shown");
         }
 
-        // Pause game (optional)
-        // Time.timeScale = 0f;
+#if UNITY_WEBGL && !UNITY_EDITOR
+        // JavaScript prompt (backup)
+        try
+        {
+            ShowRotationPromptJS();
+        }
+        catch { }
+#endif
     }
 
-    void HideRotationPrompt()
+    void HidePrompt()
     {
-        if (rotationPromptCanvas == null) return;
-
-        if (rotationPromptCanvas.gameObject.activeSelf)
+        // Unity Canvas
+        if (rotationPromptCanvas != null && rotationPromptCanvas.gameObject.activeSelf)
         {
             rotationPromptCanvas.gameObject.SetActive(false);
-            Log("✓ Rotation prompt hidden");
-
-            // Resume game (optional)
-            // Time.timeScale = 1f;
+            Log("✓ Unity rotation prompt hidden");
         }
+
+#if UNITY_WEBGL && !UNITY_EDITOR
+        // JavaScript prompt
+        try
+        {
+            HideRotationPromptJS();
+        }
+        catch { }
+#endif
     }
 
     // ========================================
@@ -235,6 +275,7 @@ public class OrientationManager : MonoBehaviour
     public bool IsMobile() => isMobileDevice;
     public bool IsLandscapeMode() => isLandscape;
     public Vector2Int GetScreenSize() => new Vector2Int(screenWidth, screenHeight);
+    public float GetAspectRatio() => aspectRatio;
 
     // ========================================
     // LOGGING
@@ -259,18 +300,27 @@ public class OrientationManager : MonoBehaviour
     [ContextMenu("📊 Print Status")]
     void Context_PrintStatus()
     {
-        Debug.Log("=== ORIENTATION MANAGER STATUS ===");
-        Debug.Log($"Device: {(isMobileDevice ? "MOBILE" : "DESKTOP")}");
-        Debug.Log($"Orientation: {(isLandscape ? "LANDSCAPE ✓" : "PORTRAIT ⚠️")}");
+        Debug.Log("=== ORIENTATION STATUS ===");
+        Debug.Log($"Platform: {(isMobileDevice ? "MOBILE" : "DESKTOP")}");
+        Debug.Log($"Mode: {(isLandscape ? "LANDSCAPE ✓" : "PORTRAIT ⚠️")}");
         Debug.Log($"Screen: {screenWidth}x{screenHeight}");
-        Debug.Log($"Force Landscape: {forceLandscape}");
-        Debug.Log($"Prompt Active: {(rotationPromptCanvas != null && rotationPromptCanvas.gameObject.activeSelf)}");
-        Debug.Log("=================================");
+        Debug.Log($"Aspect: {aspectRatio:F2} (min: {minLandscapeAspect:F2})");
+        Debug.Log($"Prompt: {(rotationPromptCanvas != null && rotationPromptCanvas.gameObject.activeSelf ? "SHOWN" : "HIDDEN")}");
+        Debug.Log("=========================");
     }
 
     [ContextMenu("🔄 Force Check")]
     void Context_ForceCheck()
     {
         CheckOrientation();
+    }
+
+    [ContextMenu("📱 Test: Force Mobile")]
+    void Context_ForceMobile()
+    {
+        isMobileDevice = true;
+        isLandscape = false;
+        CheckOrientation();
+        Debug.Log("✓ Forced mobile portrait mode for testing");
     }
 }

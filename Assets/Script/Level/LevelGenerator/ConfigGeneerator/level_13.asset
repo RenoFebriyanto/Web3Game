@@ -16,7 +16,7 @@ MonoBehaviour:
   number: 13
   displayName: Level 13
   requirements:
-  - type: 2
-    colorVariant: 2
-    count: 3
+  - type: 1
+    colorVariant: 1
+    count: 4
   showPreviewInSelector: 1

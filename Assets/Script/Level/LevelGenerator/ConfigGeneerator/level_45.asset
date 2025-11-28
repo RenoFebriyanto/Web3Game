@@ -16,13 +16,10 @@ MonoBehaviour:
   number: 45
   displayName: Level 45
   requirements:
-  - type: 2
-    colorVariant: 1
-    count: 8
-  - type: 0
+  - type: 3
     colorVariant: 2
-    count: 10
-  - type: 1
-    colorVariant: 3
-    count: 11
+    count: 20
+  - type: 2
+    colorVariant: 2
+    count: 22
   showPreviewInSelector: 1

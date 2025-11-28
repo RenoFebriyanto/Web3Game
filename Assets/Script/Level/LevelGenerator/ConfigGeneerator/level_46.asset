@@ -17,12 +17,9 @@ MonoBehaviour:
   displayName: Level 46
   requirements:
   - type: 4
-    colorVariant: 3
-    count: 10
-  - type: 2
     colorVariant: 2
-    count: 12
-  - type: 1
-    colorVariant: 3
-    count: 10
+    count: 26
+  - type: 3
+    colorVariant: 1
+    count: 18
   showPreviewInSelector: 1

@@ -16,10 +16,7 @@ MonoBehaviour:
   number: 22
   displayName: Level 22
   requirements:
-  - type: 1
-    colorVariant: 2
-    count: 5
-  - type: 2
-    colorVariant: 3
-    count: 6
+  - type: 3
+    colorVariant: 1
+    count: 8
   showPreviewInSelector: 1

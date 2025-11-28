@@ -16,7 +16,7 @@ MonoBehaviour:
   number: 20
   displayName: Level 20
   requirements:
-  - type: 0
+  - type: 1
     colorVariant: 3
-    count: 5
+    count: 7
   showPreviewInSelector: 1

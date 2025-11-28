@@ -16,13 +16,10 @@ MonoBehaviour:
   number: 38
   displayName: Level 38
   requirements:
-  - type: 2
-    colorVariant: 1
-    count: 9
   - type: 1
-    colorVariant: 1
-    count: 8
+    colorVariant: 2
+    count: 19
   - type: 3
-    colorVariant: 3
-    count: 7
+    colorVariant: 1
+    count: 18
   showPreviewInSelector: 1

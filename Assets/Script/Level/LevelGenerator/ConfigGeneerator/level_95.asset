@@ -16,22 +16,13 @@ MonoBehaviour:
   number: 95
   displayName: Level 95
   requirements:
-  - type: 5
-    colorVariant: 2
-    count: 19
-  - type: 3
-    colorVariant: 2
-    count: 16
   - type: 0
     colorVariant: 3
-    count: 20
-  - type: 2
-    colorVariant: 3
-    count: 20
-  - type: 4
-    colorVariant: 3
-    count: 20
+    count: 50
   - type: 1
     colorVariant: 2
-    count: 16
+    count: 50
+  - type: 3
+    colorVariant: 3
+    count: 43
   showPreviewInSelector: 1

@@ -16,19 +16,13 @@ MonoBehaviour:
   number: 96
   displayName: Level 96
   requirements:
-  - type: 1
-    colorVariant: 2
-    count: 20
-  - type: 5
-    colorVariant: 3
-    count: 18
-  - type: 3
-    colorVariant: 2
-    count: 20
-  - type: 2
-    colorVariant: 3
-    count: 20
   - type: 0
     colorVariant: 2
-    count: 16
+    count: 50
+  - type: 1
+    colorVariant: 2
+    count: 50
+  - type: 3
+    colorVariant: 1
+    count: 50
   showPreviewInSelector: 1

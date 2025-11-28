@@ -18,5 +18,5 @@ MonoBehaviour:
   requirements:
   - type: 1
     colorVariant: 3
-    count: 4
+    count: 5
   showPreviewInSelector: 1

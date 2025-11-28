@@ -16,16 +16,13 @@ MonoBehaviour:
   number: 61
   displayName: Level 61
   requirements:
+  - type: 3
+    colorVariant: 3
+    count: 33
   - type: 0
     colorVariant: 3
-    count: 16
-  - type: 2
-    colorVariant: 2
-    count: 16
-  - type: 3
-    colorVariant: 1
-    count: 14
+    count: 28
   - type: 1
-    colorVariant: 2
-    count: 13
+    colorVariant: 3
+    count: 37
   showPreviewInSelector: 1

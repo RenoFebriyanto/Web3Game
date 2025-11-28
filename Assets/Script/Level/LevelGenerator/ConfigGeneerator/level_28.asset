@@ -17,12 +17,9 @@ MonoBehaviour:
   displayName: Level 28
   requirements:
   - type: 1
-    colorVariant: 3
-    count: 5
+    colorVariant: 1
+    count: 11
   - type: 2
     colorVariant: 1
-    count: 6
-  - type: 0
-    colorVariant: 3
-    count: 7
+    count: 12
   showPreviewInSelector: 1

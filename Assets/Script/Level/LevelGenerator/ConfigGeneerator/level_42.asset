@@ -16,13 +16,10 @@ MonoBehaviour:
   number: 42
   displayName: Level 42
   requirements:
-  - type: 1
-    colorVariant: 1
-    count: 7
-  - type: 2
-    colorVariant: 1
-    count: 10
   - type: 0
     colorVariant: 2
-    count: 9
+    count: 21
+  - type: 3
+    colorVariant: 3
+    count: 22
   showPreviewInSelector: 1

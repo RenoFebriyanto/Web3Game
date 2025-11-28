@@ -16,7 +16,7 @@ MonoBehaviour:
   number: 9
   displayName: Level 9
   requirements:
-  - type: 2
-    colorVariant: 3
-    count: 3
+  - type: 0
+    colorVariant: 1
+    count: 4
   showPreviewInSelector: 1

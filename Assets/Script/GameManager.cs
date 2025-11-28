@@ -59,34 +59,42 @@ public class GameManager : MonoBehaviour
 
 void Awake()
 {
-    // ✅ FIX: Stronger singleton pattern
-    if (Instance != null)
+    // ✅ FIX: Ultra-strong singleton with scene change protection
+    if (Instance != null && Instance != this)
     {
-        if (Instance != this)
+        // Double-check instance is actually alive
+        try
         {
-            // Check if previous instance is destroyed
-            if (Instance.gameObject == null)
+            if (Instance.gameObject != null && Instance.enabled)
             {
-                Debug.LogWarning("[GameManager] Previous instance was destroyed - taking over");
-                Instance = this;
-            }
-            else
-            {
-                Debug.LogWarning($"[GameManager] Duplicate found on '{gameObject.name}' - destroying");
+                Debug.LogWarning($"[GameManager] Valid instance exists - destroying duplicate on '{gameObject.name}'");
                 Destroy(gameObject);
                 return;
             }
         }
-    }
-    else
-    {
-        Instance = this;
+        catch
+        {
+            // Previous instance is destroyed/invalid, take over
+            Debug.LogWarning("[GameManager] Previous instance invalid - taking over");
+        }
     }
 
-    // ✅ CRITICAL: Mark as persistent
+    Instance = this;
+
+    // ✅ CRITICAL: Mark as persistent FIRST
+    if (transform.parent != null)
+    {
+        transform.SetParent(null); // Must be root object
+    }
+    
     DontDestroyOnLoad(gameObject);
     gameObject.name = "[GameManager - PERSISTENT]";
-    gameObject.tag = "GameManager"; // Add unique tag
+    
+    // Add tag for finding
+    if (!gameObject.CompareTag("GameManager"))
+    {
+        try { gameObject.tag = "GameManager"; } catch { }
+    }
 
     Debug.Log("[GameManager] ✓ Singleton initialized and marked persistent");
 }

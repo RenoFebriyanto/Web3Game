@@ -16,7 +16,7 @@ MonoBehaviour:
   number: 14
   displayName: Level 14
   requirements:
-  - type: 2
+  - type: 1
     colorVariant: 2
-    count: 5
+    count: 4
   showPreviewInSelector: 1

@@ -17,18 +17,12 @@ MonoBehaviour:
   displayName: Level 79
   requirements:
   - type: 3
+    colorVariant: 2
+    count: 41
+  - type: 2
     colorVariant: 3
-    count: 17
+    count: 50
   - type: 0
     colorVariant: 3
-    count: 18
-  - type: 2
-    colorVariant: 2
-    count: 20
-  - type: 4
-    colorVariant: 3
-    count: 20
-  - type: 1
-    colorVariant: 2
-    count: 20
+    count: 37
   showPreviewInSelector: 1

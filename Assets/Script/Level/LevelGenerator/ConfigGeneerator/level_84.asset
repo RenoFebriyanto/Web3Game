@@ -16,19 +16,13 @@ MonoBehaviour:
   number: 84
   displayName: Level 84
   requirements:
-  - type: 4
+  - type: 2
     colorVariant: 2
-    count: 18
+    count: 50
   - type: 1
     colorVariant: 1
-    count: 20
-  - type: 3
-    colorVariant: 3
-    count: 20
-  - type: 2
-    colorVariant: 3
-    count: 17
+    count: 39
   - type: 0
-    colorVariant: 1
-    count: 16
+    colorVariant: 3
+    count: 50
   showPreviewInSelector: 1

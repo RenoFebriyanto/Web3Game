@@ -16,16 +16,13 @@ MonoBehaviour:
   number: 76
   displayName: Level 76
   requirements:
-  - type: 3
-    colorVariant: 1
-    count: 18
-  - type: 2
-    colorVariant: 1
-    count: 16
-  - type: 1
-    colorVariant: 2
-    count: 20
   - type: 0
+    colorVariant: 1
+    count: 46
+  - type: 1
+    colorVariant: 1
+    count: 37
+  - type: 3
     colorVariant: 2
-    count: 14
+    count: 45
   showPreviewInSelector: 1

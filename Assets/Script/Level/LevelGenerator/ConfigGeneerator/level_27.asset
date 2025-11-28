@@ -16,13 +16,10 @@ MonoBehaviour:
   number: 27
   displayName: Level 27
   requirements:
-  - type: 4
-    colorVariant: 1
-    count: 5
-  - type: 0
-    colorVariant: 3
-    count: 5
   - type: 2
-    colorVariant: 3
-    count: 7
+    colorVariant: 1
+    count: 12
+  - type: 0
+    colorVariant: 1
+    count: 10
   showPreviewInSelector: 1

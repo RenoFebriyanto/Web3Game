@@ -17,12 +17,9 @@ MonoBehaviour:
   displayName: Level 41
   requirements:
   - type: 1
-    colorVariant: 1
-    count: 10
-  - type: 3
     colorVariant: 2
-    count: 9
-  - type: 0
+    count: 16
+  - type: 2
     colorVariant: 2
-    count: 9
+    count: 20
   showPreviewInSelector: 1

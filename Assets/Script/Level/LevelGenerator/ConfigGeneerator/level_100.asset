@@ -16,22 +16,13 @@ MonoBehaviour:
   number: 100
   displayName: Level 100
   requirements:
-  - type: 3
-    colorVariant: 2
-    count: 20
-  - type: 2
-    colorVariant: 2
-    count: 19
-  - type: 4
-    colorVariant: 1
-    count: 18
-  - type: 1
-    colorVariant: 1
-    count: 20
   - type: 0
-    colorVariant: 2
-    count: 18
-  - type: 5
-    colorVariant: 2
-    count: 20
+    colorVariant: 1
+    count: 50
+  - type: 3
+    colorVariant: 3
+    count: 49
+  - type: 2
+    colorVariant: 1
+    count: 41
   showPreviewInSelector: 1

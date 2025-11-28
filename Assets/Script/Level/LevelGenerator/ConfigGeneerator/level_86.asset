@@ -18,14 +18,11 @@ MonoBehaviour:
   requirements:
   - type: 1
     colorVariant: 1
-    count: 16
-  - type: 2
-    colorVariant: 2
-    count: 20
-  - type: 3
-    colorVariant: 3
-    count: 20
+    count: 43
   - type: 0
     colorVariant: 1
-    count: 19
+    count: 50
+  - type: 3
+    colorVariant: 3
+    count: 46
   showPreviewInSelector: 1

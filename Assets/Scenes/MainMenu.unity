@@ -14564,6 +14564,59 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
+--- !u!1 &1730053925
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1730053927}
+  - component: {fileID: 1730053926}
+  m_Layer: 0
+  m_Name: Integration
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1730053926
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1730053925}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bc3c2d7170ef16545b3595a45d9b7fab, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  walletConnected: 0
+  walletAddress: 
+  kulinoCoinManagerReady: 0
+  orientationManagerReady: 0
+  kulinoCoinBalance: 0
+  isLandscapeMode: 0
+  isMobileDevice: 0
+  checkInterval: 5
+  verboseLogging: 1
+--- !u!4 &1730053927
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1730053925}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 890.98895, y: 661.42084, z: -3.834502}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1730465336
 GameObject:
   m_ObjectHideFlags: 0
@@ -18720,6 +18773,7 @@ SceneRoots:
   - {fileID: 959775999}
   - {fileID: 1472300286}
   - {fileID: 1805859257}
+  - {fileID: 1730053927}
   - {fileID: 200792488}
   - {fileID: 1806553397}
   - {fileID: 1857859920}

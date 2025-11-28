@@ -16,16 +16,13 @@ MonoBehaviour:
   number: 74
   displayName: Level 74
   requirements:
-  - type: 2
-    colorVariant: 2
-    count: 20
-  - type: 3
-    colorVariant: 3
-    count: 18
-  - type: 0
-    colorVariant: 1
-    count: 20
   - type: 1
-    colorVariant: 1
-    count: 15
+    colorVariant: 3
+    count: 42
+  - type: 0
+    colorVariant: 2
+    count: 45
+  - type: 3
+    colorVariant: 2
+    count: 45
   showPreviewInSelector: 1

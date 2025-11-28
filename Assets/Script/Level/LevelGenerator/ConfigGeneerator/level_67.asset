@@ -17,15 +17,12 @@ MonoBehaviour:
   displayName: Level 67
   requirements:
   - type: 1
-    colorVariant: 3
-    count: 18
-  - type: 2
-    colorVariant: 2
-    count: 13
-  - type: 0
     colorVariant: 1
-    count: 19
+    count: 39
   - type: 3
     colorVariant: 2
-    count: 14
+    count: 38
+  - type: 2
+    colorVariant: 1
+    count: 32
   showPreviewInSelector: 1

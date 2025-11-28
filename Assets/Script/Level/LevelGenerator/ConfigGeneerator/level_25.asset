@@ -17,9 +17,6 @@ MonoBehaviour:
   displayName: Level 25
   requirements:
   - type: 3
-    colorVariant: 1
-    count: 5
-  - type: 0
-    colorVariant: 1
-    count: 7
+    colorVariant: 3
+    count: 11
   showPreviewInSelector: 1

@@ -16,10 +16,7 @@ MonoBehaviour:
   number: 21
   displayName: Level 21
   requirements:
-  - type: 2
-    colorVariant: 3
-    count: 5
-  - type: 3
-    colorVariant: 2
-    count: 6
+  - type: 1
+    colorVariant: 1
+    count: 9
   showPreviewInSelector: 1

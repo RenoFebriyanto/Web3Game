@@ -17,12 +17,9 @@ MonoBehaviour:
   displayName: Level 35
   requirements:
   - type: 2
-    colorVariant: 3
-    count: 9
-  - type: 1
-    colorVariant: 3
-    count: 9
-  - type: 3
-    colorVariant: 2
-    count: 7
+    colorVariant: 1
+    count: 15
+  - type: 0
+    colorVariant: 1
+    count: 13
   showPreviewInSelector: 1

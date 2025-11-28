@@ -24,21 +24,21 @@ MonoBehaviour:
   - tierName: Medium
     startLevel: 21
     endLevel: 50
-    minRequirements: 2
-    maxRequirements: 4
+    minRequirements: 1
+    maxRequirements: 3
   - tierName: Hard
     startLevel: 51
     endLevel: 80
-    minRequirements: 3
-    maxRequirements: 5
+    minRequirements: 2
+    maxRequirements: 3
   - tierName: Expert
     startLevel: 81
     endLevel: 100
-    minRequirements: 4
-    maxRequirements: 6
+    minRequirements: 3
+    maxRequirements: 3
   availableFragmentTypes: 000000000100000002000000030000000400000005000000
   minFragmentAmount: 3
-  maxFragmentAmount: 20
+  maxFragmentAmount: 50
   fragmentAmountCurve:
     serializedVersion: 2
     m_Curve:

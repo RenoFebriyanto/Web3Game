@@ -16,16 +16,13 @@ MonoBehaviour:
   number: 83
   displayName: Level 83
   requirements:
-  - type: 1
-    colorVariant: 1
-    count: 20
   - type: 3
     colorVariant: 1
-    count: 18
+    count: 43
   - type: 2
     colorVariant: 2
-    count: 20
+    count: 48
   - type: 0
     colorVariant: 1
-    count: 17
+    count: 41
   showPreviewInSelector: 1

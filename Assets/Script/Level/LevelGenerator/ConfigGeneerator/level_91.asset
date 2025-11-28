@@ -16,19 +16,13 @@ MonoBehaviour:
   number: 91
   displayName: Level 91
   requirements:
-  - type: 4
-    colorVariant: 2
-    count: 18
-  - type: 0
-    colorVariant: 1
-    count: 20
-  - type: 3
-    colorVariant: 2
-    count: 17
   - type: 1
     colorVariant: 2
-    count: 20
+    count: 50
+  - type: 0
+    colorVariant: 3
+    count: 49
   - type: 2
     colorVariant: 1
-    count: 20
+    count: 42
   showPreviewInSelector: 1

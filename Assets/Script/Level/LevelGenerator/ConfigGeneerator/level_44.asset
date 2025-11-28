@@ -16,13 +16,10 @@ MonoBehaviour:
   number: 44
   displayName: Level 44
   requirements:
+  - type: 2
+    colorVariant: 2
+    count: 25
   - type: 0
     colorVariant: 2
-    count: 11
-  - type: 1
-    colorVariant: 1
-    count: 10
-  - type: 3
-    colorVariant: 1
-    count: 9
+    count: 25
   showPreviewInSelector: 1

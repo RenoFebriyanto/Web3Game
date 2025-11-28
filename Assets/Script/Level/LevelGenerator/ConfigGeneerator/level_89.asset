@@ -16,19 +16,13 @@ MonoBehaviour:
   number: 89
   displayName: Level 89
   requirements:
-  - type: 1
-    colorVariant: 3
-    count: 18
   - type: 3
-    colorVariant: 3
-    count: 20
-  - type: 2
-    colorVariant: 3
-    count: 20
-  - type: 4
-    colorVariant: 2
-    count: 20
+    colorVariant: 1
+    count: 50
   - type: 0
-    colorVariant: 2
-    count: 18
+    colorVariant: 1
+    count: 39
+  - type: 1
+    colorVariant: 1
+    count: 50
   showPreviewInSelector: 1

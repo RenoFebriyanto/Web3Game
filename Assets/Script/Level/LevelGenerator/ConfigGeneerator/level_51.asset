@@ -16,16 +16,13 @@ MonoBehaviour:
   number: 51
   displayName: Level 51
   requirements:
+  - type: 3
+    colorVariant: 3
+    count: 28
+  - type: 1
+    colorVariant: 3
+    count: 27
   - type: 2
     colorVariant: 1
-    count: 13
-  - type: 4
-    colorVariant: 2
-    count: 11
-  - type: 0
-    colorVariant: 1
-    count: 11
-  - type: 3
-    colorVariant: 2
-    count: 14
+    count: 23
   showPreviewInSelector: 1

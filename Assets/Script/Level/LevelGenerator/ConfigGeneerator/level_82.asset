@@ -16,19 +16,13 @@ MonoBehaviour:
   number: 82
   displayName: Level 82
   requirements:
-  - type: 0
+  - type: 2
     colorVariant: 3
-    count: 19
+    count: 41
   - type: 1
     colorVariant: 2
-    count: 17
-  - type: 2
-    colorVariant: 1
-    count: 20
-  - type: 3
-    colorVariant: 1
-    count: 17
+    count: 50
   - type: 4
-    colorVariant: 2
-    count: 16
+    colorVariant: 3
+    count: 50
   showPreviewInSelector: 1

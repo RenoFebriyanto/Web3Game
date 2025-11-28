@@ -16,19 +16,13 @@ MonoBehaviour:
   number: 92
   displayName: Level 92
   requirements:
-  - type: 0
+  - type: 2
     colorVariant: 3
-    count: 20
+    count: 44
+  - type: 0
+    colorVariant: 2
+    count: 45
   - type: 1
     colorVariant: 2
-    count: 17
-  - type: 4
-    colorVariant: 2
-    count: 19
-  - type: 3
-    colorVariant: 1
-    count: 18
-  - type: 2
-    colorVariant: 1
-    count: 20
+    count: 44
   showPreviewInSelector: 1

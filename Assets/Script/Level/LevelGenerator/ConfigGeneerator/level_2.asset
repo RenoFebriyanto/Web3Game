@@ -16,7 +16,7 @@ MonoBehaviour:
   number: 2
   displayName: Level 2
   requirements:
-  - type: 2
-    colorVariant: 2
+  - type: 0
+    colorVariant: 3
     count: 3
   showPreviewInSelector: 1

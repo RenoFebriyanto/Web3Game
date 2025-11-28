@@ -16,10 +16,7 @@ MonoBehaviour:
   number: 23
   displayName: Level 23
   requirements:
-  - type: 3
-    colorVariant: 2
-    count: 5
-  - type: 4
-    colorVariant: 1
-    count: 6
+  - type: 1
+    colorVariant: 3
+    count: 9
   showPreviewInSelector: 1

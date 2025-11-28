@@ -17,15 +17,12 @@ MonoBehaviour:
   displayName: Level 56
   requirements:
   - type: 0
-    colorVariant: 1
-    count: 13
-  - type: 1
-    colorVariant: 1
-    count: 15
-  - type: 3
-    colorVariant: 1
-    count: 12
-  - type: 2
     colorVariant: 2
-    count: 12
+    count: 25
+  - type: 5
+    colorVariant: 2
+    count: 30
+  - type: 2
+    colorVariant: 1
+    count: 30
   showPreviewInSelector: 1

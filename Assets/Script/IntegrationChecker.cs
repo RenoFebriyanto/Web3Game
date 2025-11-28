@@ -48,14 +48,19 @@ public class IntegrationChecker : MonoBehaviour
     }
 
     void Update()
+{
+    if (Time.time >= nextCheckTime)
     {
-        if (Time.time >= nextCheckTime)
+        // ✅ FIX: Skip check if scene is loading
+        if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().isLoaded)
         {
             PerformFullCheck();
-            nextCheckTime = Time.time + checkInterval;
-            checkCount++;
         }
+        
+        nextCheckTime = Time.time + checkInterval;
+        checkCount++;
     }
+}
 
     void PerformFullCheck()
     {

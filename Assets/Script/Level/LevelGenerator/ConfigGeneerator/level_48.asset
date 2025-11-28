@@ -16,13 +16,10 @@ MonoBehaviour:
   number: 48
   displayName: Level 48
   requirements:
-  - type: 5
-    colorVariant: 2
-    count: 11
-  - type: 2
+  - type: 1
     colorVariant: 1
-    count: 13
-  - type: 3
-    colorVariant: 1
-    count: 13
+    count: 26
+  - type: 0
+    colorVariant: 3
+    count: 23
   showPreviewInSelector: 1

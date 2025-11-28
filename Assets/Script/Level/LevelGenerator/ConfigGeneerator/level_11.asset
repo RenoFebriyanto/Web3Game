@@ -16,7 +16,7 @@ MonoBehaviour:
   number: 11
   displayName: Level 11
   requirements:
-  - type: 2
-    colorVariant: 1
-    count: 3
+  - type: 3
+    colorVariant: 3
+    count: 4
   showPreviewInSelector: 1

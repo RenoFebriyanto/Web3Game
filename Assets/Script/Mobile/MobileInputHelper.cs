@@ -60,23 +60,31 @@ public class MobileInputHelper : MonoBehaviour
     public bool IsMultiTouchActive => currentTouchCount > 1;
 
     void Awake()
+{
+    // Singleton
+    if (Instance != null && Instance != this)
     {
-        // Singleton
-        if (Instance != null && Instance != this)
-        {
-            Destroy(gameObject);
-            return;
-        }
-        Instance = this;
-        DontDestroyOnLoad(gameObject);
-
-        // Detect platform
-        DetectPlatform();
-
-        Log("✅ MobileInputHelper initialized");
-        Log($"Platform: {(isMobile ? "MOBILE" : "DESKTOP")}");
-        Log($"Multi-touch prevention: {preventMultiTouch}");
+        Destroy(gameObject);
+        return;
     }
+    Instance = this;
+    
+    // ✅ FIX: Ensure root object before DontDestroyOnLoad
+    if (transform.parent != null)
+    {
+        transform.SetParent(null);
+        Log("Detached from parent to make root object");
+    }
+    
+    DontDestroyOnLoad(gameObject);
+
+    // Detect platform
+    DetectPlatform();
+
+    Log("✅ MobileInputHelper initialized");
+    Log($"Platform: {(isMobile ? "MOBILE" : "DESKTOP")}");
+    Log($"Multi-touch prevention: {preventMultiTouch}");
+}
 
     void Start()
     {

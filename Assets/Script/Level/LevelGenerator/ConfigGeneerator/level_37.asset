@@ -17,12 +17,9 @@ MonoBehaviour:
   displayName: Level 37
   requirements:
   - type: 2
-    colorVariant: 1
-    count: 8
-  - type: 1
-    colorVariant: 1
-    count: 8
+    colorVariant: 2
+    count: 14
   - type: 3
     colorVariant: 1
-    count: 8
+    count: 20
   showPreviewInSelector: 1

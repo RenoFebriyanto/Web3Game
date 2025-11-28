@@ -16,7 +16,7 @@ MonoBehaviour:
   number: 16
   displayName: Level 16
   requirements:
-  - type: 0
-    colorVariant: 2
-    count: 4
+  - type: 3
+    colorVariant: 1
+    count: 6
   showPreviewInSelector: 1

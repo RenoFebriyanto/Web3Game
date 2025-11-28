@@ -78,33 +78,40 @@ public class LevelScrollArea : MonoBehaviour,
     }
 
     void Start()
+{
+    // Auto-detect ScrollRect
+    if (scrollRect == null)
     {
-        // Auto-detect ScrollRect
+        scrollRect = GetComponentInParent<ScrollRect>();
         if (scrollRect == null)
         {
-            scrollRect = GetComponentInParent<ScrollRect>();
-            if (scrollRect == null)
-            {
-                scrollRect = FindFirstObjectByType<ScrollRect>();
-            }
-
-            if (scrollRect != null)
-            {
-                Log($"✓ Auto-detected ScrollRect: {scrollRect.name}");
-            }
-            else
-            {
-                LogWarning("⚠️ ScrollRect not found!");
-            }
+            scrollRect = FindFirstObjectByType<ScrollRect>();
         }
 
-        // Auto-detect level container
-        if (levelItemsContainer == null && scrollRect != null)
+        if (scrollRect != null)
         {
-            levelItemsContainer = scrollRect.content;
-            Log($"✓ Auto-detected container: {levelItemsContainer.name}");
+            Log($"✓ Auto-detected ScrollRect: {scrollRect.name}");
+        }
+        else
+        {
+            LogWarning("⚠️ ScrollRect not found!");
         }
     }
+    
+    // ✅ FIX: Validate ScrollRect content
+    if (scrollRect != null && scrollRect.content == null)
+    {
+        LogWarning("⚠️ ScrollRect.content is NULL! Auto-scroll disabled.");
+        scrollRect = null; // Disable to prevent errors
+    }
+
+    // Auto-detect level container
+    if (levelItemsContainer == null && scrollRect != null)
+    {
+        levelItemsContainer = scrollRect.content;
+        Log($"✓ Auto-detected container: {levelItemsContainer.name}");
+    }
+}
 
     void OnEnable()
     {
@@ -232,58 +239,65 @@ public class LevelScrollArea : MonoBehaviour,
     }
 
     float CalculateScrollPositionForLevel(int levelNumber)
+{
+    // ✅ FIX: Add null checks
+    if (levelItemsContainer == null || scrollRect == null)
     {
-        if (levelItemsContainer == null || scrollRect == null)
-        {
-            LogWarning("Cannot calculate position: container or scrollRect is null");
-            return 1f;
-        }
-
-        Transform targetItem = FindLevelItemByNumber(levelNumber);
-
-        if (targetItem == null)
-        {
-            LogWarning($"Level item {levelNumber} not found");
-            
-            // Fallback: estimate position
-            int totalLevels = levelItemsContainer.childCount;
-            if (totalLevels > 0)
-            {
-                float estimated = 1f - ((float)(levelNumber - 1) / totalLevels);
-                Log($"Using estimated position: {estimated:F2}");
-                return Mathf.Clamp01(estimated);
-            }
-            return 1f;
-        }
-
-        RectTransform contentRect = scrollRect.content;
-        RectTransform targetRect = targetItem.GetComponent<RectTransform>();
-
-        if (contentRect == null || targetRect == null)
-        {
-            return 1f;
-        }
-
-        float contentHeight = contentRect.rect.height;
-        float viewportHeight = scrollRect.viewport.rect.height;
-        float targetY = Mathf.Abs(targetRect.anchoredPosition.y);
-        float scrollableHeight = contentHeight - viewportHeight;
-
-        if (scrollableHeight <= 0)
-        {
-            return 1f; // Content smaller than viewport
-        }
-
-        float calculatedPosition = 1f - (targetY / scrollableHeight);
-        
-        // Adjust to center target in viewport
-        float adjustment = (viewportHeight * 0.3f) / scrollableHeight;
-        calculatedPosition = Mathf.Clamp01(calculatedPosition + adjustment);
-
-        Log($"📐 Calculated position for level {levelNumber}: {calculatedPosition:F2}");
-
-        return calculatedPosition;
+        LogWarning("Cannot calculate position: container or scrollRect is null");
+        return 1f;
     }
+    
+    if (scrollRect.content == null)
+    {
+        LogWarning("Cannot calculate position: scrollRect.content is null");
+        return 1f;
+    }
+
+    Transform targetItem = FindLevelItemByNumber(levelNumber);
+
+    if (targetItem == null)
+    {
+        LogWarning($"Level item {levelNumber} not found");
+        
+        // Fallback: estimate position
+        int totalLevels = levelItemsContainer.childCount;
+        if (totalLevels > 0)
+        {
+            float estimated = 1f - ((float)(levelNumber - 1) / totalLevels);
+            Log($"Using estimated position: {estimated:F2}");
+            return Mathf.Clamp01(estimated);
+        }
+        return 1f;
+    }
+
+    RectTransform contentRect = scrollRect.content;
+    RectTransform targetRect = targetItem.GetComponent<RectTransform>();
+
+    if (contentRect == null || targetRect == null)
+    {
+        return 1f;
+    }
+
+    float contentHeight = contentRect.rect.height;
+    float viewportHeight = scrollRect.viewport.rect.height;
+    float targetY = Mathf.Abs(targetRect.anchoredPosition.y);
+    float scrollableHeight = contentHeight - viewportHeight;
+
+    if (scrollableHeight <= 0)
+    {
+        return 1f; // Content smaller than viewport
+    }
+
+    float calculatedPosition = 1f - (targetY / scrollableHeight);
+    
+    // Adjust to center target in viewport
+    float adjustment = (viewportHeight * 0.3f) / scrollableHeight;
+    calculatedPosition = Mathf.Clamp01(calculatedPosition + adjustment);
+
+    Log($"📐 Calculated position for level {levelNumber}: {calculatedPosition:F2}");
+
+    return calculatedPosition;
+}
 
     Transform FindLevelItemByNumber(int levelNumber)
     {
@@ -308,28 +322,33 @@ public class LevelScrollArea : MonoBehaviour,
     }
 
     IEnumerator SmoothScrollTo(float targetPosition)
+{
+    // ✅ FIX: Null check before accessing
+    if (scrollRect == null || scrollRect.content == null) 
     {
-        if (scrollRect == null) yield break;
-
-        float startPosition = scrollRect.verticalNormalizedPosition;
-        float elapsed = 0f;
-
-        Log($"🔄 Smooth scroll: {startPosition:F2} → {targetPosition:F2}");
-
-        while (elapsed < scrollAnimationDuration)
-        {
-            elapsed += Time.deltaTime;
-            float t = elapsed / scrollAnimationDuration;
-            float curveValue = scrollCurve.Evaluate(t);
-
-            scrollRect.verticalNormalizedPosition = Mathf.Lerp(startPosition, targetPosition, curveValue);
-
-            yield return null;
-        }
-
-        scrollRect.verticalNormalizedPosition = targetPosition;
-        Log($"✓ Scroll complete");
+        LogWarning("Cannot scroll: scrollRect or content is null");
+        yield break;
     }
+
+    float startPosition = scrollRect.verticalNormalizedPosition;
+    float elapsed = 0f;
+
+    Log($"🔄 Smooth scroll: {startPosition:F2} → {targetPosition:F2}");
+
+    while (elapsed < scrollAnimationDuration)
+    {
+        elapsed += Time.deltaTime;
+        float t = elapsed / scrollAnimationDuration;
+        float curveValue = scrollCurve.Evaluate(t);
+
+        scrollRect.verticalNormalizedPosition = Mathf.Lerp(startPosition, targetPosition, curveValue);
+
+        yield return null;
+    }
+
+    scrollRect.verticalNormalizedPosition = targetPosition;
+    Log($"✓ Scroll complete");
+}
 
     // ========================================
     // PUBLIC API

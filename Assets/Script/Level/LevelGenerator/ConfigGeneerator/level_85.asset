@@ -16,19 +16,13 @@ MonoBehaviour:
   number: 85
   displayName: Level 85
   requirements:
-  - type: 2
-    colorVariant: 2
-    count: 16
-  - type: 0
-    colorVariant: 3
-    count: 20
   - type: 3
     colorVariant: 3
-    count: 18
+    count: 50
+  - type: 2
+    colorVariant: 2
+    count: 50
   - type: 1
     colorVariant: 3
-    count: 17
-  - type: 5
-    colorVariant: 2
-    count: 17
+    count: 43
   showPreviewInSelector: 1

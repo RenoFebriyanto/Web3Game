@@ -16,16 +16,13 @@ MonoBehaviour:
   number: 77
   displayName: Level 77
   requirements:
-  - type: 0
-    colorVariant: 2
-    count: 20
+  - type: 1
+    colorVariant: 3
+    count: 45
   - type: 2
     colorVariant: 3
-    count: 16
-  - type: 1
-    colorVariant: 2
-    count: 20
+    count: 50
   - type: 3
-    colorVariant: 3
-    count: 20
+    colorVariant: 2
+    count: 43
   showPreviewInSelector: 1

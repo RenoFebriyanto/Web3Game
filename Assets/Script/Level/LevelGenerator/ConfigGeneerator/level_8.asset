@@ -16,7 +16,7 @@ MonoBehaviour:
   number: 8
   displayName: Level 8
   requirements:
-  - type: 1
-    colorVariant: 1
+  - type: 0
+    colorVariant: 3
     count: 3
   showPreviewInSelector: 1

@@ -16,13 +16,10 @@ MonoBehaviour:
   number: 36
   displayName: Level 36
   requirements:
-  - type: 0
+  - type: 2
     colorVariant: 2
-    count: 9
-  - type: 3
+    count: 13
+  - type: 1
     colorVariant: 2
-    count: 8
-  - type: 4
-    colorVariant: 1
-    count: 7
+    count: 14
   showPreviewInSelector: 1

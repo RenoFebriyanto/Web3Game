@@ -17,15 +17,12 @@ MonoBehaviour:
   displayName: Level 53
   requirements:
   - type: 4
-    colorVariant: 1
-    count: 10
-  - type: 5
     colorVariant: 2
-    count: 12
+    count: 27
+  - type: 0
+    colorVariant: 1
+    count: 32
   - type: 3
-    colorVariant: 2
-    count: 12
-  - type: 2
     colorVariant: 1
-    count: 12
+    count: 29
   showPreviewInSelector: 1

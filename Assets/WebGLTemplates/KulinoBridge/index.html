@@ -1,485 +1,449 @@
 <!DOCTYPE html>
 <html lang="en-us">
-  <head>
-    <meta charset="utf-8" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>TestingWeb3 - Kulino</title>
-    <link rel="shortcut icon" href="TemplateData/favicon.ico" />
-    <link rel="stylesheet" href="TemplateData/style.css" />
-    
-    <!-- ✅ EXISTING META TAG (KEPT) -->
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-    
-    <!-- ✅ LANDSCAPE META TAGS -->
-    <meta name="mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-fullscreen" />
-    <meta name="screen-orientation" content="landscape" />
-    <meta name="x5-orientation" content="landscape" />
-    <meta name="x5-fullscreen" content="true" />
-    
-    <style>
-      /* ===== EXISTING STYLES (KEPT) ===== */
-      html,body { height:100%; margin:0; background:#222; color:#fff; }
-      #unity-container.unity-desktop { width:100%; height:100%; display:flex; align-items:center; justify-content:center; }
-      #unity-loading-bar { position:absolute; top:20px; left:20px; right:20px; max-width:720px; }
-      
-      /* ✅ LANDSCAPE ENFORCEMENT */
-      @media screen and (orientation: portrait) {
-        html {
-          transform: rotate(-90deg);
-          transform-origin: left top;
-          width: 100vh;
-          height: 100vw;
-          overflow-x: hidden;
-          position: absolute;
-          top: 100%;
-          left: 0;
-        }
-      }
-      
-      /* ✅ ROTATION PROMPT OVERLAY */
-      #rotation-prompt {
-        display: none;
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.95);
-        z-index: 9999;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        text-align: center;
-        padding: 20px;
-      }
-      
-      #rotation-prompt.show {
-        display: flex;
-      }
-      
-      .rotation-icon {
-        font-size: 80px;
-        margin-bottom: 20px;
-        animation: rotate-icon 2s infinite;
-      }
-      
-      @keyframes rotate-icon {
-        0%, 100% { transform: rotate(0deg); }
-        50% { transform: rotate(90deg); }
-      }
-      
-      .rotation-text {
-        font-size: 24px;
-        font-weight: bold;
-        color: #fff;
-        margin-bottom: 10px;
-      }
-      
-      .rotation-subtext {
-        font-size: 16px;
-        color: #aaa;
-      }
-    </style>
-
-    <!-- EXISTING LIBRARIES (KEPT) -->
-    <script src="https://unpkg.com/@solana/web3.js@latest/lib/index.iife.min.js"></script>
-    <script src="https://unpkg.com/@solana/spl-token@latest/lib/index.iife.min.js"></script>
-    <script src="https://unpkg.com/bs58@4.0.1/dist/index.min.js"></script>
-  </head>
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <title>{{{ PRODUCT_NAME }}} - Kulino</title>
+  <link rel="shortcut icon" href="TemplateData/favicon.ico" />
+  <link rel="stylesheet" href="TemplateData/style.css" />
   
-  <body>
-    <!-- ✅ ROTATION PROMPT OVERLAY -->
-    <div id="rotation-prompt">
-      <div class="rotation-icon">📱➡️🖥️</div>
-      <div class="rotation-text">Please rotate your device</div>
-      <div class="rotation-subtext">This game works best in landscape mode</div>
-    </div>
-
-    <!-- EXISTING UNITY CONTAINER (KEPT) -->
-    <div id="unity-container" class="unity-desktop">
-      <canvas id="unity-canvas" width="1280" height="720" tabindex="-1"></canvas>
-      <div id="unity-loading-bar" style="display:none">
-        <div id="unity-logo"></div>
-        <div id="unity-progress-bar-empty"><div id="unity-progress-bar-full"></div></div>
-      </div>
-      <div id="unity-warning"></div>
-      <div id="unity-footer">
-        <div id="unity-fullscreen-button"></div>
-        <div id="unity-build-title">TestingWeb3</div>
-      </div>
-    </div>
-
-    <!-- ===========================
-         KULINO BRIDGE START
-         =========================== -->
-
-    <!-- EXISTING unityShowBanner (KEPT) -->
-    <script>
-    function unityShowBanner(msg, type) {
-      try {
-        var warningBanner = document.querySelector("#unity-warning");
-        function updateBannerVisibility() {
-          warningBanner.style.display = warningBanner.children.length ? "block" : "none";
-        }
-        var div = document.createElement("div");
-        div.textContent = msg;
-        div.style.padding = "8px";
-        div.style.margin = "6px";
-        if (type === "error") div.style.background = "rgba(200,0,0,0.9)";
-        else if (type === "warning") div.style.background = "rgba(200,160,0,0.9)";
-        else div.style.background = "rgba(0,0,0,0.6)";
-        warningBanner.appendChild(div);
-        if (type !== "error") {
-          setTimeout(function() { warningBanner.removeChild(div); updateBannerVisibility(); }, 5000);
-        }
-        updateBannerVisibility();
-      } catch(e){ console.warn('unityShowBanner error', e); }
-    }
-    </script>
-
-    <!-- ✅ ORIENTATION DETECTION -->
-    <script>
-    function isMobileBrowser() {
-      return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  <!-- Mobile Viewport -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  
+  <!-- Landscape Enforcement -->
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-fullscreen" />
+  <meta name="screen-orientation" content="landscape" />
+  <meta name="x5-orientation" content="landscape" />
+  <meta name="x5-fullscreen" content="true" />
+  
+  <style>
+    html,body { 
+      height:100%; 
+      margin:0; 
+      background:#222; 
+      color:#fff;
+      overflow: hidden;
     }
     
-    function isPortraitMode() {
-      return window.innerHeight > window.innerWidth;
+    #unity-container.unity-desktop { 
+      width:100%; 
+      height:100%; 
+      display:flex; 
+      align-items:center; 
+      justify-content:center; 
     }
     
-    function checkOrientation() {
-      var prompt = document.getElementById('rotation-prompt');
-      var canvas = document.getElementById('unity-canvas');
+    #unity-canvas {
+      width: 100%;
+      height: 100%;
+      background: #000;
+    }
+    
+    #unity-loading-bar { 
+      position:absolute; 
+      top:20px; 
+      left:20px; 
+      right:20px; 
+      max-width:720px; 
+    }
+    
+    /* Landscape Enforcement */
+    @media screen and (orientation: portrait) {
+      html {
+        transform: rotate(-90deg);
+        transform-origin: left top;
+        width: 100vh;
+        height: 100vw;
+        overflow-x: hidden;
+        position: absolute;
+        top: 100%;
+        left: 0;
+      }
+    }
+    
+    /* Rotation Prompt Overlay */
+    #rotation-prompt {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.95);
+      z-index: 9999;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 20px;
+    }
+    
+    #rotation-prompt.show {
+      display: flex;
+    }
+    
+    .rotation-icon {
+      font-size: 80px;
+      margin-bottom: 20px;
+      animation: rotate-icon 2s infinite;
+    }
+    
+    @keyframes rotate-icon {
+      0%, 100% { transform: rotate(0deg); }
+      50% { transform: rotate(90deg); }
+    }
+    
+    .rotation-text {
+      font-size: 24px;
+      font-weight: bold;
+      color: #fff;
+      margin-bottom: 10px;
+    }
+    
+    .rotation-subtext {
+      font-size: 16px;
+      color: #aaa;
+    }
+  </style>
+
+  <!-- Required Libraries -->
+  <script src="https://unpkg.com/@solana/web3.js@latest/lib/index.iife.min.js"></script>
+  <script src="https://unpkg.com/@solana/spl-token@latest/lib/index.iife.min.js"></script>
+  <script src="https://unpkg.com/bs58@4.0.1/dist/index.min.js"></script>
+</head>
+
+<body>
+  <!-- Rotation Prompt Overlay -->
+  <div id="rotation-prompt">
+    <div class="rotation-icon">📱➡️🖥️</div>
+    <div class="rotation-text">Please rotate your device</div>
+    <div class="rotation-subtext">This game works best in landscape mode</div>
+  </div>
+
+  <!-- Unity Container -->
+  <div id="unity-container" class="unity-desktop">
+    <canvas id="unity-canvas" tabindex="-1"></canvas>
+    <div id="unity-loading-bar" style="display:none">
+      <div id="unity-logo"></div>
+      <div id="unity-progress-bar-empty">
+        <div id="unity-progress-bar-full"></div>
+      </div>
+    </div>
+    <div id="unity-warning"></div>
+  </div>
+
+  <!-- Unity Show Banner -->
+  <script>
+  function unityShowBanner(msg, type) {
+    try {
+      var warningBanner = document.querySelector("#unity-warning");
+      function updateBannerVisibility() {
+        warningBanner.style.display = warningBanner.children.length ? "block" : "none";
+      }
+      var div = document.createElement("div");
+      div.textContent = msg;
+      div.style.padding = "8px";
+      div.style.margin = "6px";
+      if (type === "error") div.style.background = "rgba(200,0,0,0.9)";
+      else if (type === "warning") div.style.background = "rgba(200,160,0,0.9)";
+      else div.style.background = "rgba(0,0,0,0.6)";
+      warningBanner.appendChild(div);
+      if (type !== "error") {
+        setTimeout(function() { 
+          warningBanner.removeChild(div); 
+          updateBannerVisibility(); 
+        }, 5000);
+      }
+      updateBannerVisibility();
+    } catch(e){ 
+      console.warn('unityShowBanner error', e); 
+    }
+  }
+  </script>
+
+  <!-- Orientation Detection -->
+  <script>
+  function isMobileBrowser() {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  }
+  
+  function isPortraitMode() {
+    return window.innerHeight > window.innerWidth;
+  }
+  
+  function checkOrientation() {
+    var prompt = document.getElementById('rotation-prompt');
+    var canvas = document.getElementById('unity-canvas');
+    
+    if (isMobileBrowser() && isPortraitMode()) {
+      prompt.classList.add('show');
+      if (canvas) canvas.style.display = 'none';
+    } else {
+      prompt.classList.remove('show');
+      if (canvas) canvas.style.display = 'block';
+    }
+  }
+  
+  window.addEventListener('load', checkOrientation);
+  window.addEventListener('resize', checkOrientation);
+  window.addEventListener('orientationchange', checkOrientation);
+  
+  window.IsMobileBrowser = isMobileBrowser;
+  window.IsPortraitMode = isPortraitMode;
+  window.ShowRotationPromptJS = function() {
+    document.getElementById('rotation-prompt').classList.add('show');
+  };
+  window.HideRotationPromptJS = function() {
+    document.getElementById('rotation-prompt').classList.remove('show');
+  };
+  
+  console.log('[ORIENTATION] Detection loaded');
+  </script>
+
+  <!-- Kulino Bridge -->
+  <script>
+  (function(){
+    const LOGPREF = '[KULINO-BRIDGE]';
+    function dlog(...a){ console.log(LOGPREF, ...a); }
+
+    const sendQueue = [];
+    let unityReady = false;
+
+    window.__kulino_unity_ready = function(){
+      dlog('✅ Unity reported ready. queue len=', sendQueue.length);
+      unityReady = true;
       
-      if (isMobileBrowser() && isPortraitMode()) {
-        prompt.classList.add('show');
-        if (canvas) canvas.style.display = 'none';
-      } else {
-        prompt.classList.remove('show');
-        if (canvas) canvas.style.display = 'block';
+      while(sendQueue.length){
+        const item = sendQueue.shift();
+        _doSendToUnity(item.method, item.payload);
+      }
+      
+      // ✅ CRITICAL: Notify Unity about wallet from URL
+      checkAndNotifyWallet();
+    };
+
+    function _doSendToUnity(methodName, payloadJson){
+      try {
+        if (window.unityInstance && typeof window.unityInstance.SendMessage === 'function') {
+          dlog('📤 SendMessage ->', methodName, payloadJson);
+          window.unityInstance.SendMessage('GameManager', methodName, payloadJson);
+        } else {
+          console.warn(LOGPREF, 'unityInstance.SendMessage not available, queueing');
+          sendQueue.push({ method: methodName, payload: payloadJson });
+        }
+      } catch(e){ 
+        console.error(LOGPREF, 'SendMessage exception', e); 
       }
     }
-    
-    window.addEventListener('load', checkOrientation);
-    window.addEventListener('resize', checkOrientation);
-    window.addEventListener('orientationchange', checkOrientation);
-    
-    window.IsMobileBrowser = isMobileBrowser;
-    window.IsPortraitMode = isPortraitMode;
-    window.ShowRotationPromptJS = function() {
-      document.getElementById('rotation-prompt').classList.add('show');
-    };
-    window.HideRotationPromptJS = function() {
-      document.getElementById('rotation-prompt').classList.remove('show');
-    };
-    
-    console.log('[ORIENTATION] Detection loaded');
-    </script>
 
-    <!-- ✅✅✅ ENHANCED KULINO BRIDGE WITH WALLET AUTO-DETECTION ✅✅✅ -->
-    <script>
-    (function(){
-      const LOGPREF = '[KULINO-BRIDGE]';
-      function dlog(...a){ console.log(LOGPREF, ...a); }
-
-      const sendQueue = [];
-      let unityReady = false;
-
-      // ========================================
-      // UNITY READY CALLBACK
-      // ========================================
-      window.__kulino_unity_ready = function(){
-        dlog('✅ Unity reported ready. queue len=', sendQueue.length);
-        unityReady = true;
-        
-        // Flush queue
-        while(sendQueue.length){
-          const item = sendQueue.shift();
-          _doSendToUnity(item.method, item.payload);
-        }
-        
-        // ✅ CRITICAL: Check for existing wallet connection
-        checkAndNotifyWallet();
-      };
-
-      // ========================================
-      // SEND TO UNITY (WITH QUEUE)
-      // ========================================
-      function _doSendToUnity(methodName, payloadJson){
-        try {
-          if (window.unityInstance && typeof window.unityInstance.SendMessage === 'function') {
-            dlog('📤 SendMessage ->', methodName, payloadJson);
-            window.unityInstance.SendMessage('GameManager', methodName, payloadJson);
-          } else {
-            console.warn(LOGPREF, 'unityInstance.SendMessage not available, queueing');
-            sendQueue.push({ method: methodName, payload: payloadJson });
-          }
-        } catch(e){ 
-          console.error(LOGPREF, 'SendMessage exception', e); 
-        }
+    function sendToUnity(obj){
+      const js = JSON.stringify(obj);
+      if (!unityReady) { 
+        sendQueue.push({ method: 'OnClaimResult', payload: js }); 
+        dlog('⏳ Queued OnClaimResult');
+      } else {
+        _doSendToUnity('OnClaimResult', js);
       }
+    }
 
-      function sendToUnity(obj){
-        const js = JSON.stringify(obj);
-        if (!unityReady) { 
-          sendQueue.push({ method: 'OnClaimResult', payload: js }); 
-          dlog('⏳ Queued OnClaimResult (len=', sendQueue.length, ')');
+    // ✅ WALLET AUTO-DETECTION FROM URL
+    function checkAndNotifyWallet() {
+      dlog('🔍 Checking for wallet in URL...');
+      
+      const urlParams = new URLSearchParams(window.location.search);
+      const walletAddress = urlParams.get('wallet');
+      
+      if (walletAddress) {
+        dlog('✅ Found wallet in URL:', walletAddress.substring(0, 8) + '...');
+        
+        // Notify Unity (with retry)
+        notifyUnityWallet(walletAddress);
+      } else {
+        dlog('⚠️ No wallet parameter in URL');
+      }
+    }
+
+    function notifyUnityWallet(address, retryCount = 0) {
+      if (!window.unityInstance || typeof window.unityInstance.SendMessage !== 'function') {
+        if (retryCount < 10) {
+          dlog(`⏳ Unity not ready, retry ${retryCount + 1}/10 in 500ms...`);
+          setTimeout(() => notifyUnityWallet(address, retryCount + 1), 500);
         } else {
-          _doSendToUnity('OnClaimResult', js);
+          console.error(LOGPREF, '❌ Failed to notify Unity after 10 retries');
         }
+        return;
       }
+      
+      try {
+        window.unityInstance.SendMessage('GameManager', 'OnWalletConnected', address);
+        dlog('✅ Wallet address sent to GameManager');
+      } catch(e) {
+        console.error(LOGPREF, '❌ Failed to notify Unity:', e);
+      }
+    }
 
-      // ========================================
-      // ✅ NEW: WALLET AUTO-DETECTION & NOTIFICATION
-      // ========================================
-      function checkAndNotifyWallet() {
-        dlog('🔍 Checking for existing wallet connection...');
-        
+    window.requestClaimFromUnity = async function(messageJson) {
+      dlog('💰 requestClaimFromUnity called with:', messageJson);
+      try {
         const provider = (window.solana && window.solana.isPhantom) ? window.solana :
                          (window.phantom && window.phantom.solana) ? window.phantom.solana : null;
-        
         if (!provider) {
-          dlog('⚠️ Phantom wallet not detected');
+          dlog('❌ phantom not found');
+          sendToUnity({ success:false, error:'phantom_not_installed' });
           return;
         }
-        
-        // Check if already connected
-        if (provider.isConnected && provider.publicKey) {
-          const address = provider.publicKey.toString();
-          dlog('✅ Phantom already connected:', address);
-          notifyUnityWallet(address);
-        } else {
-          dlog('ℹ️ Phantom detected but not connected');
-          
-          // Try to connect silently (only if trusted)
-          provider.connect({ onlyIfTrusted: true })
-            .then((resp) => {
-              if (resp && resp.publicKey) {
-                const address = resp.publicKey.toString();
-                dlog('✅ Silent connect success:', address);
-                notifyUnityWallet(address);
-              }
-            })
-            .catch((err) => {
-              dlog('ℹ️ Silent connect failed (expected if not trusted):', err.message);
-            });
+
+        let payloadObj = (typeof messageJson === 'string') ? JSON.parse(messageJson) : messageJson;
+
+        if (!provider.isConnected) {
+          dlog('🔌 connecting to phantom...');
+          await provider.connect();
+          dlog('✅ connected, pk=', provider.publicKey?.toString?.());
         }
-        
-        // Listen for future connections
-        provider.on('connect', (publicKey) => {
-          const address = publicKey.toString();
-          dlog('🔔 Phantom connected event:', address);
-          notifyUnityWallet(address);
+
+        payloadObj.address = provider.publicKey.toString();
+        const canonical = {
+          address: payloadObj.address,
+          gameId: payloadObj.gameId,
+          amount: payloadObj.amount,
+          nonce: payloadObj.nonce,
+          ts: payloadObj.ts
+        };
+        const messageStr = JSON.stringify(canonical);
+        dlog('📝 message to sign:', messageStr);
+
+        const encoded = new TextEncoder().encode(messageStr);
+        const signed = await provider.signMessage(encoded, 'utf8');
+        dlog('✅ signMessage returned', signed);
+
+        if (typeof bs58 === 'undefined' && typeof window.bs58 === 'undefined') {
+          dlog('❌ bs58 missing');
+          sendToUnity({ success:false, error:'bs58_lib_missing' });
+          return;
+        }
+        const sig = (typeof bs58 !== 'undefined') ? bs58.encode(signed.signature) : window.bs58.encode(signed.signature);
+
+        dlog('🚀 POSTing to server /api/claim');
+        const resp = await fetch('http://localhost:3000/api/claim', {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({ 
+            message: messageStr, 
+            signature: sig, 
+            publicKey: provider.publicKey.toString() 
+          })
         });
-      }
 
-      // ✅ NOTIFY UNITY ABOUT WALLET (WITH RETRY)
-      function notifyUnityWallet(address, retryCount = 0) {
-        dlog('📢 Notifying Unity about wallet:', address);
-        
-        if (!window.unityInstance || typeof window.unityInstance.SendMessage !== 'function') {
-          if (retryCount < 10) {
-            dlog(`⏳ Unity not ready, retry ${retryCount + 1}/10 in 500ms...`);
-            setTimeout(() => notifyUnityWallet(address, retryCount + 1), 500);
-          } else {
-            console.error(LOGPREF, '❌ Failed to notify Unity after 10 retries');
-          }
+        dlog('📥 server status', resp.status);
+        let data;
+        try { 
+          data = await resp.json(); 
+        } catch(e){
+          const text = await resp.text().catch(()=>'<no-text>');
+          dlog('❌ server returned non-json:', text);
+          sendToUnity({ success:false, error:'invalid_server_response', raw: text });
           return;
         }
-        
-        try {
-          // Send to GameManager
-          window.unityInstance.SendMessage('GameManager', 'OnWalletConnected', address);
-          dlog('✅ Wallet address sent to GameManager');
-          
-          // ✅ ALSO send directly to KulinoCoinManager (backup)
-          window.unityInstance.SendMessage('KulinoCoinManager', 'Initialize', address);
-          dlog('✅ Wallet address sent to KulinoCoinManager');
-          
-          // Save to localStorage for persistence
-          try {
-            localStorage.setItem('kulino_wallet_address', address);
-            localStorage.setItem('kulino_wallet_timestamp', Date.now().toString());
-            dlog('✅ Wallet saved to localStorage');
-          } catch(e) {
-            console.warn(LOGPREF, 'localStorage save failed:', e);
-          }
-          
-        } catch(e) {
-          console.error(LOGPREF, '❌ Failed to notify Unity:', e);
-        }
+        dlog('✅ server json', data);
+        sendToUnity(data);
+
+      } catch(err) {
+        console.error(LOGPREF, '❌ requestClaimFromUnity error', err);
+        sendToUnity({ success:false, error: err.message || String(err) });
       }
+    };
 
-      // ✅ EXPOSE GLOBALLY FOR MANUAL TESTING
-      window.notifyUnityWallet = notifyUnityWallet;
-      window.checkWalletConnection = checkAndNotifyWallet;
-
-      // ========================================
-      // CLAIM SYSTEM (EXISTING - KEPT)
-      // ========================================
-      window.requestClaimFromUnity = async function(messageJson) {
-        dlog('💰 requestClaimFromUnity called with:', messageJson);
-        try {
-          const provider = (window.solana && window.solana.isPhantom) ? window.solana :
-                           (window.phantom && window.phantom.solana) ? window.phantom.solana : null;
-          if (!provider) {
-            dlog('❌ Phantom not found');
-            sendToUnity({ success:false, error:'phantom_not_installed' });
-            return;
-          }
-
-          let payloadObj = (typeof messageJson === 'string') ? JSON.parse(messageJson) : messageJson;
-
-          if (!provider.isConnected) {
-            dlog('🔌 Connecting to Phantom...');
-            await provider.connect();
-            dlog('✅ Connected, pk=', provider.publicKey?.toString?.());
-          }
-
-          payloadObj.address = provider.publicKey.toString();
-          const canonical = {
-            address: payloadObj.address,
-            gameId: payloadObj.gameId,
-            amount: payloadObj.amount,
-            nonce: payloadObj.nonce,
-            ts: payloadObj.ts
-          };
-          const messageStr = JSON.stringify(canonical);
-          dlog('📝 Message to sign:', messageStr);
-
-          const encoded = new TextEncoder().encode(messageStr);
-          dlog('✍️ Calling provider.signMessage(...)');
-          const signed = await provider.signMessage(encoded, 'utf8');
-          dlog('✅ signMessage returned', signed);
-
-          if (typeof bs58 === 'undefined' && typeof window.bs58 === 'undefined') {
-            dlog('❌ bs58 missing');
-            sendToUnity({ success:false, error:'bs58_lib_missing' });
-            return;
-          }
-          const sig = (typeof bs58 !== 'undefined') ? bs58.encode(signed.signature) : window.bs58.encode(signed.signature);
-
-          dlog('🚀 POSTing to server /api/claim');
-          const resp = await fetch('http://localhost:3000/api/claim', {
-            method: 'POST',
-            headers: {'Content-Type':'application/json'},
-            body: JSON.stringify({ message: messageStr, signature: sig, publicKey: provider.publicKey.toString() })
-          });
-
-          dlog('📥 Server status', resp.status);
-          let data;
-          try { data = await resp.json(); }
-          catch(e){
-            const text = await resp.text().catch(()=>'<no-text>');
-            dlog('❌ Server returned non-json:', text);
-            sendToUnity({ success:false, error:'invalid_server_response', raw: text });
-            return;
-          }
-          dlog('✅ Server response:', data);
-          sendToUnity(data);
-
-        } catch(err) {
-          console.error(LOGPREF, '❌ requestClaimFromUnity error', err);
-          sendToUnity({ success:false, error: err.message || String(err) });
-        }
+    window.testClaimFromConsole = async function(){
+      const payload = { 
+        gameId:'unity-demo', 
+        amount:1, 
+        nonce: crypto.randomUUID(), 
+        ts: Date.now() 
       };
+      await window.requestClaimFromUnity(JSON.stringify(payload));
+    };
 
-      // Test helper
-      window.testClaimFromConsole = async function(){
-        const payload = { gameId:'unity-demo', amount:1, nonce: crypto.randomUUID(), ts: Date.now() };
-        await window.requestClaimFromUnity(JSON.stringify(payload));
-      };
+    window.__kulino_bridge_info = function(){ 
+      return { 
+        unityReady, 
+        queueLen: sendQueue.length, 
+        hasProvider: !!(window.solana && window.solana.isPhantom) 
+      }; 
+    };
 
-      // Info helper
-      window.__kulino_bridge_info = function(){ 
-        return { 
-          unityReady, 
-          queueLen: sendQueue.length, 
-          hasProvider: !!(window.solana && window.solana.isPhantom),
-          walletConnected: window.solana?.isConnected || false,
-          walletAddress: window.solana?.publicKey?.toString() || null
-        }; 
-      };
+    dlog('✅ Kulino bridge loaded.');
+  })();
+  </script>
 
-      dlog('✅ Kulino bridge loaded');
-    })();
-    </script>
-
-    <!-- EXISTING RequestClaim wrapper (KEPT) -->
-    <script>
-    function RequestClaim(message) {
-      if (window.requestClaimFromUnity && typeof window.requestClaimFromUnity === 'function') {
-        try {
-          window.requestClaimFromUnity(message);
-        } catch (e) {
-          console.error('[RequestClaim wrapper] error', e);
-        }
-      } else {
-        console.error('[RequestClaim wrapper] requestClaimFromUnity missing');
-        if (window.unityInstance && typeof window.unityInstance.SendMessage === 'function') {
-          const err = JSON.stringify({ success:false, error:'requestClaimFromUnity_missing' });
-          window.unityInstance.SendMessage('GameManager','OnClaimResult', err);
-        }
+  <!-- RequestClaim Wrapper -->
+  <script>
+  function RequestClaim(message) {
+    if (window.requestClaimFromUnity && typeof window.requestClaimFromUnity === 'function') {
+      try {
+        window.requestClaimFromUnity(message);
+      } catch (e) {
+        console.error('[RequestClaim wrapper] error', e);
+      }
+    } else {
+      console.error('[RequestClaim wrapper] requestClaimFromUnity missing');
+      if (window.unityInstance && typeof window.unityInstance.SendMessage === 'function') {
+        const err = JSON.stringify({ success:false, error:'requestClaimFromUnity_missing' });
+        window.unityInstance.SendMessage('GameManager','OnClaimResult', err);
       }
     }
-    </script>
+  }
+  </script>
 
-    <!-- ===========================
-         UNITY LOADER
-         =========================== -->
-    <script>
-      var canvas = document.querySelector("#unity-canvas");
-      var buildUrl = "Build";
-      var loaderUrl = buildUrl + "/{{{ LOADER_FILENAME }}}";
-      var config = {
-        dataUrl: buildUrl + "/{{{ DATA_FILENAME }}}",
-        frameworkUrl: buildUrl + "/{{{ FRAMEWORK_FILENAME }}}",
-        codeUrl: buildUrl + "/{{{ CODE_FILENAME }}}",
+  <!-- Unity Loader -->
+  <script>
+    var canvas = document.querySelector("#unity-canvas");
+    var buildUrl = "Build";
+    var loaderUrl = buildUrl + "/{{{ LOADER_FILENAME }}}";
+    var config = {
+      dataUrl: buildUrl + "/{{{ DATA_FILENAME }}}",
+      frameworkUrl: buildUrl + "/{{{ FRAMEWORK_FILENAME }}}",
+      codeUrl: buildUrl + "/{{{ CODE_FILENAME }}}",
+      streamingAssetsUrl: "StreamingAssets",
+      companyName: "{{{ COMPANY_NAME }}}",
+      productName: "{{{ PRODUCT_NAME }}}",
+      productVersion: "{{{ PRODUCT_VERSION }}}",
+      showBanner: unityShowBanner,
+      matchWebGLToCanvasSize: false,
+      devicePixelRatio: 1
+    };
 
-        memoryUrl: buildUrl + "/{{{ MEMORY_FILENAME }}}",
-        symbolsUrl: buildUrl + "/{{{ SYMBOLS_FILENAME }}}",
+    document.querySelector("#unity-loading-bar").style.display = "block";
 
-        streamingAssetsUrl: "StreamingAssets",
-        companyName: "{{{ COMPANY_NAME }}}",
-        productName: "{{{ PRODUCT_NAME }}}",
-        productVersion: "{{{ PRODUCT_VERSION }}}",
-        showBanner: unityShowBanner,
-        matchWebGLToCanvasSize: false,
-        devicePixelRatio: 1
-      };
-
-      document.querySelector("#unity-loading-bar").style.display = "block";
-
-      var script = document.createElement("script");
-      script.src = loaderUrl;
-      script.onload = () => {
-        createUnityInstance(canvas, config, (progress) => {
-          document.querySelector("#unity-progress-bar-full").style.width = 100 * progress + "%";
-        }).then((unityInstance) => {
-          document.querySelector("#unity-loading-bar").style.display = "none";
-          window.unityInstance = unityInstance;
-          
-          // ✅ Tell bridge Unity is ready
-          if (typeof window.__kulino_unity_ready === 'function') {
-            window.__kulino_unity_ready();
-          }
-          
-          // ✅ Final orientation check
-          checkOrientation();
-          
-          console.log('✅ Unity fully loaded and ready');
-        }).catch((message) => {
-          console.error('❌ createUnityInstance failed', message);
-          alert('Unity failed to load: ' + message);
-        });
-      };
-      script.onerror = (e) => {
-        console.error('❌ Failed to load loader script:', loaderUrl, e);
-        unityShowBanner('Failed to load Unity loader: ' + loaderUrl, 'error');
-      };
-      document.body.appendChild(script);
-    </script>
-  </body>
+    var script = document.createElement("script");
+    script.src = loaderUrl;
+    script.onload = () => {
+      createUnityInstance(canvas, config, (progress) => {
+        document.querySelector("#unity-progress-bar-full").style.width = 100 * progress + "%";
+      }).then((unityInstance) => {
+        document.querySelector("#unity-loading-bar").style.display = "none";
+        window.unityInstance = unityInstance;
+        
+        // Tell bridge Unity is ready
+        if (typeof window.__kulino_unity_ready === 'function') {
+          window.__kulino_unity_ready();
+        }
+        
+        // Final orientation check
+        checkOrientation();
+        
+        console.log('✅ Unity fully loaded and ready');
+      }).catch((message) => {
+        console.error('❌ createUnityInstance failed', message);
+        alert('Unity failed to load: ' + message);
+      });
+    };
+    script.onerror = (e) => {
+      console.error('❌ Failed to load loader script:', loaderUrl, e);
+      unityShowBanner('Failed to load Unity loader: ' + loaderUrl, 'error');
+    };
+    document.body.appendChild(script);
+  </script>
+</body>
 </html>

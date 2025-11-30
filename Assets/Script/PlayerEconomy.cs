@@ -26,34 +26,50 @@ public class PlayerEconomy : MonoBehaviour
     [SerializeField] int defaultMaxEnergy = 100;
 
     void Awake()
+{
+    // ✅ ULTRA-STRONG singleton check
+    if (Instance != null)
     {
-        // ✅ FIX 1: Check if instance exists AND is not destroyed
-        if (Instance != null)
+        // Check if existing instance is valid
+        try
         {
-            if (Instance != this)
+            if (Instance.gameObject != null && Instance.enabled)
             {
-                Debug.LogWarning($"[PlayerEconomy] Duplicate found on '{gameObject.name}' - destroying");
+                Debug.LogWarning($"[PlayerEconomy] Valid instance exists - destroying duplicate '{gameObject.name}'");
                 Destroy(gameObject);
                 return;
             }
         }
-
-        Instance = this;
-        DontDestroyOnLoad(gameObject);
-
-        Debug.Log("[PlayerEconomy] ✓ Initialized successfully");
-        Load();
-    }
-
-    void OnDestroy()
-    {
-        // ✅ FIX 2: Clear instance reference when destroyed
-        if (Instance == this)
+        catch
         {
-            Debug.Log("[PlayerEconomy] Instance destroyed, clearing reference");
-            Instance = null;
+            // Previous instance destroyed, take over
+            Debug.LogWarning("[PlayerEconomy] Previous instance invalid - taking over");
         }
     }
+
+    Instance = this;
+
+    // ✅ CRITICAL: Mark persistent FIRST
+    if (transform.parent != null)
+    {
+        transform.SetParent(null);
+    }
+
+    DontDestroyOnLoad(gameObject);
+    gameObject.name = "[PlayerEconomy - PERSISTENT]";
+
+    Debug.Log("[PlayerEconomy] ✓ Initialized successfully");
+    Load();
+}
+
+void OnDestroy()
+{
+    if (Instance == this)
+    {
+        Debug.LogWarning("[PlayerEconomy] ⚠️ Instance being destroyed!");
+        // Don't clear immediately - let scene recreate if needed
+    }
+}
 
     void Load()
     {

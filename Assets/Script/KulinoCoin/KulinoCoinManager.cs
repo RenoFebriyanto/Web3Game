@@ -61,24 +61,35 @@ public class KulinoCoinManager : MonoBehaviour
     private int initRetryCount = 0;
 
     void Awake()
+{
+    // Singleton check
+    if (Instance != null && Instance != this)
     {
-        if (Instance != null && Instance != this)
-        {
-            Destroy(gameObject);
-            return;
-        }
-
-        Instance = this;
-        DontDestroyOnLoad(gameObject);
-        
-        Log("✅ KulinoCoinManager instance created");
+        Destroy(gameObject);
+        return;
     }
 
-    void Start()
-    {
-        // Start wallet detection
+    Instance = this;
+    DontDestroyOnLoad(gameObject);
+    
+    Log("✅ KulinoCoinManager instance created");
+}
+
+void Start()
+{
+    // ✅ CRITICAL: Don't start retry immediately in WebGL
+    #if UNITY_WEBGL && !UNITY_EDITOR
+        Log("🌐 WebGL Build - Waiting for wallet from JavaScript");
+        // WebGL: Wait for GameManager to call Initialize()
+        // Don't start retry mechanism automatically
+    #else
+        // Editor/Standalone: Start normal retry
+        Log("🖥️ Editor/Standalone - Starting wallet detection");
         StartCoroutine(WaitForWalletWithRetry());
-    }
+    #endif
+}
+
+
 
     void OnEnable()
     {
@@ -166,40 +177,47 @@ public class KulinoCoinManager : MonoBehaviour
     // INITIALIZATION
     // ========================================
 
-    public void Initialize(string walletAddr)
+    /// <summary>
+/// ✅ UPDATED: Initialize with explicit address (called by GameManager)
+/// </summary>
+public void Initialize(string walletAddr)
+{
+    if (string.IsNullOrEmpty(walletAddr))
     {
-        if (string.IsNullOrEmpty(walletAddr))
-        {
-            LogError("❌ Cannot initialize: wallet address is empty!");
-            return;
-        }
-
-        if (isInitialized && walletAddress == walletAddr)
-        {
-            Log($"ℹ️ Already initialized with same wallet: {ShortenAddress(walletAddr)}");
-            return;
-        }
-
-        walletAddress = walletAddr;
-        isInitialized = true;
-
-        Log($"✅ Initialized with wallet: {ShortenAddress(walletAddress)}");
-        Log($"🔗 Mint Address: {ShortenAddress(kulinoCoinMintAddress)}");
-
-        // Fire event
-        OnWalletInitialized?.Invoke(walletAddress);
-
-        // Fetch balance immediately
-        FetchKulinoCoinBalance();
-
-        // Setup auto-refresh
-        if (autoRefreshInterval > 0)
-        {
-            CancelInvoke(nameof(AutoRefreshBalance));
-            InvokeRepeating(nameof(AutoRefreshBalance), autoRefreshInterval, autoRefreshInterval);
-            Log($"✓ Auto-refresh enabled ({autoRefreshInterval}s interval)");
-        }
+        LogError("❌ Cannot initialize: wallet address is empty!");
+        return;
     }
+
+    // ✅ Check if already initialized with same address
+    if (isInitialized && walletAddress == walletAddr)
+    {
+        Log($"ℹ️ Already initialized with: {ShortenAddress(walletAddr)}");
+        // Still trigger a refresh
+        FetchKulinoCoinBalance();
+        return;
+    }
+
+    walletAddress = walletAddr;
+    isInitialized = true;
+
+    Log($"✅ Initialized with wallet: {ShortenAddress(walletAddress)}");
+    Log($"🔗 Mint Address: {ShortenAddress(kulinoCoinMintAddress)}");
+
+    // Fire event
+    OnWalletInitialized?.Invoke(walletAddress);
+
+    // ✅ CRITICAL: Fetch balance immediately
+    Log("🔄 Starting initial balance fetch...");
+    FetchKulinoCoinBalance();
+
+    // Setup auto-refresh
+    if (autoRefreshInterval > 0)
+    {
+        CancelInvoke(nameof(AutoRefreshBalance));
+        InvokeRepeating(nameof(AutoRefreshBalance), autoRefreshInterval, autoRefreshInterval);
+        Log($"✓ Auto-refresh enabled ({autoRefreshInterval}s interval)");
+    }
+}
 
     // ========================================
     // BALANCE FETCHING

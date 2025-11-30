@@ -59,44 +59,36 @@ public class GameManager : MonoBehaviour
 
 void Awake()
 {
-    // ✅ FIX: Ultra-strong singleton with scene change protection
+    // ✅ FIX: Ultra-strong singleton
     if (Instance != null && Instance != this)
     {
-        // Double-check instance is actually alive
         try
         {
             if (Instance.gameObject != null && Instance.enabled)
             {
-                Debug.LogWarning($"[GameManager] Valid instance exists - destroying duplicate on '{gameObject.name}'");
+                Debug.LogWarning($"[GameManager] Valid instance exists - destroying duplicate '{gameObject.name}'");
                 Destroy(gameObject);
                 return;
             }
         }
         catch
         {
-            // Previous instance is destroyed/invalid, take over
             Debug.LogWarning("[GameManager] Previous instance invalid - taking over");
         }
     }
 
     Instance = this;
 
-    // ✅ CRITICAL: Mark as persistent FIRST
+    // ✅ CRITICAL: Mark persistent
     if (transform.parent != null)
     {
-        transform.SetParent(null); // Must be root object
+        transform.SetParent(null);
     }
     
     DontDestroyOnLoad(gameObject);
     gameObject.name = "[GameManager - PERSISTENT]";
-    
-    // Add tag for finding
-    if (!gameObject.CompareTag("GameManager"))
-    {
-        try { gameObject.tag = "GameManager"; } catch { }
-    }
 
-    Debug.Log("[GameManager] ✓ Singleton initialized and marked persistent");
+    Debug.Log("[GameManager] ✓ Singleton initialized");
 }
 
 // ✅ NEW: Prevent accidental destruction
@@ -141,38 +133,57 @@ void OnDestroy()
     // ========================================
     
     /// <summary>
-    /// ✅ Called from JavaScript when wallet connected
-    /// </summary>
-    public void OnWalletConnected(string address)
+/// ✅ FIXED: Called from JavaScript when wallet connected
+/// </summary>
+public void OnWalletConnected(string address)
+{
+    walletAddress = address;
+    Debug.Log($"[GameManager] 👛 Wallet connected: {ShortenAddress(address)}");
+
+    // Save to PlayerPrefs
+    PlayerPrefs.SetString("WalletAddress", address);
+    PlayerPrefs.Save();
+
+    // ✅ NEW: INITIALIZE KULINO COIN MANAGER IMMEDIATELY
+    InitializeKulinoCoinManager(address);
+}
+
+/// <summary>
+/// ✅ NEW: Initialize KulinoCoinManager dengan wallet address
+/// </summary>
+void InitializeKulinoCoinManager(string address)
+{
+    Debug.Log("[GameManager] 🔄 Initializing KulinoCoinManager...");
+    
+    if (KulinoCoinManager.Instance != null)
     {
-        walletAddress = address;
-        Debug.Log($"[GameManager] 👛 Wallet connected: {ShortenAddress(address)}");
-
-        // Save to PlayerPrefs
-        PlayerPrefs.SetString("WalletAddress", address);
-        PlayerPrefs.Save();
-
-        // ✅ INITIALIZE KULINO COIN MANAGER
-        InitializeKulinoCoinManager(address);
+        // ✅ CRITICAL: Set address dan trigger fetch
+        KulinoCoinManager.Instance.Initialize(address);
+        Debug.Log("[GameManager] ✓ KulinoCoinManager initialized with address");
+        
+        // ✅ Force immediate balance fetch
+        StartCoroutine(FetchBalanceDelayed(1f));
     }
-
-    /// <summary>
-    /// ✅ Initialize KulinoCoinManager dengan wallet address
-    /// </summary>
-    void InitializeKulinoCoinManager(string address)
+    else
     {
-        if (KulinoCoinManager.Instance != null)
-        {
-            Debug.Log("[GameManager] 🔄 Initializing KulinoCoinManager...");
-            KulinoCoinManager.Instance.Initialize(address);
-            Debug.Log("[GameManager] ✓ KulinoCoinManager initialized");
-        }
-        else
-        {
-            Debug.LogWarning("[GameManager] ⚠️ KulinoCoinManager.Instance not found!");
-            Debug.LogWarning("[GameManager] Pastikan GameObject 'KulinoCoinManager' ada di scene");
-        }
+        Debug.LogError("[GameManager] ❌ KulinoCoinManager.Instance NOT FOUND!");
+        Debug.LogError("[GameManager] Make sure GameObject 'KulinoCoinManager' exists in scene");
     }
+}
+
+/// <summary>
+/// ✅ NEW: Delayed balance fetch untuk ensure initialization complete
+/// </summary>
+IEnumerator FetchBalanceDelayed(float delay)
+{
+    yield return new WaitForSeconds(delay);
+    
+    if (KulinoCoinManager.Instance != null && KulinoCoinManager.Instance.IsInitialized())
+    {
+        Debug.Log("[GameManager] 🔄 Triggering balance fetch...");
+        KulinoCoinManager.Instance.FetchKulinoCoinBalance();
+    }
+}
 
     /// <summary>
     /// Get current wallet address

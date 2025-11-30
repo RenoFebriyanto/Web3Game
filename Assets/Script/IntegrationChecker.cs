@@ -120,44 +120,55 @@ void CheckWalletConnection()
 }
 
     void CheckKulinoCoinManager()
+{
+    LogSection("2️⃣ KULINO COIN MANAGER");
+
+    if (KulinoCoinManager.Instance != null)
     {
-        LogSection("2️⃣ KULINO COIN MANAGER");
+        kulinoCoinManagerReady = KulinoCoinManager.Instance.IsInitialized();
+        kulinoCoinBalance = KulinoCoinManager.Instance.GetBalance();
 
-        if (KulinoCoinManager.Instance != null)
+        if (kulinoCoinManagerReady)
         {
-            kulinoCoinManagerReady = KulinoCoinManager.Instance.IsInitialized();
-            kulinoCoinBalance = KulinoCoinManager.Instance.GetBalance();
-
-            if (kulinoCoinManagerReady)
+            LogSuccess($"✓ KulinoCoinManager Initialized");
+            LogSuccess($"✓ Balance: {kulinoCoinBalance:F6} KULINO");
+            
+            // ✅ NEW: Check if address matches
+            string managerWallet = KulinoCoinManager.Instance.GetWalletAddress();
+            if (!string.IsNullOrEmpty(managerWallet) && managerWallet == walletAddress)
             {
-                LogSuccess($"✓ KulinoCoinManager Initialized");
-                LogSuccess($"✓ Balance: {kulinoCoinBalance:F6} KULINO");
-                
-                // Check if address matches
-                string managerWallet = KulinoCoinManager.Instance.GetWalletAddress();
-                if (!string.IsNullOrEmpty(managerWallet) && managerWallet == walletAddress)
-                {
-                    LogSuccess($"✓ Wallet address matches: {ShortenAddress(managerWallet)}");
-                }
-                else if (!string.IsNullOrEmpty(managerWallet))
-                {
-                    LogWarning($"⚠️ Address mismatch!");
-                    LogWarning($"   GameManager: {ShortenAddress(walletAddress)}");
-                    LogWarning($"   KulinoCoin:  {ShortenAddress(managerWallet)}");
-                }
+                LogSuccess($"✓ Wallet address matches: {ShortenAddress(managerWallet)}");
+            }
+            else if (!string.IsNullOrEmpty(managerWallet))
+            {
+                LogWarning($"⚠️ Address mismatch!");
+                LogWarning($"   GameManager: {ShortenAddress(walletAddress)}");
+                LogWarning($"   KulinoCoin:  {ShortenAddress(managerWallet)}");
             }
             else
             {
-                LogWarning("⚠️ KulinoCoinManager NOT initialized yet");
-                LogInfo($"💡 Balance: {kulinoCoinBalance:F6} (may be 0 if not initialized)");
+                LogWarning("⚠️ KulinoCoinManager has no wallet address!");
             }
         }
         else
         {
-            LogError("❌ KulinoCoinManager.Instance is NULL!");
-            LogInfo("💡 Make sure 'KulinoCoinManager' GameObject exists in scene");
+            LogWarning("⚠️ KulinoCoinManager NOT initialized yet");
+            LogInfo($"💡 Balance: {kulinoCoinBalance:F6} (may be 0 if not initialized)");
+            
+            // ✅ NEW: Try to initialize if GameManager has address
+            if (!string.IsNullOrEmpty(walletAddress))
+            {
+                LogInfo("💡 Attempting to initialize with GameManager's address...");
+                KulinoCoinManager.Instance.Initialize(walletAddress);
+            }
         }
     }
+    else
+    {
+        LogError("❌ KulinoCoinManager.Instance is NULL!");
+        LogInfo("💡 Make sure 'KulinoCoinManager' GameObject exists in scene");
+    }
+}
 
     void CheckOrientationManager()
     {

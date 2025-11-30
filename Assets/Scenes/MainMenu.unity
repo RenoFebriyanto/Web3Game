@@ -17892,24 +17892,6 @@ MonoBehaviour:
   playHoverSound: 1
   customClickSound: {fileID: 8300000, guid: 8e0af4fdf08c5b541b400cf4e21cd3fb, type: 3}
   customHoverSound: {fileID: 8300000, guid: 43dce11f7396d4e489f86402c89baec2, type: 3}
---- !u!1 &119835604984411012
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 2803877144898986594}
-  - component: {fileID: 4567272906719763758}
-  - component: {fileID: 7778030998824601675}
-  m_Layer: 0
-  m_Name: EconomyManager
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
 --- !u!222 &147634680498305739
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -18012,21 +17994,6 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 100, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
---- !u!4 &2803877144898986594
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 119835604984411012}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 1041.8759, y: 502.63486, z: -3.952542}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &2932823882103220368
 GameObject:
   m_ObjectHideFlags: 0
@@ -18238,22 +18205,6 @@ MonoBehaviour:
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
   m_PixelsPerUnitMultiplier: 1
---- !u!114 &4567272906719763758
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 119835604984411012}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: bb7f077529d537f4e8530c32d4eab966, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  defaultEnergy: 100
-  defaultCoins: 5000
-  defaultShards: 0
-  defaultMaxEnergy: 100
 --- !u!1 &5005109871103264743
 GameObject:
   m_ObjectHideFlags: 0
@@ -18724,18 +18675,63 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &7778030998824601675
-MonoBehaviour:
+--- !u!1001 &7746591736508916525
+PrefabInstance:
   m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 119835604984411012}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: e816532553b17d149836aa98e9cba3e2, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 873802375829494339, guid: 73ad6e0dceecba64baf5ee1157fab39a, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 1041.8759
+      objectReference: {fileID: 0}
+    - target: {fileID: 873802375829494339, guid: 73ad6e0dceecba64baf5ee1157fab39a, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 502.63486
+      objectReference: {fileID: 0}
+    - target: {fileID: 873802375829494339, guid: 73ad6e0dceecba64baf5ee1157fab39a, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -3.952542
+      objectReference: {fileID: 0}
+    - target: {fileID: 873802375829494339, guid: 73ad6e0dceecba64baf5ee1157fab39a, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 873802375829494339, guid: 73ad6e0dceecba64baf5ee1157fab39a, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 873802375829494339, guid: 73ad6e0dceecba64baf5ee1157fab39a, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 873802375829494339, guid: 73ad6e0dceecba64baf5ee1157fab39a, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 873802375829494339, guid: 73ad6e0dceecba64baf5ee1157fab39a, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 873802375829494339, guid: 73ad6e0dceecba64baf5ee1157fab39a, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 873802375829494339, guid: 73ad6e0dceecba64baf5ee1157fab39a, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1617463098990460765, guid: 73ad6e0dceecba64baf5ee1157fab39a, type: 3}
+      propertyPath: m_Name
+      value: EconomyManager
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 73ad6e0dceecba64baf5ee1157fab39a, type: 3}
 --- !u!224 &8519740228865435694
 RectTransform:
   m_ObjectHideFlags: 0
@@ -18783,7 +18779,7 @@ SceneRoots:
   - {fileID: 352103455}
   - {fileID: 1224814436}
   - {fileID: 1678268021}
-  - {fileID: 2803877144898986594}
+  - {fileID: 7746591736508916525}
   - {fileID: 53229002}
   - {fileID: 1184993519}
   - {fileID: 1608075259}

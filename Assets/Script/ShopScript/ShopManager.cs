@@ -174,6 +174,44 @@ public class ShopManager : MonoBehaviour
         Debug.Log("[ShopManager] ✓ All layouts rebuilt");
     }
 
+    void UpdateShardPrices()
+{
+    if (KulinoCoinPriceAPI.Instance == null) return;
+    
+    double kcPriceIDR = KulinoCoinPriceAPI.Instance.GetCurrentPrice();
+    
+    foreach (var item in database.items)
+    {
+        if (item.rewardType == ShopRewardType.Shard && item.allowBuyWithKulinoCoin)
+        {
+            // Hitung harga KC berdasarkan harga Rupiah
+            // Misal: Shard 100 = Rp 15,000
+            double idrPrice = GetShardIDRPrice(item.rewardAmount);
+            item.kulinoCoinPrice = KulinoCoinPriceAPI.Instance.ConvertIDRToKulinoCoin(idrPrice);
+            
+            Debug.Log($"Updated {item.displayName}: {item.kulinoCoinPrice:F6} KC (Rp {idrPrice:N0})");
+        }
+    }
+}
+
+double GetShardIDRPrice(int shardAmount)
+{
+    // Mapping shard amount ke harga Rupiah
+    switch(shardAmount)
+    {
+        case 100: return 15000;
+        case 350: return 50000;
+        case 500: return 75000;
+        case 1000: return 150000;
+        case 1500: return 220000;
+        case 3500: return 500000;
+        case 5000: return 750000;
+        case 8000: return 1200000;
+        case 10000: return 1500000;
+        default: return shardAmount * 15; // Default: Rp 15 per shard
+    }
+}
+
     void EnsurePlayerEconomy()
     {
         if (PlayerEconomy.Instance != null) return;

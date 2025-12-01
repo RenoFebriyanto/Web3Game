@@ -8891,11 +8891,16 @@ MonoBehaviour:
   mockBalance: 100.5
   useMockData: 0
   kulinoCoinMintAddress: E5chNtjGFvCMVYoTwcP9DtrdMdctRCGdGahAAhnHbHc1
-  solanaRpcUrl: https://api.mainnet-beta.solana.com
+  solanaRpcUrls:
+  - https://api.mainnet-beta.solana.com
+  - https://solana-api.projectserum.com
+  - https://rpc.ankr.com/solana
+  - https://solana-mainnet.g.alchemy.com/v2/demo
   kulinoCoinBalance: 0
   autoRefreshInterval: 30
   maxInitRetries: 10
   retryDelay: 2
+  maxRpcRetries: 3
   enableDebugLogs: 1
 --- !u!4 &959775999
 Transform:
@@ -12810,8 +12815,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   priceApiUrl: https://api.coingecko.com/api/v3/simple/price?ids=kulino&vs_currencies=idr
-  updateInterval: 60
+  kulinoContractAddress: E5chNtjGFvCMVYoTwcP9DtrdMdctRCGdGahAAhnHbHc1
   kulinoCoinPriceIDR: 1.5
+  updateInterval: 60
+  cacheValidDuration: 60
+  enableDebugLogs: 1
 --- !u!4 &1472300286
 Transform:
   m_ObjectHideFlags: 0

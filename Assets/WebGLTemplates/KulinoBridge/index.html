@@ -19,14 +19,16 @@
   <meta name="x5-fullscreen" content="true" />
   
   <style>
-    /* ✅ FIXED: Proper canvas scaling tanpa blur */
+    /* ✅ FIXED: Proper canvas scaling + tab switch fix */
     html, body { 
       height: 100%; 
+      width: 100%;
       margin: 0; 
       padding: 0;
       background: #222; 
       color: #fff;
       overflow: hidden;
+      position: fixed; /* ✅ CRITICAL: Prevent scroll on mobile */
     }
     
     #unity-container {
@@ -36,12 +38,12 @@
       align-items: center;
       justify-content: center;
       background: #000;
+      position: relative;
     }
     
-    /* ✅ CRITICAL: Canvas dengan aspect ratio fix */
+    /* ✅ CRITICAL: Canvas dengan aspect ratio fix + tab switch handling */
     #unity-canvas {
       display: block;
-      /* Gunakan image-rendering untuk ketajaman */
       image-rendering: -webkit-optimize-contrast;
       image-rendering: crisp-edges;
       image-rendering: pixelated;
@@ -49,28 +51,41 @@
       /* ✅ CRITICAL: Maintain aspect ratio */
       max-width: 100%;
       max-height: 100%;
-      width: auto !important;
-      height: auto !important;
+      width: 100% !important; /* ✅ CHANGED: Force full width */
+      height: 100% !important; /* ✅ CHANGED: Force full height */
       
       /* Center canvas */
       margin: auto;
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
     }
     
     /* ✅ Desktop: Specific size */
     @media (min-width: 1280px) and (min-aspect-ratio: 16/9) {
       #unity-canvas {
-        width: 1280px;
-        height: 720px;
+        width: 100vw !important;
+        height: 100vh !important;
       }
     }
     
-    /* ✅ Mobile landscape: Fit screen */
+    /* ✅ Mobile landscape: Full screen */
     @media (max-width: 1279px) and (orientation: landscape) {
       #unity-canvas {
-        width: 100vw;
-        height: 100vh;
+        width: 100vw !important;
+        height: 100vh !important;
         max-width: none;
         max-height: none;
+      }
+    }
+    
+    /* ✅ Mobile portrait: Full screen (before rotation prompt) */
+    @media (max-width: 768px) and (orientation: portrait) {
+      #unity-canvas {
+        width: 100vw !important;
+        height: 100vh !important;
       }
     }
     
@@ -80,16 +95,7 @@
       left: 50%;
       transform: translate(-50%, -50%);
       width: 300px;
-    }
-    
-    /* Landscape Enforcement - SIMPLIFIED */
-    @media screen and (max-width: 768px) and (orientation: portrait) {
-      #unity-canvas {
-        display: none;
-      }
-      #rotation-prompt {
-        display: flex !important;
-      }
+      z-index: 10;
     }
     
     /* Rotation Prompt Overlay */
@@ -110,7 +116,7 @@
     }
     
     #rotation-prompt.show {
-      display: flex;
+      display: flex !important;
     }
     
     .rotation-icon {
@@ -141,13 +147,8 @@
   <script src="https://unpkg.com/@solana/web3.js@latest/lib/index.iife.min.js"></script>
   <script src="https://unpkg.com/@solana/spl-token@latest/lib/index.iife.min.js"></script>
   <script src="https://unpkg.com/bs58@4.0.1/dist/index.min.js"></script>
- 
-
-<!-- Buffer Layout (untuk SPL Token) -->
-<script src="https://unpkg.com/buffer-layout@1.2.2/lib/layout-browser.js"></script>
-
-<!-- Phantom Payment Bridge -->
-<script src="phantom-payment.js"></script>
+  <script src="https://unpkg.com/buffer-layout@1.2.2/lib/layout-browser.js"></script>
+  <script src="phantom-payment.js"></script>
 </head>
 
 <body>
@@ -199,6 +200,45 @@
   }
   </script>
 
+  <!-- ✅ NEW: Tab visibility handler -->
+  <script>
+  let isTabVisible = true;
+  
+  document.addEventListener('visibilitychange', function() {
+    isTabVisible = !document.hidden;
+    console.log('[TAB] Visibility changed:', isTabVisible ? 'VISIBLE' : 'HIDDEN');
+    
+    if (isTabVisible && window.unityInstance) {
+      // ✅ CRITICAL: Force canvas resize saat tab kembali visible
+      setTimeout(function() {
+        console.log('[TAB] Forcing canvas resize...');
+        const canvas = document.getElementById('unity-canvas');
+        if (canvas) {
+          // Force reflow
+          canvas.style.width = '100%';
+          canvas.style.height = '100%';
+          
+          // Trigger Unity resize
+          window.dispatchEvent(new Event('resize'));
+          
+          console.log('[TAB] ✓ Canvas resized');
+        }
+      }, 100);
+    }
+  });
+  
+  // ✅ Window resize handler
+  window.addEventListener('resize', function() {
+    console.log('[RESIZE] Window resized to:', window.innerWidth, 'x', window.innerHeight);
+    
+    const canvas = document.getElementById('unity-canvas');
+    if (canvas) {
+      canvas.style.width = '100%';
+      canvas.style.height = '100%';
+    }
+  });
+  </script>
+
   <!-- Orientation Detection -->
   <script>
   function isMobileBrowser() {
@@ -216,15 +256,25 @@
     if (isMobileBrowser() && isPortraitMode()) {
       prompt.classList.add('show');
       if (canvas) canvas.style.display = 'none';
+      console.log('[ORIENTATION] Portrait detected - showing prompt');
     } else {
       prompt.classList.remove('show');
-      if (canvas) canvas.style.display = 'block';
+      if (canvas) {
+        canvas.style.display = 'block';
+        // ✅ Force resize after orientation change
+        canvas.style.width = '100%';
+        canvas.style.height = '100%';
+      }
+      console.log('[ORIENTATION] Landscape OK');
     }
   }
   
   window.addEventListener('load', checkOrientation);
   window.addEventListener('resize', checkOrientation);
-  window.addEventListener('orientationchange', checkOrientation);
+  window.addEventListener('orientationchange', function() {
+    console.log('[ORIENTATION] Changed!');
+    setTimeout(checkOrientation, 300);
+  });
   
   window.IsMobileBrowser = isMobileBrowser;
   window.IsPortraitMode = isPortraitMode;
@@ -256,7 +306,6 @@
         _doSendToUnity(item.method, item.payload);
       }
       
-      // ✅ CRITICAL: Notify Unity about wallet from URL
       checkAndNotifyWallet();
     };
 
@@ -284,7 +333,6 @@
       }
     }
 
-    // ✅ WALLET AUTO-DETECTION FROM URL
     function checkAndNotifyWallet() {
       dlog('🔍 Checking for wallet in URL...');
       
@@ -293,8 +341,6 @@
       
       if (walletAddress) {
         dlog('✅ Found wallet in URL:', walletAddress.substring(0, 8) + '...');
-        
-        // Notify Unity (with retry)
         notifyUnityWallet(walletAddress);
       } else {
         dlog('⚠️ No wallet parameter in URL');
@@ -321,7 +367,7 @@
     }
 
     window.requestClaimFromUnity = async function(messageJson) {
-      dlog('💰 requestClaimFromUnity called with:', messageJson);
+      dlog('💰 requestClaimFromUnity called');
       try {
         const provider = (window.solana && window.solana.isPhantom) ? window.solana :
                          (window.phantom && window.phantom.solana) ? window.phantom.solana : null;
@@ -336,7 +382,6 @@
         if (!provider.isConnected) {
           dlog('🔌 connecting to phantom...');
           await provider.connect();
-          dlog('✅ connected, pk=', provider.publicKey?.toString?.());
         }
 
         payloadObj.address = provider.publicKey.toString();
@@ -348,20 +393,12 @@
           ts: payloadObj.ts
         };
         const messageStr = JSON.stringify(canonical);
-        dlog('📝 message to sign:', messageStr);
 
         const encoded = new TextEncoder().encode(messageStr);
         const signed = await provider.signMessage(encoded, 'utf8');
-        dlog('✅ signMessage returned', signed);
 
-        if (typeof bs58 === 'undefined' && typeof window.bs58 === 'undefined') {
-          dlog('❌ bs58 missing');
-          sendToUnity({ success:false, error:'bs58_lib_missing' });
-          return;
-        }
-        const sig = (typeof bs58 !== 'undefined') ? bs58.encode(signed.signature) : window.bs58.encode(signed.signature);
+        const sig = bs58.encode(signed.signature);
 
-        dlog('🚀 POSTing to server /api/claim');
         const resp = await fetch('http://localhost:3000/api/claim', {
           method: 'POST',
           headers: {'Content-Type':'application/json'},
@@ -372,64 +409,17 @@
           })
         });
 
-        dlog('📥 server status', resp.status);
-        let data;
-        try { 
-          data = await resp.json(); 
-        } catch(e){
-          const text = await resp.text().catch(()=>'<no-text>');
-          dlog('❌ server returned non-json:', text);
-          sendToUnity({ success:false, error:'invalid_server_response', raw: text });
-          return;
-        }
-        dlog('✅ server json', data);
+        let data = await resp.json();
         sendToUnity(data);
 
       } catch(err) {
-        console.error(LOGPREF, '❌ requestClaimFromUnity error', err);
+        console.error(LOGPREF, 'error', err);
         sendToUnity({ success:false, error: err.message || String(err) });
       }
     };
 
-    window.testClaimFromConsole = async function(){
-      const payload = { 
-        gameId:'unity-demo', 
-        amount:1, 
-        nonce: crypto.randomUUID(), 
-        ts: Date.now() 
-      };
-      await window.requestClaimFromUnity(JSON.stringify(payload));
-    };
-
-    window.__kulino_bridge_info = function(){ 
-      return { 
-        unityReady, 
-        queueLen: sendQueue.length, 
-        hasProvider: !!(window.solana && window.solana.isPhantom) 
-      }; 
-    };
-
     dlog('✅ Kulino bridge loaded.');
   })();
-  </script>
-
-  <!-- RequestClaim Wrapper -->
-  <script>
-  function RequestClaim(message) {
-    if (window.requestClaimFromUnity && typeof window.requestClaimFromUnity === 'function') {
-      try {
-        window.requestClaimFromUnity(message);
-      } catch (e) {
-        console.error('[RequestClaim wrapper] error', e);
-      }
-    } else {
-      console.error('[RequestClaim wrapper] requestClaimFromUnity missing');
-      if (window.unityInstance && typeof window.unityInstance.SendMessage === 'function') {
-        const err = JSON.stringify({ success:false, error:'requestClaimFromUnity_missing' });
-        window.unityInstance.SendMessage('GameManager','OnClaimResult', err);
-      }
-    }
-  }
   </script>
 
   <!-- Unity Loader -->
@@ -438,19 +428,19 @@
     var buildUrl = "Build";
     var loaderUrl = buildUrl + "/{{{ LOADER_FILENAME }}}";
     var config = {
-  dataUrl: buildUrl + "/{{{ DATA_FILENAME }}}",
-  frameworkUrl: buildUrl + "/{{{ FRAMEWORK_FILENAME }}}",
-  codeUrl: buildUrl + "/{{{ CODE_FILENAME }}}",
-  streamingAssetsUrl: "StreamingAssets",
-  companyName: "{{{ COMPANY_NAME }}}",
-  productName: "{{{ PRODUCT_NAME }}}",
-  productVersion: "{{{ PRODUCT_VERSION }}}",
-  showBanner: unityShowBanner,
-  
-  // ✅ CRITICAL FIXES untuk blur
-  matchWebGLToCanvasSize: true,  // UBAH dari false ke true!
-  devicePixelRatio: window.devicePixelRatio || 1  // UBAH dari 1 ke dynamic!
-};
+      dataUrl: buildUrl + "/{{{ DATA_FILENAME }}}",
+      frameworkUrl: buildUrl + "/{{{ FRAMEWORK_FILENAME }}}",
+      codeUrl: buildUrl + "/{{{ CODE_FILENAME }}}",
+      streamingAssetsUrl: "StreamingAssets",
+      companyName: "{{{ COMPANY_NAME }}}",
+      productName: "{{{ PRODUCT_NAME }}}",
+      productVersion: "{{{ PRODUCT_VERSION }}}",
+      showBanner: unityShowBanner,
+      
+      // ✅ CRITICAL: Match canvas to actual display
+      matchWebGLToCanvasSize: true,
+      devicePixelRatio: 1 // ✅ Use 1 for consistent sizing
+    };
 
     document.querySelector("#unity-loading-bar").style.display = "block";
 
@@ -463,23 +453,21 @@
         document.querySelector("#unity-loading-bar").style.display = "none";
         window.unityInstance = unityInstance;
         
-        // Tell bridge Unity is ready
         if (typeof window.__kulino_unity_ready === 'function') {
           window.__kulino_unity_ready();
         }
         
-        // Final orientation check
         checkOrientation();
         
         console.log('✅ Unity fully loaded and ready');
       }).catch((message) => {
-        console.error('❌ createUnityInstance failed', message);
+        console.error('❌ Unity load failed', message);
         alert('Unity failed to load: ' + message);
       });
     };
     script.onerror = (e) => {
-      console.error('❌ Failed to load loader script:', loaderUrl, e);
-      unityShowBanner('Failed to load Unity loader: ' + loaderUrl, 'error');
+      console.error('❌ Failed to load loader', e);
+      unityShowBanner('Failed to load Unity loader', 'error');
     };
     document.body.appendChild(script);
   </script>

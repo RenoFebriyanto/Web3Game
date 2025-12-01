@@ -3,16 +3,17 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using System.Collections;
+using UnityEngine.SceneManagement;
 
 #if UNITY_WEBGL && !UNITY_EDITOR
 using System.Runtime.InteropServices;
 #endif
 
 /// <summary>
-/// ✅ FIXED: GameManager v4.0 - Complete Wallet Integration
-/// - Dual notification system (GameManager + KulinoCoinManager)
-/// - URL parameter parsing untuk auto-connect
-/// - Mobile support dengan retry mechanism
+/// ✅ ULTRA-FIXED: GameManager v5.0 - Unbreakable Singleton
+/// - Scene change protection
+/// - Wallet persistence
+/// - Dynamic KC price integration
 /// </summary>
 public class GameManager : MonoBehaviour
 {
@@ -41,37 +42,105 @@ public class GameManager : MonoBehaviour
     private static extern void RequestClaim(string message);
 #endif
 
+    // ✅ CRITICAL: Scene persistence tracking
+    private static bool isPersistent = false;
+
     void Awake()
     {
-        // Ultra-strong singleton
-        if (Instance != null && Instance != this)
+        // ✅ ULTRA-STRONG SINGLETON - Never destroyed
+        if (Instance != null)
         {
-            try
+            if (Instance != this)
             {
-                if (Instance.gameObject != null && Instance.enabled)
+                // Check if old instance is valid
+                try
                 {
-                    Debug.LogWarning($"[GameManager] Valid instance exists - destroying duplicate '{gameObject.name}'");
-                    Destroy(gameObject);
-                    return;
+                    if (Instance.gameObject != null && Instance.enabled)
+                    {
+                        Debug.LogWarning($"[GameManager] ⚠️ Duplicate detected on '{gameObject.name}' - destroying");
+                        Destroy(gameObject);
+                        return;
+                    }
                 }
-            }
-            catch
-            {
-                Debug.LogWarning("[GameManager] Previous instance invalid - taking over");
+                catch
+                {
+                    // Old instance is broken, take over
+                    Debug.Log("[GameManager] 🔄 Taking over from broken instance");
+                }
             }
         }
 
         Instance = this;
 
+        // ✅ CRITICAL: Detach from parent BEFORE DontDestroyOnLoad
         if (transform.parent != null)
         {
             transform.SetParent(null);
+            Debug.Log("[GameManager] Detached from parent");
         }
         
+        // ✅ CRITICAL: Mark as persistent
         DontDestroyOnLoad(gameObject);
-        gameObject.name = "[GameManager - PERSISTENT]";
+        isPersistent = true;
+        gameObject.name = "[★ GameManager - PERSISTENT ★]";
 
-        Debug.Log("[GameManager] ✓ Singleton initialized");
+        // ✅ Subscribe to scene changes
+        SceneManager.sceneLoaded += OnSceneLoaded;
+
+        Debug.Log("[GameManager] ✅ PERSISTENT singleton initialized");
+    }
+
+    void OnDestroy()
+    {
+        SceneManager.sceneLoaded -= OnSceneLoaded;
+        
+        if (Instance == this)
+        {
+            Debug.LogWarning("[GameManager] ⚠️ Main instance destroyed!");
+        }
+    }
+
+    // ✅ NEW: Re-check on scene load
+    void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        Debug.Log($"[GameManager] Scene loaded: {scene.name}");
+        
+        // ✅ Re-verify singleton status
+        if (!isPersistent || gameObject == null)
+        {
+            Debug.LogError("[GameManager] ❌ CRITICAL: Lost persistence!");
+            RecreateInstance();
+        }
+        
+        // ✅ Re-notify wallet if available
+        if (!string.IsNullOrEmpty(walletAddress))
+        {
+            StartCoroutine(RenotifyWalletDelayed());
+        }
+    }
+
+    IEnumerator RenotifyWalletDelayed()
+    {
+        yield return new WaitForSeconds(1f);
+        
+        Debug.Log($"[GameManager] 🔄 Re-notifying wallet: {ShortenAddress(walletAddress)}");
+        InitializeKulinoCoinManager(walletAddress);
+    }
+
+    void RecreateInstance()
+    {
+        Debug.Log("[GameManager] 🔧 Attempting to recreate...");
+        
+        var existing = FindFirstObjectByType<GameManager>();
+        if (existing != null && existing != this)
+        {
+            Instance = existing;
+            Debug.Log("[GameManager] ✓ Found existing instance");
+        }
+        else
+        {
+            Debug.LogError("[GameManager] ❌ Cannot recreate - original instance lost!");
+        }
     }
 
     void Start()
@@ -82,8 +151,6 @@ public class GameManager : MonoBehaviour
         }
 
         SetStatus("Ready");
-
-        // ✅ CRITICAL: Parse URL parameters untuk auto-connect
         StartCoroutine(ParseURLAndConnect());
     }
 
@@ -101,12 +168,11 @@ public class GameManager : MonoBehaviour
     }
 
     // ========================================
-    // ✅ NEW: URL PARAMETER PARSING
+    // URL PARAMETER PARSING
     // ========================================
     
     IEnumerator ParseURLAndConnect()
     {
-        // Wait for JavaScript bridge to be ready
         yield return new WaitForSeconds(1f);
 
         string url = GetCurrentURL();
@@ -118,18 +184,15 @@ public class GameManager : MonoBehaviour
             yield break;
         }
 
-        // Parse wallet parameter
         string walletParam = GetURLParameter(url, "wallet");
         
         if (!string.IsNullOrEmpty(walletParam))
         {
             Debug.Log($"[GameManager] 🎯 Found wallet in URL: {ShortenAddress(walletParam)}");
-            
-            // ✅ IMMEDIATE NOTIFICATION
             OnWalletConnected(walletParam);
             
-            // ✅ RETRY MECHANISM - Ensure KulinoCoinManager catches it
-            for (int i = 0; i < 5; i++)
+            // ✅ Retry mechanism for KulinoCoinManager
+            for (int i = 0; i < 10; i++)
             {
                 yield return new WaitForSeconds(0.5f);
                 
@@ -167,7 +230,7 @@ public class GameManager : MonoBehaviour
             return "";
         }
 #else
-        return "http://localhost/game?wallet=TEST_WALLET_ADDRESS";
+        return "http://localhost/game?wallet=TEST_WALLET";
 #endif
     }
 
@@ -212,7 +275,6 @@ public class GameManager : MonoBehaviour
         PlayerPrefs.SetString("WalletAddress", address);
         PlayerPrefs.Save();
 
-        // ✅ DUAL NOTIFICATION SYSTEM
         InitializeKulinoCoinManager(address);
     }
 
@@ -223,7 +285,7 @@ public class GameManager : MonoBehaviour
         if (KulinoCoinManager.Instance != null)
         {
             KulinoCoinManager.Instance.Initialize(address);
-            Debug.Log("[GameManager] ✓ KulinoCoinManager initialized with address");
+            Debug.Log("[GameManager] ✓ KulinoCoinManager initialized");
             
             StartCoroutine(FetchBalanceDelayed(1f));
         }
@@ -257,7 +319,7 @@ public class GameManager : MonoBehaviour
     {
         if (isRequestInProgress)
         {
-            Debug.LogWarning("[GameManager] ⚠️ Request already in progress!");
+            Debug.LogWarning("[GameManager] ⚠️ Request in progress!");
             return;
         }
 
@@ -269,7 +331,7 @@ public class GameManager : MonoBehaviour
         if (claimButton != null)
             claimButton.interactable = false;
 
-        SetStatus("Waiting for wallet signature...");
+        SetStatus("Waiting for signature...");
 
         var payload = new ClaimPayload()
         {
@@ -285,23 +347,23 @@ public class GameManager : MonoBehaviour
 #if UNITY_WEBGL && !UNITY_EDITOR
         try
         {
-            Debug.Log($"[GameManager] 📤 Calling RequestClaim: {json}");
+            Debug.Log($"[GameManager] 📤 Calling RequestClaim");
             RequestClaim(json);
         }
         catch (Exception e)
         {
-            Debug.LogError($"[GameManager] ❌ RequestClaim JS call failed: {e}");
+            Debug.LogError($"[GameManager] ❌ RequestClaim failed: {e}");
             FinishRequest(false, "js_call_failed");
         }
 #else
-        Debug.Log($"[GameManager] [EDITOR] Would call JS RequestClaim: {json}");
+        Debug.Log($"[GameManager] [EDITOR] Would call JS");
         Invoke(nameof(EditorSimulateResult), 1f);
 #endif
     }
 
     public void OnClaimResult(string json)
     {
-        Debug.Log($"[GameManager] 📥 OnClaimResult received: {json}");
+        Debug.Log($"[GameManager] 📥 OnClaimResult: {json}");
 
         try
         {
@@ -309,19 +371,19 @@ public class GameManager : MonoBehaviour
 
             if (res != null && res.success)
             {
-                Debug.Log($"[GameManager] ✅ Claim SUCCESS! TX: {res.txHash}");
+                Debug.Log($"[GameManager] ✅ SUCCESS! TX: {res.txHash}");
                 FinishRequest(true, res.txHash ?? "ok");
             }
             else
             {
                 string errorMsg = res != null ? (res.error ?? "unknown") : "parse_error";
-                Debug.LogError($"[GameManager] ❌ Claim FAILED: {errorMsg}");
+                Debug.LogError($"[GameManager] ❌ FAILED: {errorMsg}");
                 FinishRequest(false, errorMsg);
             }
         }
         catch (Exception e)
         {
-            Debug.LogError($"[GameManager] ❌ Failed to parse OnClaimResult: {e}");
+            Debug.LogError($"[GameManager] ❌ Parse error: {e}");
             FinishRequest(false, "parse_exception");
         }
     }
@@ -333,10 +395,8 @@ public class GameManager : MonoBehaviour
         if (claimButton != null)
             claimButton.interactable = true;
 
-        string statusMsg = success ? $"✅ Claim success: {info}" : $"❌ Claim failed: {info}";
+        string statusMsg = success ? $"✅ Success: {info}" : $"❌ Failed: {info}";
         SetStatus(statusMsg);
-
-        Debug.Log($"[GameManager] {statusMsg}");
 
         if (success)
         {
@@ -348,17 +408,15 @@ public class GameManager : MonoBehaviour
     {
         if (statusText != null)
             statusText.text = txt;
-
-        Debug.Log($"[GameManager] 📢 Status: {txt}");
     }
 
     // ========================================
-    // ✅ PHANTOM PAYMENT (SHOP INTEGRATION)
+    // PHANTOM PAYMENT
     // ========================================
 
     public void OnPhantomPaymentResult(string resultJson)
     {
-        Debug.Log($"[GameManager] 💳 Payment result received: {resultJson}");
+        Debug.Log($"[GameManager] 💳 Payment result: {resultJson}");
 
         try
         {
@@ -367,14 +425,11 @@ public class GameManager : MonoBehaviour
             if (result.success)
             {
                 Debug.Log($"[GameManager] ✅ PAYMENT SUCCESS!");
-                Debug.Log($"[GameManager] TX Hash: {result.txHash}");
+                Debug.Log($"[GameManager] TX: {result.txHash}");
                 
-                LogPaymentSuccess(result.txHash);
-
                 var shopManager = FindFirstObjectByType<ShopManager>();
                 if (shopManager != null)
                 {
-                    Debug.Log("[GameManager] ✓ Notifying ShopManager");
                     shopManager.OnPaymentConfirmed();
                 }
 
@@ -383,29 +438,12 @@ public class GameManager : MonoBehaviour
             else
             {
                 Debug.LogError($"[GameManager] ❌ PAYMENT FAILED: {result.error}");
-                LogPaymentFailure(result.error);
             }
         }
         catch (Exception ex)
         {
-            Debug.LogError($"[GameManager] ❌ Error parsing payment result: {ex.Message}");
+            Debug.LogError($"[GameManager] ❌ Parse error: {ex.Message}");
         }
-    }
-
-    void LogPaymentSuccess(string txHash)
-    {
-        Debug.Log("=== 💳 PAYMENT SUCCESS ===");
-        Debug.Log($"TX Hash: {txHash}");
-        Debug.Log($"Time: {System.DateTime.Now}");
-        Debug.Log("=========================");
-    }
-
-    void LogPaymentFailure(string error)
-    {
-        Debug.LogError("=== ❌ PAYMENT FAILED ===");
-        Debug.LogError($"Error: {error}");
-        Debug.LogError($"Time: {System.DateTime.Now}");
-        Debug.LogError("========================");
     }
 
     // ========================================
@@ -414,26 +452,11 @@ public class GameManager : MonoBehaviour
 
     IEnumerator RefreshKulinoCoinBalanceDelayed(float delay)
     {
-        Debug.Log($"[GameManager] ⏳ Waiting {delay}s before refreshing balance...");
-        
         yield return new WaitForSeconds(delay);
 
         if (KulinoCoinManager.Instance != null)
         {
-            Debug.Log("[GameManager] 🔄 Refreshing Kulino Coin balance...");
-            KulinoCoinManager.Instance.RefreshBalance();
-        }
-        else
-        {
-            Debug.LogWarning("[GameManager] ⚠️ KulinoCoinManager not found");
-        }
-    }
-
-    [ContextMenu("🔄 Refresh Kulino Coin Balance")]
-    public void RefreshKulinoCoinBalance()
-    {
-        if (KulinoCoinManager.Instance != null)
-        {
+            Debug.Log("[GameManager] 🔄 Refreshing KC balance...");
             KulinoCoinManager.Instance.RefreshBalance();
         }
     }
@@ -449,18 +472,12 @@ public class GameManager : MonoBehaviour
         return $"{addr.Substring(0, 6)}...{addr.Substring(addr.Length - 4)}";
     }
 
-    public string GetFormattedAmount()
-    {
-        float amount = (float)claimAmount / Mathf.Pow(10, kulinoCoinDecimals);
-        return amount.ToString($"F{kulinoCoinDecimals}");
-    }
-
     void EditorSimulateResult()
     {
         var fake = new ClaimResult()
         {
             success = true,
-            txHash = "EDITOR_FAKE_TX_" + System.DateTime.Now.Ticks
+            txHash = "EDITOR_FAKE_TX"
         };
 
         OnClaimResult(JsonUtility.ToJson(fake));
@@ -493,8 +510,8 @@ public class GameManager : MonoBehaviour
     {
         Debug.Log("=== GAMEMANAGER STATUS ===");
         Debug.Log($"Instance: {(Instance != null ? "OK" : "NULL")}");
+        Debug.Log($"Persistent: {isPersistent}");
         Debug.Log($"Wallet: {ShortenAddress(walletAddress)}");
-        Debug.Log($"Game ID: {gameId}");
         Debug.Log($"KulinoCoinManager: {(KulinoCoinManager.Instance != null ? "OK" : "NULL")}");
         Debug.Log("==========================");
     }

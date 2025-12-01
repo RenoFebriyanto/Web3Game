@@ -77,24 +77,33 @@ public class ShopManager : MonoBehaviour
     }
 
     void Start()
+{
+    if (buyPreviewUI != null)
     {
-        if (buyPreviewUI != null)
-        {
-            buyPreviewUI.Initialize(this);
-        }
+        buyPreviewUI.Initialize(this);
     }
+    
+    // ✅ CRITICAL: Update prices on start
+    UpdateShardPrices();
+}
 
     void OnEnable()
+{
+    // ✅ Update prices setiap kali shop dibuka
+    if (KulinoCoinPriceAPI.Instance != null)
     {
-        if (!isInitialized)
-        {
-            StartCoroutine(InitializeShopSequence());
-        }
-        else
-        {
-            StartCoroutine(RefreshLayoutSequence());
-        }
+        UpdateShardPrices();
     }
+    
+    if (!isInitialized)
+    {
+        StartCoroutine(InitializeShopSequence());
+    }
+    else
+    {
+        StartCoroutine(RefreshLayoutSequence());
+    }
+}
 
     /// <summary>
     /// ✅ Multi-frame initialization sequence
@@ -174,41 +183,77 @@ public class ShopManager : MonoBehaviour
         Debug.Log("[ShopManager] ✓ All layouts rebuilt");
     }
 
-    void UpdateShardPrices()
+    /// <summary>
+/// ✅ FIXED: Update shard prices based on real-time Kulino Coin price
+/// Call this on Start() dan sebelum populate shop
+/// </summary>
+void UpdateShardPrices()
 {
-    if (KulinoCoinPriceAPI.Instance == null) return;
+    if (KulinoCoinPriceAPI.Instance == null)
+    {
+        Debug.LogWarning("[ShopManager] KulinoCoinPriceAPI not found - using default prices");
+        return;
+    }
     
     double kcPriceIDR = KulinoCoinPriceAPI.Instance.GetCurrentPrice();
+    Debug.Log($"[ShopManager] 💰 Current KC price: Rp {kcPriceIDR:N2} per KC");
+    
+    if (database == null || database.items == null)
+    {
+        Debug.LogWarning("[ShopManager] No database items to update");
+        return;
+    }
+    
+    int updatedCount = 0;
     
     foreach (var item in database.items)
     {
+        if (item == null) continue;
+        
+        // ✅ CRITICAL: Update prices untuk Shard items yang bisa dibeli dengan KC
         if (item.rewardType == ShopRewardType.Shard && item.allowBuyWithKulinoCoin)
         {
-            // Hitung harga KC berdasarkan harga Rupiah
-            // Misal: Shard 100 = Rp 15,000
+            // Get IDR price based on shard amount
             double idrPrice = GetShardIDRPrice(item.rewardAmount);
-            item.kulinoCoinPrice = KulinoCoinPriceAPI.Instance.ConvertIDRToKulinoCoin(idrPrice);
             
-            Debug.Log($"Updated {item.displayName}: {item.kulinoCoinPrice:F6} KC (Rp {idrPrice:N0})");
+            // Convert IDR to KC
+            double kcPrice = KulinoCoinPriceAPI.Instance.ConvertIDRToKulinoCoin(idrPrice);
+            
+            // ✅ Update item price
+            item.kulinoCoinPrice = kcPrice;
+            
+            Debug.Log($"[ShopManager] Updated {item.displayName} ({item.rewardAmount} Shard):");
+            Debug.Log($"  - IDR: Rp {idrPrice:N0}");
+            Debug.Log($"  - KC: {kcPrice:F6} KC");
+            
+            updatedCount++;
         }
     }
+    
+    Debug.Log($"[ShopManager] ✅ Updated {updatedCount} shard items with dynamic pricing");
 }
 
+/// <summary>
+/// ✅ FIXED: Get IDR price for specific shard amount
+/// Mapping shard amount → Rupiah price
+/// </summary>
 double GetShardIDRPrice(int shardAmount)
 {
-    // Mapping shard amount ke harga Rupiah
+    // ✅ CRITICAL: Price mapping berdasarkan jumlah shard
     switch(shardAmount)
     {
-        case 100: return 15000;
-        case 350: return 50000;
-        case 500: return 75000;
-        case 1000: return 150000;
-        case 1500: return 220000;
-        case 3500: return 500000;
-        case 5000: return 750000;
-        case 8000: return 1200000;
-        case 10000: return 1500000;
-        default: return shardAmount * 15; // Default: Rp 15 per shard
+        case 100:   return 15000;    // Rp 15,000
+        case 350:   return 50000;    // Rp 50,000
+        case 500:   return 75000;    // Rp 75,000
+        case 1000:  return 150000;   // Rp 150,000
+        case 1500:  return 220000;   // Rp 220,000
+        case 3500:  return 500000;   // Rp 500,000
+        case 5000:  return 750000;   // Rp 750,000
+        case 8000:  return 1200000;  // Rp 1,200,000
+        case 10000: return 1500000;  // Rp 1,500,000
+        default:
+            // Fallback: Rp 150 per shard
+            return shardAmount * 150;
     }
 }
 
@@ -799,6 +844,39 @@ double GetShardIDRPrice(int shardAmount)
         yield return null;
         ForceRebuildAllLayouts();
     }
+
+    // ========================================
+// ✅ TAMBAHKAN: Context menu untuk testing
+// ========================================
+
+[ContextMenu("💰 Test: Update Shard Prices")]
+void Context_TestUpdatePrices()
+{
+    UpdateShardPrices();
+}
+
+[ContextMenu("💰 Test: Print Shard Prices")]
+void Context_PrintShardPrices()
+{
+    Debug.Log("=== SHARD PRICES ===");
+    
+    if (database == null || database.items == null)
+    {
+        Debug.Log("No database");
+        return;
+    }
+    
+    foreach (var item in database.items)
+    {
+        if (item != null && item.rewardType == ShopRewardType.Shard && item.allowBuyWithKulinoCoin)
+        {
+            double idrPrice = GetShardIDRPrice(item.rewardAmount);
+            Debug.Log($"{item.displayName}: {item.rewardAmount} Shard = Rp {idrPrice:N0} = {item.kulinoCoinPrice:F6} KC");
+        }
+    }
+    
+    Debug.Log("===================");
+}
 
     [System.Serializable]
     class PaymentPayload

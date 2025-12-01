@@ -4,12 +4,7 @@ using UnityEngine;
 using UnityEngine.Networking;
 
 /// <summary>
-/// ✅ FIXED v4.0: Multi-RPC dengan retry & CORS bypass
-/// CHANGELOG:
-/// - Multiple RPC endpoints dengan auto-fallback
-/// - CORS bypass menggunakan proxy
-/// - Better error handling & logging
-/// - Production-ready
+/// ✅ FIXED v5.0: Multi-RPC dengan improved error handling & balance detection
 /// </summary>
 public class KulinoCoinManager : MonoBehaviour
 {
@@ -21,16 +16,14 @@ public class KulinoCoinManager : MonoBehaviour
     public bool useMockData = false;
 
     [Header("⚙️ Kulino Coin Settings")]
-    public string kulinoCoinMintAddress = "2tWC4JAqL4AxEFJxGKjPqPkz8z7w3p7ujd4hRcnHTWfA";
+    public string kulinoCoinMintAddress = "E5chNtjGFvCMVYoTwcP9DtrdMdctRCGdGahAAhnHbHc1";
     
     [Header("🌐 RPC Endpoints (Multiple for failover)")]
-    [Tooltip("List RPC URLs - akan dicoba satu per satu")]
     public string[] solanaRpcUrls = new string[]
     {
         "https://api.mainnet-beta.solana.com",
         "https://solana-api.projectserum.com",
-        "https://rpc.ankr.com/solana",
-        "https://solana-mainnet.g.alchemy.com/v2/demo"
+        "https://rpc.ankr.com/solana"
     };
 
     [Header("💰 Current Balance")]
@@ -40,7 +33,7 @@ public class KulinoCoinManager : MonoBehaviour
     public float autoRefreshInterval = 30f;
     public int maxInitRetries = 10;
     public float retryDelay = 2f;
-    public int maxRpcRetries = 3; // NEW: Berapa kali retry per RPC
+    public int maxRpcRetries = 3;
 
     [Header("🔍 Debug")]
     public bool enableDebugLogs = true;
@@ -54,7 +47,7 @@ public class KulinoCoinManager : MonoBehaviour
     private bool isInitialized = false;
     private bool isFetching = false;
     private int initRetryCount = 0;
-    private int currentRpcIndex = 0; // NEW: Track RPC yang sedang dipakai
+    private int currentRpcIndex = 0;
 
     void Awake()
     {
@@ -65,7 +58,15 @@ public class KulinoCoinManager : MonoBehaviour
         }
 
         Instance = this;
+        
+        // ✅ CRITICAL: Detach before DontDestroyOnLoad
+        if (transform.parent != null)
+        {
+            transform.SetParent(null);
+        }
+        
         DontDestroyOnLoad(gameObject);
+        gameObject.name = "[KulinoCoinManager - PERSISTENT]";
         
         Log("✅ KulinoCoinManager instance created");
     }
@@ -102,7 +103,7 @@ public class KulinoCoinManager : MonoBehaviour
             initRetryCount++;
             Log($"⏳ Attempt {initRetryCount}/{maxInitRetries} - Checking for wallet...");
             
-            // CHECK 1: GameManager
+            // CHECK 1: GameManager (only if exists)
             if (GameManager.Instance != null)
             {
                 string addr = GameManager.Instance.GetWalletAddress();
@@ -196,7 +197,7 @@ public class KulinoCoinManager : MonoBehaviour
     }
 
     // ========================================
-    // ✅ NEW: MULTI-RPC BALANCE FETCHING
+    // MULTI-RPC BALANCE FETCHING
     // ========================================
 
     public void FetchKulinoCoinBalance()
@@ -216,9 +217,6 @@ public class KulinoCoinManager : MonoBehaviour
         StartCoroutine(FetchBalanceWithRetry());
     }
 
-    /// <summary>
-    /// ✅ NEW: Fetch dengan multi-RPC retry
-    /// </summary>
     IEnumerator FetchBalanceWithRetry()
     {
         isFetching = true;
@@ -255,7 +253,7 @@ public class KulinoCoinManager : MonoBehaviour
                 if (retry > 0)
                 {
                     Log($"   🔄 Retry {retry}/{maxRpcRetries} for {GetDomainFromUrl(rpcUrl)}");
-                    yield return new WaitForSeconds(1f); // Wait sebelum retry
+                    yield return new WaitForSeconds(1f);
                 }
 
                 yield return StartCoroutine(FetchFromRpc(rpcUrl, (fetchSuccess) =>
@@ -278,15 +276,15 @@ public class KulinoCoinManager : MonoBehaviour
             LogError("   1. CORS blocking from your domain");
             LogError("   2. All RPC endpoints down");
             LogError("   3. Network issue");
+            LogError("   4. No token account exists for this wallet");
+            
+            // ✅ Set balance to 0 instead of keeping old value
             SetBalance(0);
         }
 
         isFetching = false;
     }
 
-    /// <summary>
-    /// ✅ NEW: Fetch dari 1 RPC endpoint
-    /// </summary>
     IEnumerator FetchFromRpc(string rpcUrl, Action<bool> onComplete)
     {
         string jsonBody = BuildTokenBalanceRequest();
@@ -297,7 +295,7 @@ public class KulinoCoinManager : MonoBehaviour
             request.uploadHandler = new UploadHandlerRaw(bodyRaw);
             request.downloadHandler = new DownloadHandlerBuffer();
             request.SetRequestHeader("Content-Type", "application/json");
-            request.timeout = 10; // 10 second timeout
+            request.timeout = 15; // ✅ Increased timeout
 
             yield return request.SendWebRequest();
 
@@ -308,8 +306,11 @@ public class KulinoCoinManager : MonoBehaviour
                 yield break;
             }
 
-            // Parse response
-            bool parseSuccess = ParseBalanceResponse(request.downloadHandler.text);
+            // ✅ IMPROVED: Better response logging
+            string responseText = request.downloadHandler.text;
+            Log($"📥 Response from {GetDomainFromUrl(rpcUrl)} ({responseText.Length} chars)");
+
+            bool parseSuccess = ParseBalanceResponse(responseText);
             onComplete?.Invoke(parseSuccess);
         }
     }
@@ -336,35 +337,88 @@ public class KulinoCoinManager : MonoBehaviour
     {
         try
         {
-            Log($"📥 Response received ({responseText.Length} chars)");
+            // ✅ IMPROVED: Show response preview
+            string preview = responseText.Length > 300 
+                ? responseText.Substring(0, 300) + "..." 
+                : responseText;
+            Log($"Response preview: {preview}");
 
             var response = JsonUtility.FromJson<SolanaRpcResponse>(responseText);
 
-            if (response?.result?.value != null && response.result.value.Length > 0)
+            if (response == null)
             {
-                var tokenAccount = response.result.value[0];
-                string amountStr = tokenAccount.account.data.parsed.info.tokenAmount.amount;
-                int decimals = tokenAccount.account.data.parsed.info.tokenAmount.decimals;
-
-                double rawAmount = double.Parse(amountStr);
-                double balance = rawAmount / Math.Pow(10, decimals);
-
-                SetBalance(balance);
-                Log($"✅ Balance fetched: {balance:F6} KC");
-                return true;
+                LogError("Failed to parse response - JsonUtility returned null");
+                return false;
             }
-            else
+
+            if (response.result == null)
             {
-                // No token account = balance 0
+                LogError("Response.result is null");
+                return false;
+            }
+
+            if (response.result.value == null)
+            {
+                LogError("Response.result.value is null");
+                return false;
+            }
+
+            if (response.result.value.Length == 0)
+            {
+                // ✅ IMPROVED: This is valid - wallet has no tokens
+                Log("ℹ️ No token account found. Balance: 0 KC");
                 SetBalance(0);
-                Log("ℹ️ No token account found. Balance: 0");
-                return true; // Still success (valid response)
+                return true; // Success with 0 balance
             }
+
+            var tokenAccount = response.result.value[0];
+            
+            if (tokenAccount.account == null || 
+                tokenAccount.account.data == null || 
+                tokenAccount.account.data.parsed == null ||
+                tokenAccount.account.data.parsed.info == null ||
+                tokenAccount.account.data.parsed.info.tokenAmount == null)
+            {
+                LogError("Token account structure incomplete");
+                return false;
+            }
+
+            string amountStr = tokenAccount.account.data.parsed.info.tokenAmount.amount;
+            int decimals = tokenAccount.account.data.parsed.info.tokenAmount.decimals;
+
+            if (string.IsNullOrEmpty(amountStr))
+            {
+                LogError("Amount string is empty");
+                return false;
+            }
+
+            // ✅ IMPROVED: Better number parsing
+            if (!double.TryParse(amountStr, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double rawAmount))
+            {
+                LogError($"Failed to parse amount: '{amountStr}'");
+                return false;
+            }
+
+            double balance = rawAmount / Math.Pow(10, decimals);
+
+            SetBalance(balance);
+            Log($"✅ Balance parsed successfully: {balance:F6} KC");
+            Log($"   Raw amount: {rawAmount}");
+            Log($"   Decimals: {decimals}");
+            
+            return true;
         }
         catch (Exception ex)
         {
             LogError($"❌ Parse error: {ex.Message}");
-            LogError($"Response preview: {responseText.Substring(0, Math.Min(200, responseText.Length))}...");
+            LogError($"Stack trace: {ex.StackTrace}");
+            
+            // ✅ Show problematic response
+            string errorPreview = responseText.Length > 500 
+                ? responseText.Substring(0, 500) + "..." 
+                : responseText;
+            LogError($"Problematic response: {errorPreview}");
+            
             return false;
         }
     }
@@ -374,11 +428,9 @@ public class KulinoCoinManager : MonoBehaviour
         double oldBalance = kulinoCoinBalance;
         kulinoCoinBalance = balance;
 
-        if (Math.Abs(oldBalance - balance) > 0.000001)
-        {
-            Log($"💰 Balance updated: {oldBalance:F6} → {balance:F6}");
-            OnBalanceUpdated?.Invoke(balance);
-        }
+        // ✅ IMPROVED: Always trigger event, even if balance unchanged
+        Log($"💰 Balance set: {balance:F6} KC (was: {oldBalance:F6})");
+        OnBalanceUpdated?.Invoke(balance);
     }
 
     // ========================================
@@ -405,7 +457,9 @@ public class KulinoCoinManager : MonoBehaviour
 
     public bool HasEnoughBalance(double amount)
     {
-        return kulinoCoinBalance >= amount;
+        bool hasEnough = kulinoCoinBalance >= amount;
+        Log($"HasEnoughBalance check: need {amount:F6}, have {kulinoCoinBalance:F6} = {hasEnough}");
+        return hasEnough;
     }
 
     public double GetBalance()
@@ -483,29 +537,27 @@ public class KulinoCoinManager : MonoBehaviour
         Debug.Log($"Fetching: {isFetching}");
         Debug.Log($"Current RPC: {(currentRpcIndex < solanaRpcUrls.Length ? solanaRpcUrls[currentRpcIndex] : "N/A")}");
         Debug.Log($"Auto-Refresh: {(autoRefreshInterval > 0 ? $"ON ({autoRefreshInterval}s)" : "OFF")}");
+        Debug.Log($"Mock Data: {useMockData}");
         Debug.Log("=========================");
     }
 
-    [ContextMenu("🧪 Test: Force Initialize")]
-    void Context_ForceInit()
+    [ContextMenu("🧪 Toggle Mock Data")]
+    void Context_ToggleMock()
     {
-        if (string.IsNullOrEmpty(testWalletAddress))
-        {
-            testWalletAddress = "44kmkWSoRYPgTf7hsmVRx7GTHyaCdpZNeX9rg82Uy6dM";
-            Debug.Log("[KulinoCoin] 🧪 Using default test wallet");
-        }
+        useMockData = !useMockData;
+        Debug.Log($"[KulinoCoin] Mock data: {(useMockData ? "ENABLED" : "DISABLED")}");
         
-        Initialize(testWalletAddress);
+        if (useMockData)
+        {
+            SetBalance(mockBalance);
+        }
+        else
+        {
+            RefreshBalance();
+        }
     }
 
-    [ContextMenu("🧪 Test: Set Mock Balance")]
-    void Context_SetMockBalance()
-    {
-        SetBalance(mockBalance);
-        Debug.Log($"[KulinoCoin] 🧪 Mock balance set: {mockBalance:F6}");
-    }
-
-    [ContextMenu("🔍 Test All RPCs")]
+    [ContextMenu("🔧 Test All RPCs")]
     void Context_TestAllRPCs()
     {
         StartCoroutine(TestAllRPCsCoroutine());

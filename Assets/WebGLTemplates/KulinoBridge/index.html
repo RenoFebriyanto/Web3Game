@@ -44,12 +44,13 @@
       overflow: hidden;
     }
     
-    /* ✅ CRITICAL FIX: Canvas dengan stable size */
+    /* ✅ CRITICAL FIX: Canvas dengan stable size DAN sharp rendering */
     #unity-canvas {
       display: block;
+      
+      /* ✅ FIX BLUR: Use auto rendering untuk sharp quality */
+      image-rendering: auto;
       image-rendering: -webkit-optimize-contrast;
-      image-rendering: crisp-edges;
-      image-rendering: pixelated;
       
       /* ✅ FIXED: Prevent automatic resize */
       position: absolute;
@@ -65,6 +66,10 @@
       
       /* ✅ Maintain aspect ratio */
       object-fit: contain;
+      
+      /* ✅ FIX BLUR: Force sharp rendering */
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
     }
     
     /* Desktop: Full viewport */

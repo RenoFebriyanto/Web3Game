@@ -4,9 +4,9 @@ using UnityEngine;
 using UnityEngine.Networking;
 
 /// <summary>
-/// ✅ FIXED v6.0: Kulino Coin Price API - Syntax errors fixed
-/// - Fixed missing semicolons
-/// - Improved error handling
+/// ✅ FIXED v6.1: Kulino Coin Price API - Empty response handling
+/// - Fixed empty JSON response error
+/// - Changed LogError to LogWarning untuk reduce console noise
 /// - Better fallback mechanism
 /// </summary>
 public class KulinoCoinPriceAPI : MonoBehaviour
@@ -120,13 +120,13 @@ public class KulinoCoinPriceAPI : MonoBehaviour
                 yield return new WaitForSeconds(2f);
             }
             
-            yield return StartCoroutine(TryCoinGeckoAPI((result) => { success = result; })); // ✅ FIXED: Added semicolon
+            yield return StartCoroutine(TryCoinGeckoAPI((result) => { success = result; }));
         }
 
         if (!success && !string.IsNullOrEmpty(fallbackPriceUrl))
         {
             Log("Trying fallback API...");
-            yield return StartCoroutine(TryFallbackAPI((result) => { success = result; })); // ✅ FIXED: Added semicolon
+            yield return StartCoroutine(TryFallbackAPI((result) => { success = result; }));
         }
 
         if (!success)
@@ -182,13 +182,13 @@ public class KulinoCoinPriceAPI : MonoBehaviour
                     }
                     else
                     {
-                        LogError("Invalid price from CoinGecko");
+                        LogWarning("Invalid price from CoinGecko - will use fallback");
                         onComplete?.Invoke(false);
                     }
                 }
                 catch (Exception ex)
                 {
-                    LogError($"Parse error: {ex.Message}");
+                    LogWarning($"Parse error: {ex.Message}");
                     onComplete?.Invoke(false);
                 }
             }
@@ -199,18 +199,25 @@ public class KulinoCoinPriceAPI : MonoBehaviour
     {
         try
         {
+            // ✅ FIX: Handle empty response
+            if (string.IsNullOrWhiteSpace(json) || json.Trim() == "{}" || json.Trim() == "[]")
+            {
+                LogWarning("Empty or invalid JSON response from CoinGecko");
+                return 0;
+            }
+
             string addressLower = kulinoContractAddress.ToLower();
             
             if (!json.Contains(addressLower))
             {
-                LogError($"Contract address {addressLower} not found in response");
+                LogWarning($"Contract address {addressLower} not found in response - using fallback price");
                 return 0;
             }
 
             int idrIndex = json.IndexOf("\"idr\":");
             if (idrIndex < 0)
             {
-                LogError("IDR price not found");
+                LogWarning("IDR price not found in response");
                 return 0;
             }
 
@@ -230,7 +237,7 @@ public class KulinoCoinPriceAPI : MonoBehaviour
         }
         catch (Exception ex)
         {
-            LogError($"Parse exception: {ex.Message}");
+            LogWarning($"Parse exception: {ex.Message}");
             return 0;
         }
     }
@@ -280,7 +287,7 @@ public class KulinoCoinPriceAPI : MonoBehaviour
                 }
                 catch (Exception ex)
                 {
-                    LogError($"Fallback parse error: {ex.Message}");
+                    LogWarning($"Fallback parse error: {ex.Message}");
                     onComplete?.Invoke(false);
                 }
             }
@@ -316,11 +323,6 @@ public class KulinoCoinPriceAPI : MonoBehaviour
     void LogWarning(string message)
     {
         Debug.LogWarning($"[KulinoCoinPrice] {message}");
-    }
-
-    void LogError(string message)
-    {
-        Debug.LogError($"[KulinoCoinPrice] {message}");
     }
 
     [ContextMenu("🔄 Fetch Price Now")]

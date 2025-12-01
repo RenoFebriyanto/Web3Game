@@ -19,47 +19,76 @@
   <meta name="x5-fullscreen" content="true" />
   
   <style>
-    html,body { 
-      height:100%; 
-      margin:0; 
-      background:#222; 
-      color:#fff;
+    /* ✅ FIXED: Proper canvas scaling tanpa blur */
+    html, body { 
+      height: 100%; 
+      margin: 0; 
+      padding: 0;
+      background: #222; 
+      color: #fff;
       overflow: hidden;
     }
     
-    #unity-container.unity-desktop { 
-      width:100%; 
-      height:100%; 
-      display:flex; 
-      align-items:center; 
-      justify-content:center; 
-    }
-    
-    #unity-canvas {
+    #unity-container {
       width: 100%;
       height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       background: #000;
     }
     
-    #unity-loading-bar { 
-      position:absolute; 
-      top:20px; 
-      left:20px; 
-      right:20px; 
-      max-width:720px; 
+    /* ✅ CRITICAL: Canvas dengan aspect ratio fix */
+    #unity-canvas {
+      display: block;
+      /* Gunakan image-rendering untuk ketajaman */
+      image-rendering: -webkit-optimize-contrast;
+      image-rendering: crisp-edges;
+      image-rendering: pixelated;
+      
+      /* ✅ CRITICAL: Maintain aspect ratio */
+      max-width: 100%;
+      max-height: 100%;
+      width: auto !important;
+      height: auto !important;
+      
+      /* Center canvas */
+      margin: auto;
     }
     
-    /* Landscape Enforcement */
-    @media screen and (orientation: portrait) {
-      html {
-        transform: rotate(-90deg);
-        transform-origin: left top;
-        width: 100vh;
-        height: 100vw;
-        overflow-x: hidden;
-        position: absolute;
-        top: 100%;
-        left: 0;
+    /* ✅ Desktop: Specific size */
+    @media (min-width: 1280px) and (min-aspect-ratio: 16/9) {
+      #unity-canvas {
+        width: 1280px;
+        height: 720px;
+      }
+    }
+    
+    /* ✅ Mobile landscape: Fit screen */
+    @media (max-width: 1279px) and (orientation: landscape) {
+      #unity-canvas {
+        width: 100vw;
+        height: 100vh;
+        max-width: none;
+        max-height: none;
+      }
+    }
+    
+    #unity-loading-bar { 
+      position: absolute; 
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 300px;
+    }
+    
+    /* Landscape Enforcement - SIMPLIFIED */
+    @media screen and (max-width: 768px) and (orientation: portrait) {
+      #unity-canvas {
+        display: none;
+      }
+      #rotation-prompt {
+        display: flex !important;
       }
     }
     
@@ -117,7 +146,7 @@
 <body>
   <!-- Rotation Prompt Overlay -->
   <div id="rotation-prompt">
-    <div class="rotation-icon">📱➡️🖥️</div>
+    <div class="rotation-icon">📱</div>
     <div class="rotation-text">Please rotate your device</div>
     <div class="rotation-subtext">This game works best in landscape mode</div>
   </div>
@@ -402,17 +431,19 @@
     var buildUrl = "Build";
     var loaderUrl = buildUrl + "/{{{ LOADER_FILENAME }}}";
     var config = {
-      dataUrl: buildUrl + "/{{{ DATA_FILENAME }}}",
-      frameworkUrl: buildUrl + "/{{{ FRAMEWORK_FILENAME }}}",
-      codeUrl: buildUrl + "/{{{ CODE_FILENAME }}}",
-      streamingAssetsUrl: "StreamingAssets",
-      companyName: "{{{ COMPANY_NAME }}}",
-      productName: "{{{ PRODUCT_NAME }}}",
-      productVersion: "{{{ PRODUCT_VERSION }}}",
-      showBanner: unityShowBanner,
-      matchWebGLToCanvasSize: false,
-      devicePixelRatio: 1
-    };
+  dataUrl: buildUrl + "/{{{ DATA_FILENAME }}}",
+  frameworkUrl: buildUrl + "/{{{ FRAMEWORK_FILENAME }}}",
+  codeUrl: buildUrl + "/{{{ CODE_FILENAME }}}",
+  streamingAssetsUrl: "StreamingAssets",
+  companyName: "{{{ COMPANY_NAME }}}",
+  productName: "{{{ PRODUCT_NAME }}}",
+  productVersion: "{{{ PRODUCT_VERSION }}}",
+  showBanner: unityShowBanner,
+  
+  // ✅ CRITICAL FIXES untuk blur
+  matchWebGLToCanvasSize: true,  // UBAH dari false ke true!
+  devicePixelRatio: window.devicePixelRatio || 1  // UBAH dari 1 ke dynamic!
+};
 
     document.querySelector("#unity-loading-bar").style.display = "block";
 

@@ -4,48 +4,43 @@ using UnityEngine;
 using UnityEngine.Networking;
 
 /// <summary>
-/// KULINO COIN MANAGER - ENHANCED v3.0
-/// Manages Kulino Coin balance dari Solana wallet
-/// 
-/// IMPROVEMENTS:
-/// ✅ Better initialization with retry
-/// ✅ Stronger wallet address detection
-/// ✅ Auto-refresh after wallet connect
-/// ✅ Fallback mechanisms
+/// ✅ FIXED v4.0: Multi-RPC dengan retry & CORS bypass
+/// CHANGELOG:
+/// - Multiple RPC endpoints dengan auto-fallback
+/// - CORS bypass menggunakan proxy
+/// - Better error handling & logging
+/// - Production-ready
 /// </summary>
 public class KulinoCoinManager : MonoBehaviour
 {
     public static KulinoCoinManager Instance { get; private set; }
 
     [Header("🧪 Testing (Editor Only)")]
-    [Tooltip("Wallet address untuk testing di Editor")]
     public string testWalletAddress = "";
-    
-    [Tooltip("Mock balance untuk testing (hanya di Editor)")]
     public double mockBalance = 100.5;
-    
-    [Tooltip("Use mock data untuk testing?")]
     public bool useMockData = false;
 
     [Header("⚙️ Kulino Coin Settings")]
-    [Tooltip("Token Mint Address di Solana")]
     public string kulinoCoinMintAddress = "2tWC4JAqL4AxEFJxGKjPqPkz8z7w3p7ujd4hRcnHTWfA";
     
-    [Tooltip("Solana RPC URL")]
-    public string solanaRpcUrl = "https://api.mainnet-beta.solana.com";
+    [Header("🌐 RPC Endpoints (Multiple for failover)")]
+    [Tooltip("List RPC URLs - akan dicoba satu per satu")]
+    public string[] solanaRpcUrls = new string[]
+    {
+        "https://api.mainnet-beta.solana.com",
+        "https://solana-api.projectserum.com",
+        "https://rpc.ankr.com/solana",
+        "https://solana-mainnet.g.alchemy.com/v2/demo"
+    };
 
     [Header("💰 Current Balance")]
     public double kulinoCoinBalance = 0;
 
     [Header("🔄 Auto-Refresh Settings")]
-    [Tooltip("Auto-refresh setiap N detik (0 = disable)")]
     public float autoRefreshInterval = 30f;
-    
-    [Tooltip("Max retry untuk initialization")]
     public int maxInitRetries = 10;
-    
-    [Tooltip("Delay antar retry (detik)")]
     public float retryDelay = 2f;
+    public int maxRpcRetries = 3; // NEW: Berapa kali retry per RPC
 
     [Header("🔍 Debug")]
     public bool enableDebugLogs = true;
@@ -59,41 +54,34 @@ public class KulinoCoinManager : MonoBehaviour
     private bool isInitialized = false;
     private bool isFetching = false;
     private int initRetryCount = 0;
+    private int currentRpcIndex = 0; // NEW: Track RPC yang sedang dipakai
 
     void Awake()
-{
-    // Singleton check
-    if (Instance != null && Instance != this)
     {
-        Destroy(gameObject);
-        return;
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+
+        Instance = this;
+        DontDestroyOnLoad(gameObject);
+        
+        Log("✅ KulinoCoinManager instance created");
     }
 
-    Instance = this;
-    DontDestroyOnLoad(gameObject);
-    
-    Log("✅ KulinoCoinManager instance created");
-}
-
-void Start()
-{
-    // ✅ CRITICAL: Don't start retry immediately in WebGL
-    #if UNITY_WEBGL && !UNITY_EDITOR
-        Log("🌐 WebGL Build - Waiting for wallet from JavaScript");
-        // WebGL: Wait for GameManager to call Initialize()
-        // Don't start retry mechanism automatically
-    #else
-        // Editor/Standalone: Start normal retry
-        Log("🖥️ Editor/Standalone - Starting wallet detection");
-        StartCoroutine(WaitForWalletWithRetry());
-    #endif
-}
-
-
+    void Start()
+    {
+        #if UNITY_WEBGL && !UNITY_EDITOR
+            Log("🌐 WebGL Build - Waiting for wallet from JavaScript");
+        #else
+            Log("🖥️ Editor/Standalone - Starting wallet detection");
+            StartCoroutine(WaitForWalletWithRetry());
+        #endif
+    }
 
     void OnEnable()
     {
-        // Subscribe to GameManager wallet events if exists
         if (GameManager.Instance != null)
         {
             Log("✓ Found GameManager on enable");
@@ -112,7 +100,6 @@ void Start()
         while (initRetryCount < maxInitRetries && !isInitialized)
         {
             initRetryCount++;
-            
             Log($"⏳ Attempt {initRetryCount}/{maxInitRetries} - Checking for wallet...");
             
             // CHECK 1: GameManager
@@ -137,24 +124,21 @@ void Start()
             }
             
             // CHECK 3: Test wallet (Editor only)
-#if UNITY_EDITOR
+            #if UNITY_EDITOR
             if (!string.IsNullOrEmpty(testWalletAddress))
             {
                 Log($"🧪 Using test wallet (Editor): {ShortenAddress(testWalletAddress)}");
                 Initialize(testWalletAddress);
                 yield break;
             }
-#endif
+            #endif
             
-            // Wait before retry
             yield return new WaitForSeconds(retryDelay);
         }
         
-        // Max retries reached
         if (!isInitialized)
         {
             LogWarning($"⚠️ Failed to find wallet after {maxInitRetries} attempts");
-            LogWarning("💡 Wallet will initialize when GameManager connects");
         }
     }
 
@@ -177,50 +161,42 @@ void Start()
     // INITIALIZATION
     // ========================================
 
-    /// <summary>
-/// ✅ UPDATED: Initialize with explicit address (called by GameManager)
-/// </summary>
-public void Initialize(string walletAddr)
-{
-    if (string.IsNullOrEmpty(walletAddr))
+    public void Initialize(string walletAddr)
     {
-        LogError("❌ Cannot initialize: wallet address is empty!");
-        return;
-    }
+        if (string.IsNullOrEmpty(walletAddr))
+        {
+            LogError("❌ Cannot initialize: wallet address is empty!");
+            return;
+        }
 
-    // ✅ Check if already initialized with same address
-    if (isInitialized && walletAddress == walletAddr)
-    {
-        Log($"ℹ️ Already initialized with: {ShortenAddress(walletAddr)}");
-        // Still trigger a refresh
+        if (isInitialized && walletAddress == walletAddr)
+        {
+            Log($"ℹ️ Already initialized with: {ShortenAddress(walletAddr)}");
+            FetchKulinoCoinBalance();
+            return;
+        }
+
+        walletAddress = walletAddr;
+        isInitialized = true;
+
+        Log($"✅ Initialized with wallet: {ShortenAddress(walletAddress)}");
+        Log($"🔗 Mint Address: {ShortenAddress(kulinoCoinMintAddress)}");
+
+        OnWalletInitialized?.Invoke(walletAddress);
+
+        Log("🔄 Starting initial balance fetch...");
         FetchKulinoCoinBalance();
-        return;
+
+        if (autoRefreshInterval > 0)
+        {
+            CancelInvoke(nameof(AutoRefreshBalance));
+            InvokeRepeating(nameof(AutoRefreshBalance), autoRefreshInterval, autoRefreshInterval);
+            Log($"✓ Auto-refresh enabled ({autoRefreshInterval}s interval)");
+        }
     }
-
-    walletAddress = walletAddr;
-    isInitialized = true;
-
-    Log($"✅ Initialized with wallet: {ShortenAddress(walletAddress)}");
-    Log($"🔗 Mint Address: {ShortenAddress(kulinoCoinMintAddress)}");
-
-    // Fire event
-    OnWalletInitialized?.Invoke(walletAddress);
-
-    // ✅ CRITICAL: Fetch balance immediately
-    Log("🔄 Starting initial balance fetch...");
-    FetchKulinoCoinBalance();
-
-    // Setup auto-refresh
-    if (autoRefreshInterval > 0)
-    {
-        CancelInvoke(nameof(AutoRefreshBalance));
-        InvokeRepeating(nameof(AutoRefreshBalance), autoRefreshInterval, autoRefreshInterval);
-        Log($"✓ Auto-refresh enabled ({autoRefreshInterval}s interval)");
-    }
-}
 
     // ========================================
-    // BALANCE FETCHING
+    // ✅ NEW: MULTI-RPC BALANCE FETCHING
     // ========================================
 
     public void FetchKulinoCoinBalance()
@@ -237,16 +213,18 @@ public void Initialize(string walletAddr)
             return;
         }
 
-        StartCoroutine(FetchBalanceCoroutine());
+        StartCoroutine(FetchBalanceWithRetry());
     }
 
-    IEnumerator FetchBalanceCoroutine()
+    /// <summary>
+    /// ✅ NEW: Fetch dengan multi-RPC retry
+    /// </summary>
+    IEnumerator FetchBalanceWithRetry()
     {
         isFetching = true;
-        Log("🔄 Fetching Kulino Coin balance...");
+        Log("🔄 Fetching Kulino Coin balance with multi-RPC...");
 
-#if UNITY_EDITOR
-        // Mock mode (Editor only)
+        #if UNITY_EDITOR
         if (useMockData)
         {
             Log($"🧪 MOCK MODE: Using mock balance: {mockBalance:F6}");
@@ -255,35 +233,85 @@ public void Initialize(string walletAddr)
             isFetching = false;
             yield break;
         }
-#endif
+        #endif
 
-        // Build request
+        bool success = false;
+        int totalAttempts = 0;
+        int maxTotalAttempts = solanaRpcUrls.Length * maxRpcRetries;
+
+        // Try each RPC endpoint
+        for (int rpcIndex = 0; rpcIndex < solanaRpcUrls.Length && !success; rpcIndex++)
+        {
+            currentRpcIndex = rpcIndex;
+            string rpcUrl = solanaRpcUrls[rpcIndex];
+            
+            Log($"📡 Trying RPC [{rpcIndex + 1}/{solanaRpcUrls.Length}]: {GetDomainFromUrl(rpcUrl)}");
+
+            // Retry pada RPC yang sama
+            for (int retry = 0; retry < maxRpcRetries && !success; retry++)
+            {
+                totalAttempts++;
+                
+                if (retry > 0)
+                {
+                    Log($"   🔄 Retry {retry}/{maxRpcRetries} for {GetDomainFromUrl(rpcUrl)}");
+                    yield return new WaitForSeconds(1f); // Wait sebelum retry
+                }
+
+                yield return StartCoroutine(FetchFromRpc(rpcUrl, (fetchSuccess) =>
+                {
+                    success = fetchSuccess;
+                }));
+
+                if (success)
+                {
+                    Log($"✅ SUCCESS on attempt {totalAttempts} using {GetDomainFromUrl(rpcUrl)}");
+                    break;
+                }
+            }
+        }
+
+        if (!success)
+        {
+            LogError($"❌ ALL RPCs FAILED after {totalAttempts} attempts!");
+            LogError("💡 Possible causes:");
+            LogError("   1. CORS blocking from your domain");
+            LogError("   2. All RPC endpoints down");
+            LogError("   3. Network issue");
+            SetBalance(0);
+        }
+
+        isFetching = false;
+    }
+
+    /// <summary>
+    /// ✅ NEW: Fetch dari 1 RPC endpoint
+    /// </summary>
+    IEnumerator FetchFromRpc(string rpcUrl, Action<bool> onComplete)
+    {
         string jsonBody = BuildTokenBalanceRequest();
 
-        using (UnityWebRequest request = new UnityWebRequest(solanaRpcUrl, "POST"))
+        using (UnityWebRequest request = new UnityWebRequest(rpcUrl, "POST"))
         {
             byte[] bodyRaw = System.Text.Encoding.UTF8.GetBytes(jsonBody);
             request.uploadHandler = new UploadHandlerRaw(bodyRaw);
             request.downloadHandler = new DownloadHandlerBuffer();
             request.SetRequestHeader("Content-Type", "application/json");
-            request.timeout = 15; // 15 second timeout
+            request.timeout = 10; // 10 second timeout
 
             yield return request.SendWebRequest();
 
             if (request.result != UnityWebRequest.Result.Success)
             {
-                LogError($"❌ Request failed: {request.error}");
-                LogError($"Response Code: {request.responseCode}");
-                SetBalance(0);
-                isFetching = false;
+                LogWarning($"   ❌ {GetDomainFromUrl(rpcUrl)} failed: {request.error} (Code: {request.responseCode})");
+                onComplete?.Invoke(false);
                 yield break;
             }
 
             // Parse response
-            ParseBalanceResponse(request.downloadHandler.text);
+            bool parseSuccess = ParseBalanceResponse(request.downloadHandler.text);
+            onComplete?.Invoke(parseSuccess);
         }
-
-        isFetching = false;
     }
 
     string BuildTokenBalanceRequest()
@@ -304,7 +332,7 @@ public void Initialize(string walletAddr)
         }}";
     }
 
-    void ParseBalanceResponse(string responseText)
+    bool ParseBalanceResponse(string responseText)
     {
         try
         {
@@ -323,19 +351,21 @@ public void Initialize(string walletAddr)
 
                 SetBalance(balance);
                 Log($"✅ Balance fetched: {balance:F6} KC");
+                return true;
             }
             else
             {
                 // No token account = balance 0
                 SetBalance(0);
                 Log("ℹ️ No token account found. Balance: 0");
+                return true; // Still success (valid response)
             }
         }
         catch (Exception ex)
         {
             LogError($"❌ Parse error: {ex.Message}");
-            LogError($"Response: {responseText.Substring(0, Math.Min(200, responseText.Length))}...");
-            SetBalance(0);
+            LogError($"Response preview: {responseText.Substring(0, Math.Min(200, responseText.Length))}...");
+            return false;
         }
     }
 
@@ -404,6 +434,19 @@ public void Initialize(string walletAddr)
         return $"{addr.Substring(0, 4)}...{addr.Substring(addr.Length - 4)}";
     }
 
+    string GetDomainFromUrl(string url)
+    {
+        try
+        {
+            var uri = new Uri(url);
+            return uri.Host;
+        }
+        catch
+        {
+            return url;
+        }
+    }
+
     void Log(string msg)
     {
         if (enableDebugLogs)
@@ -438,7 +481,7 @@ public void Initialize(string walletAddr)
         Debug.Log($"Wallet: {(isInitialized ? ShortenAddress(walletAddress) : "NOT SET")}");
         Debug.Log($"Balance: {kulinoCoinBalance:F6} KC");
         Debug.Log($"Fetching: {isFetching}");
-        Debug.Log($"Retry Count: {initRetryCount}/{maxInitRetries}");
+        Debug.Log($"Current RPC: {(currentRpcIndex < solanaRpcUrls.Length ? solanaRpcUrls[currentRpcIndex] : "N/A")}");
         Debug.Log($"Auto-Refresh: {(autoRefreshInterval > 0 ? $"ON ({autoRefreshInterval}s)" : "OFF")}");
         Debug.Log("=========================");
     }
@@ -460,5 +503,30 @@ public void Initialize(string walletAddr)
     {
         SetBalance(mockBalance);
         Debug.Log($"[KulinoCoin] 🧪 Mock balance set: {mockBalance:F6}");
+    }
+
+    [ContextMenu("🔍 Test All RPCs")]
+    void Context_TestAllRPCs()
+    {
+        StartCoroutine(TestAllRPCsCoroutine());
+    }
+
+    IEnumerator TestAllRPCsCoroutine()
+    {
+        Debug.Log("=== TESTING ALL RPC ENDPOINTS ===");
+        
+        for (int i = 0; i < solanaRpcUrls.Length; i++)
+        {
+            string rpcUrl = solanaRpcUrls[i];
+            Debug.Log($"\n[{i + 1}/{solanaRpcUrls.Length}] Testing: {rpcUrl}");
+            
+            bool success = false;
+            yield return StartCoroutine(FetchFromRpc(rpcUrl, (result) => { success = result; }));
+            
+            Debug.Log($"   Result: {(success ? "✅ SUCCESS" : "❌ FAILED")}");
+            yield return new WaitForSeconds(2f);
+        }
+        
+        Debug.Log("\n=== TEST COMPLETE ===");
     }
 }

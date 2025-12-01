@@ -10,14 +10,21 @@ using System.Runtime.InteropServices;
 #endif
 
 /// <summary>
-/// ✅ ULTRA-FIXED: GameManager v5.0 - Unbreakable Singleton
-/// - Scene change protection
-/// - Wallet persistence
-/// - Dynamic KC price integration
+/// ✅ FIXED v6.0: GameManager - Smart Persistence
+/// - Only persist in gameplay scenes
+/// - Auto-destroy in MainMenu
+/// - Better lifecycle management
 /// </summary>
 public class GameManager : MonoBehaviour
 {
     public static GameManager Instance { get; private set; }
+
+    [Header("🎮 Scene Settings")]
+    [Tooltip("Scenes where GameManager should persist")]
+    public string[] persistentScenes = new string[] { "Gameplay", "Game", "Level" };
+    
+    [Tooltip("Scenes where GameManager should NOT exist")]
+    public string[] excludedScenes = new string[] { "MainMenu", "Menu", "Lobby" };
 
     [Header("🔐 Wallet")]
     private string walletAddress;
@@ -27,92 +34,93 @@ public class GameManager : MonoBehaviour
     public int claimAmount = 1;
     public int claimTimeoutSeconds = 60;
 
-    [Header("🪙 Kulino Coin")]
-    public int kulinoCoinDecimals = 6;
-
     [Header("🎨 UI References")]
     public Button claimButton;
     public TextMeshProUGUI statusText;
 
     private bool isRequestInProgress = false;
     private float requestStartTime = 0f;
+    private bool isPersistent = false;
 
 #if UNITY_WEBGL && !UNITY_EDITOR
     [DllImport("__Internal")]
     private static extern void RequestClaim(string message);
 #endif
 
-    // ✅ CRITICAL: Scene persistence tracking
-    private static bool isPersistent = false;
-
     void Awake()
     {
-        // ✅ ULTRA-STRONG SINGLETON - Never destroyed
+        // ✅ CHECK 1: Should this scene have GameManager?
+        string currentScene = SceneManager.GetActiveScene().name;
+        
+        if (IsExcludedScene(currentScene))
+        {
+            Debug.Log($"[GameManager] ❌ Scene '{currentScene}' excluded - destroying");
+            Destroy(gameObject);
+            return;
+        }
+
+        // ✅ CHECK 2: Singleton
         if (Instance != null)
         {
             if (Instance != this)
             {
-                // Check if old instance is valid
-                try
-                {
-                    if (Instance.gameObject != null && Instance.enabled)
-                    {
-                        Debug.LogWarning($"[GameManager] ⚠️ Duplicate detected on '{gameObject.name}' - destroying");
-                        Destroy(gameObject);
-                        return;
-                    }
-                }
-                catch
-                {
-                    // Old instance is broken, take over
-                    Debug.Log("[GameManager] 🔄 Taking over from broken instance");
-                }
+                Debug.LogWarning($"[GameManager] Duplicate detected - destroying");
+                Destroy(gameObject);
+                return;
             }
         }
 
         Instance = this;
 
-        // ✅ CRITICAL: Detach from parent BEFORE DontDestroyOnLoad
-        if (transform.parent != null)
+        // ✅ CHECK 3: Should persist?
+        if (ShouldPersist(currentScene))
         {
-            transform.SetParent(null);
-            Debug.Log("[GameManager] Detached from parent");
+            if (transform.parent != null)
+            {
+                transform.SetParent(null);
+            }
+            
+            DontDestroyOnLoad(gameObject);
+            isPersistent = true;
+            gameObject.name = "[GameManager - PERSISTENT]";
+            
+            SceneManager.sceneLoaded += OnSceneLoaded;
+            
+            Debug.Log($"[GameManager] ✅ Persistent mode in scene: {currentScene}");
         }
-        
-        // ✅ CRITICAL: Mark as persistent
-        DontDestroyOnLoad(gameObject);
-        isPersistent = true;
-        gameObject.name = "[★ GameManager - PERSISTENT ★]";
-
-        // ✅ Subscribe to scene changes
-        SceneManager.sceneLoaded += OnSceneLoaded;
-
-        Debug.Log("[GameManager] ✅ PERSISTENT singleton initialized");
+        else
+        {
+            gameObject.name = "[GameManager - LOCAL]";
+            Debug.Log($"[GameManager] ✅ Local mode in scene: {currentScene}");
+        }
     }
 
     void OnDestroy()
     {
-        SceneManager.sceneLoaded -= OnSceneLoaded;
+        if (isPersistent)
+        {
+            SceneManager.sceneLoaded -= OnSceneLoaded;
+        }
         
         if (Instance == this)
         {
-            Debug.LogWarning("[GameManager] ⚠️ Main instance destroyed!");
+            Instance = null;
         }
     }
 
-    // ✅ NEW: Re-check on scene load
     void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
         Debug.Log($"[GameManager] Scene loaded: {scene.name}");
         
-        // ✅ Re-verify singleton status
-        if (!isPersistent || gameObject == null)
+        // ✅ Auto-destroy if loaded into excluded scene
+        if (IsExcludedScene(scene.name))
         {
-            Debug.LogError("[GameManager] ❌ CRITICAL: Lost persistence!");
-            RecreateInstance();
+            Debug.Log($"[GameManager] ⚠️ Entered excluded scene '{scene.name}' - destroying");
+            Destroy(gameObject);
+            return;
         }
-        
-        // ✅ Re-notify wallet if available
+
+        // ✅ Re-check wallet
         if (!string.IsNullOrEmpty(walletAddress))
         {
             StartCoroutine(RenotifyWalletDelayed());
@@ -127,20 +135,28 @@ public class GameManager : MonoBehaviour
         InitializeKulinoCoinManager(walletAddress);
     }
 
-    void RecreateInstance()
+    bool ShouldPersist(string sceneName)
     {
-        Debug.Log("[GameManager] 🔧 Attempting to recreate...");
-        
-        var existing = FindFirstObjectByType<GameManager>();
-        if (existing != null && existing != this)
+        foreach (string scene in persistentScenes)
         {
-            Instance = existing;
-            Debug.Log("[GameManager] ✓ Found existing instance");
+            if (sceneName.Contains(scene) || sceneName.Equals(scene, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
         }
-        else
+        return false;
+    }
+
+    bool IsExcludedScene(string sceneName)
+    {
+        foreach (string scene in excludedScenes)
         {
-            Debug.LogError("[GameManager] ❌ Cannot recreate - original instance lost!");
+            if (sceneName.Contains(scene) || sceneName.Equals(scene, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
         }
+        return false;
     }
 
     void Start()
@@ -167,10 +183,6 @@ public class GameManager : MonoBehaviour
         }
     }
 
-    // ========================================
-    // URL PARAMETER PARSING
-    // ========================================
-    
     IEnumerator ParseURLAndConnect()
     {
         yield return new WaitForSeconds(1f);
@@ -191,7 +203,6 @@ public class GameManager : MonoBehaviour
             Debug.Log($"[GameManager] 🎯 Found wallet in URL: {ShortenAddress(walletParam)}");
             OnWalletConnected(walletParam);
             
-            // ✅ Retry mechanism for KulinoCoinManager
             for (int i = 0; i < 10; i++)
             {
                 yield return new WaitForSeconds(0.5f);
@@ -205,7 +216,7 @@ public class GameManager : MonoBehaviour
                     }
                     else
                     {
-                        Debug.Log("[GameManager] ✅ KulinoCoinManager already initialized");
+                        Debug.Log("[GameManager] ✅ KulinoCoinManager initialized");
                         break;
                     }
                 }
@@ -263,10 +274,6 @@ public class GameManager : MonoBehaviour
         return "";
     }
 
-    // ========================================
-    // WALLET CONNECTION
-    // ========================================
-    
     public void OnWalletConnected(string address)
     {
         walletAddress = address;
@@ -310,10 +317,6 @@ public class GameManager : MonoBehaviour
     {
         return walletAddress;
     }
-
-    // ========================================
-    // CLAIM SYSTEM
-    // ========================================
 
     public void OnClaimButtonClick()
     {
@@ -410,10 +413,6 @@ public class GameManager : MonoBehaviour
             statusText.text = txt;
     }
 
-    // ========================================
-    // PHANTOM PAYMENT
-    // ========================================
-
     public void OnPhantomPaymentResult(string resultJson)
     {
         Debug.Log($"[GameManager] 💳 Payment result: {resultJson}");
@@ -423,96 +422,82 @@ public class GameManager : MonoBehaviour
             var result = JsonUtility.FromJson<ClaimResult>(resultJson);
 
             if (result.success)
+            {Debug.Log($"[GameManager] ✅ PAYMENT SUCCESS!");
+            
+            var shopManager = FindFirstObjectByType<ShopManager>();
+            if (shopManager != null)
             {
-                Debug.Log($"[GameManager] ✅ PAYMENT SUCCESS!");
-                Debug.Log($"[GameManager] TX: {result.txHash}");
-                
-                var shopManager = FindFirstObjectByType<ShopManager>();
-                if (shopManager != null)
-                {
-                    shopManager.OnPaymentConfirmed();
-                }
-
-                StartCoroutine(RefreshKulinoCoinBalanceDelayed(2f));
+                shopManager.OnPaymentConfirmed();
             }
-            else
-            {
-                Debug.LogError($"[GameManager] ❌ PAYMENT FAILED: {result.error}");
-            }
+
+            StartCoroutine(RefreshKulinoCoinBalanceDelayed(2f));
         }
-        catch (Exception ex)
+        else
         {
-            Debug.LogError($"[GameManager] ❌ Parse error: {ex.Message}");
+            Debug.LogError($"[GameManager] ❌ PAYMENT FAILED: {result.error}");
         }
     }
-
-    // ========================================
-    // KULINO COIN BALANCE REFRESH
-    // ========================================
-
-    IEnumerator RefreshKulinoCoinBalanceDelayed(float delay)
+    catch (Exception ex)
     {
-        yield return new WaitForSeconds(delay);
-
-        if (KulinoCoinManager.Instance != null)
-        {
-            Debug.Log("[GameManager] 🔄 Refreshing KC balance...");
-            KulinoCoinManager.Instance.RefreshBalance();
-        }
+        Debug.LogError($"[GameManager] ❌ Parse error: {ex.Message}");
     }
+}
 
-    // ========================================
-    // HELPER METHODS
-    // ========================================
+IEnumerator RefreshKulinoCoinBalanceDelayed(float delay)
+{
+    yield return new WaitForSeconds(delay);
 
-    string ShortenAddress(string addr)
+    if (KulinoCoinManager.Instance != null)
     {
-        if (string.IsNullOrEmpty(addr) || addr.Length < 10)
-            return addr;
-        return $"{addr.Substring(0, 6)}...{addr.Substring(addr.Length - 4)}";
+        Debug.Log("[GameManager] 🔄 Refreshing KC balance...");
+        KulinoCoinManager.Instance.RefreshBalance();
     }
+}
 
-    void EditorSimulateResult()
+string ShortenAddress(string addr)
+{
+    if (string.IsNullOrEmpty(addr) || addr.Length < 10)
+        return addr;
+    return $"{addr.Substring(0, 6)}...{addr.Substring(addr.Length - 4)}";
+}
+
+void EditorSimulateResult()
+{
+    var fake = new ClaimResult()
     {
-        var fake = new ClaimResult()
-        {
-            success = true,
-            txHash = "EDITOR_FAKE_TX"
-        };
+        success = true,
+        txHash = "EDITOR_FAKE_TX"
+    };
 
-        OnClaimResult(JsonUtility.ToJson(fake));
-    }
+    OnClaimResult(JsonUtility.ToJson(fake));
+}
 
-    // ========================================
-    // DATA CLASSES
-    // ========================================
+[Serializable]
+class ClaimPayload
+{
+    public string address;
+    public string gameId;
+    public int amount;
+    public string nonce;
+    public long ts;
+}
 
-    [Serializable]
-    class ClaimPayload
-    {
-        public string address;
-        public string gameId;
-        public int amount;
-        public string nonce;
-        public long ts;
-    }
+[Serializable]
+class ClaimResult
+{
+    public bool success;
+    public string error;
+    public string txHash;
+}
 
-    [Serializable]
-    class ClaimResult
-    {
-        public bool success;
-        public string error;
-        public string txHash;
-    }
-
-    [ContextMenu("📊 Debug: Print Status")]
-    void Context_PrintStatus()
-    {
-        Debug.Log("=== GAMEMANAGER STATUS ===");
-        Debug.Log($"Instance: {(Instance != null ? "OK" : "NULL")}");
-        Debug.Log($"Persistent: {isPersistent}");
-        Debug.Log($"Wallet: {ShortenAddress(walletAddress)}");
-        Debug.Log($"KulinoCoinManager: {(KulinoCoinManager.Instance != null ? "OK" : "NULL")}");
-        Debug.Log("==========================");
-    }
+[ContextMenu("📊 Debug: Print Status")]
+void Context_PrintStatus()
+{
+    Debug.Log("=== GAMEMANAGER STATUS ===");
+    Debug.Log($"Instance: {(Instance != null ? "OK" : "NULL")}");
+    Debug.Log($"Scene: {SceneManager.GetActiveScene().name}");
+    Debug.Log($"Persistent: {isPersistent}");
+    Debug.Log($"Wallet: {ShortenAddress(walletAddress)}");
+    Debug.Log("==========================");
+}
 }

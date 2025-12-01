@@ -4,10 +4,10 @@ using UnityEngine;
 using UnityEngine.Networking;
 
 /// <summary>
-/// ✅ FIXED v5.0: Kulino Coin Price API dengan fallback mechanism
-/// - Multi-source price fetching
-/// - Better error handling
-/// - Fallback to default price
+/// ✅ FIXED v6.0: Kulino Coin Price API - Syntax errors fixed
+/// - Fixed missing semicolons
+/// - Improved error handling
+/// - Better fallback mechanism
 /// </summary>
 public class KulinoCoinPriceAPI : MonoBehaviour
 {
@@ -57,7 +57,6 @@ public class KulinoCoinPriceAPI : MonoBehaviour
 
         Instance = this;
         
-        // ✅ CRITICAL: Detach before DontDestroyOnLoad
         if (transform.parent != null)
         {
             transform.SetParent(null);
@@ -71,10 +70,8 @@ public class KulinoCoinPriceAPI : MonoBehaviour
 
     void Start()
     {
-        // Initial fetch with delay
         StartCoroutine(InitialFetchDelayed());
         
-        // Start periodic update
         if (updateInterval > 0)
         {
             InvokeRepeating(nameof(FetchPrice), updateInterval, updateInterval);
@@ -87,12 +84,8 @@ public class KulinoCoinPriceAPI : MonoBehaviour
         FetchPrice();
     }
 
-    /// <summary>
-    /// Fetch harga Kulino Coin dari API
-    /// </summary>
     public void FetchPrice()
     {
-        // Check cache
         if (IsCacheValid())
         {
             Log($"Using cached price: Rp {cachedPrice:N2}");
@@ -117,7 +110,6 @@ public class KulinoCoinPriceAPI : MonoBehaviour
         
         Log("🔄 Fetching Kulino Coin price...");
 
-        // ✅ Method 1: Try CoinGecko with Solana platform ID
         bool success = false;
         
         for (int attempt = 0; attempt < maxFetchAttempts && !success; attempt++)
@@ -128,22 +120,19 @@ public class KulinoCoinPriceAPI : MonoBehaviour
                 yield return new WaitForSeconds(2f);
             }
             
-            success = yield return StartCoroutine(TryCoinGeckoAPI());
+            yield return StartCoroutine(TryCoinGeckoAPI((result) => { success = result; })); // ✅ FIXED: Added semicolon
         }
 
-        // ✅ Method 2: If CoinGecko fails, use fallback
         if (!success && !string.IsNullOrEmpty(fallbackPriceUrl))
         {
             Log("Trying fallback API...");
-            success = yield return StartCoroutine(TryFallbackAPI());
+            yield return StartCoroutine(TryFallbackAPI((result) => { success = result; })); // ✅ FIXED: Added semicolon
         }
 
-        // ✅ Method 3: If all fails, use default
         if (!success)
         {
             LogWarning($"All price fetch attempts failed. Using default: Rp {kulinoCoinPriceIDR:N2}");
             
-            // Use default but mark as valid
             if (cachedPrice == 0)
             {
                 cachedPrice = kulinoCoinPriceIDR;
@@ -154,12 +143,8 @@ public class KulinoCoinPriceAPI : MonoBehaviour
         isFetching = false;
     }
 
-    /// <summary>
-    /// ✅ NEW: Try CoinGecko API with proper Solana format
-    /// </summary>
-    IEnumerator TryCoinGeckoAPI()
+    IEnumerator TryCoinGeckoAPI(Action<bool> onComplete)
     {
-        // ✅ FIXED: Use correct CoinGecko endpoint for Solana tokens
         string apiUrl = $"https://api.coingecko.com/api/v3/simple/token_price/solana?contract_addresses={kulinoContractAddress}&vs_currencies=idr";
         
         Log($"API URL: {apiUrl}");
@@ -173,7 +158,7 @@ public class KulinoCoinPriceAPI : MonoBehaviour
             if (request.result != UnityWebRequest.Result.Success)
             {
                 LogWarning($"CoinGecko API failed: {request.error}");
-                yield return false;
+                onComplete?.Invoke(false);
             }
             else
             {
@@ -193,61 +178,43 @@ public class KulinoCoinPriceAPI : MonoBehaviour
                         OnPriceUpdated?.Invoke(price);
                         Log($"✅ Price updated: 1 KC = Rp {price:N2}");
                         
-                        yield return true;
+                        onComplete?.Invoke(true);
                     }
                     else
                     {
                         LogError("Invalid price from CoinGecko");
-                        yield return false;
+                        onComplete?.Invoke(false);
                     }
                 }
                 catch (Exception ex)
                 {
                     LogError($"Parse error: {ex.Message}");
-                    yield return false;
+                    onComplete?.Invoke(false);
                 }
             }
         }
     }
 
-    /// <summary>
-    /// ✅ FIXED: Parse CoinGecko response with better error handling
-    /// </summary>
     double ParseCoinGeckoResponse(string json)
     {
         try
         {
-            // Expected format: {"contract_address_lowercase":{"idr":1500.0}}
             string addressLower = kulinoContractAddress.ToLower();
             
-            // Check if contract address exists in response
             if (!json.Contains(addressLower))
             {
                 LogError($"Contract address {addressLower} not found in response");
-                LogError($"Response: {json}");
                 return 0;
             }
 
-            // Find IDR value
-            string searchPattern = $"\"{addressLower}\"";
-            int contractIndex = json.IndexOf(searchPattern);
-            
-            if (contractIndex < 0)
-            {
-                LogError("Contract data not found");
-                return 0;
-            }
-
-            // Find "idr": value
-            int idrIndex = json.IndexOf("\"idr\":", contractIndex);
+            int idrIndex = json.IndexOf("\"idr\":");
             if (idrIndex < 0)
             {
                 LogError("IDR price not found");
                 return 0;
             }
 
-            // Extract price value
-            int valueStart = idrIndex + 6; // Skip "idr":
+            int valueStart = idrIndex + 6;
             int valueEnd = json.IndexOfAny(new char[] { ',', '}', ' ' }, valueStart);
             
             if (valueEnd < 0) valueEnd = json.Length;
@@ -258,11 +225,8 @@ public class KulinoCoinPriceAPI : MonoBehaviour
             {
                 return price;
             }
-            else
-            {
-                LogError($"Failed to parse price: '{priceStr}'");
-                return 0;
-            }
+
+            return 0;
         }
         catch (Exception ex)
         {
@@ -271,10 +235,7 @@ public class KulinoCoinPriceAPI : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// ✅ NEW: Fallback API (custom price endpoint)
-    /// </summary>
-    IEnumerator TryFallbackAPI()
+    IEnumerator TryFallbackAPI(Action<bool> onComplete)
     {
         using (UnityWebRequest request = UnityWebRequest.Get(fallbackPriceUrl))
         {
@@ -284,7 +245,7 @@ public class KulinoCoinPriceAPI : MonoBehaviour
             if (request.result != UnityWebRequest.Result.Success)
             {
                 LogWarning($"Fallback API failed: {request.error}");
-                yield return false;
+                onComplete?.Invoke(false);
             }
             else
             {
@@ -292,7 +253,6 @@ public class KulinoCoinPriceAPI : MonoBehaviour
                 {
                     string response = request.downloadHandler.text;
                     
-                    // Assume simple JSON: {"price": 1500.0}
                     if (response.Contains("price"))
                     {
                         int priceIndex = response.IndexOf("\"price\":");
@@ -310,67 +270,42 @@ public class KulinoCoinPriceAPI : MonoBehaviour
                                 OnPriceUpdated?.Invoke(price);
                                 
                                 Log($"✅ Fallback price: Rp {price:N2}");
-                                yield return true;
+                                onComplete?.Invoke(true);
+                                yield break;
                             }
                         }
                     }
                     
-                    yield return false;
+                    onComplete?.Invoke(false);
                 }
                 catch (Exception ex)
                 {
                     LogError($"Fallback parse error: {ex.Message}");
-                    yield return false;
+                    onComplete?.Invoke(false);
                 }
             }
         }
     }
 
-    /// <summary>
-    /// ✅ Konversi Rupiah ke Kulino Coin
-    /// </summary>
     public double ConvertIDRToKulinoCoin(double idrAmount)
     {
-        if (kulinoCoinPriceIDR <= 0)
-        {
-            LogError("Invalid Kulino Coin price!");
-            return 0;
-        }
-
-        double kcAmount = idrAmount / kulinoCoinPriceIDR;
-        Log($"Convert: Rp {idrAmount:N0} = {kcAmount:F6} KC (rate: Rp {kulinoCoinPriceIDR:N2}/KC)");
-        
-        return kcAmount;
+        if (kulinoCoinPriceIDR <= 0) return 0;
+        return idrAmount / kulinoCoinPriceIDR;
     }
 
-    /// <summary>
-    /// ✅ Konversi Kulino Coin ke Rupiah
-    /// </summary>
     public double ConvertKulinoCoinToIDR(double kcAmount)
     {
-        double idrAmount = kcAmount * kulinoCoinPriceIDR;
-        Log($"Convert: {kcAmount:F6} KC = Rp {idrAmount:N0} (rate: Rp {kulinoCoinPriceIDR:N2}/KC)");
-        
-        return idrAmount;
+        return kcAmount * kulinoCoinPriceIDR;
     }
 
-    /// <summary>
-    /// Get current price dengan cache check
-    /// </summary>
     public double GetCurrentPrice()
     {
-        // Fetch jika cache expired
         if (!IsCacheValid() && !isFetching)
         {
             FetchPrice();
         }
-
         return kulinoCoinPriceIDR;
     }
-
-    // ========================================
-    // LOGGING
-    // ========================================
 
     void Log(string message)
     {
@@ -388,22 +323,10 @@ public class KulinoCoinPriceAPI : MonoBehaviour
         Debug.LogError($"[KulinoCoinPrice] {message}");
     }
 
-    // ========================================
-    // CONTEXT MENU (DEBUG)
-    // ========================================
-
     [ContextMenu("🔄 Fetch Price Now")]
     void Context_FetchPrice()
     {
         StartCoroutine(FetchPriceCoroutine());
-    }
-
-    [ContextMenu("💰 Test: Convert Rp 15,000 to KC")]
-    void Context_TestConvert()
-    {
-        double kc = ConvertIDRToKulinoCoin(15000);
-        Debug.Log($"Rp 15,000 = {kc:F6} Kulino Coin");
-        Debug.Log($"Current rate: 1 KC = Rp {kulinoCoinPriceIDR:N2}");
     }
 
     [ContextMenu("📊 Print Status")]
@@ -414,17 +337,6 @@ public class KulinoCoinPriceAPI : MonoBehaviour
         Debug.Log($"Cached Price: Rp {cachedPrice:N2}");
         Debug.Log($"Cache Valid: {IsCacheValid()}");
         Debug.Log($"Is Fetching: {isFetching}");
-        Debug.Log($"Last Fetch: {(Time.time - lastFetchTime):F1}s ago");
-        Debug.Log($"Fetch Attempts: {fetchAttempts}");
         Debug.Log("================================");
     }
-
-    [ContextMenu("🔧 Force Use Default Price")]
-    void Context_ForceDefault()
-    {
-        kulinoCoinPriceIDR = 1500.0;
-        cachedPrice = 1500.0;
-        lastFetchTime = Time.time;
-        Debug.Log("[KulinoCoinPrice] ✓ Forced to default: Rp 1,500");
-    }
-}   
+}

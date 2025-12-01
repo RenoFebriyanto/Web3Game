@@ -12814,8 +12814,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 89ad54501040c7e4c8e1439ca8bb35dc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  priceApiUrl: https://api.coingecko.com/api/v3/simple/price?ids=kulino&vs_currencies=idr
+  primaryApiUrl: https://api.coingecko.com/api/v3/simple/price
   kulinoContractAddress: E5chNtjGFvCMVYoTwcP9DtrdMdctRCGdGahAAhnHbHc1
+  fallbackPriceUrl: 
   kulinoCoinPriceIDR: 1.5
   updateInterval: 60
   cacheValidDuration: 60

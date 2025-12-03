@@ -8890,22 +8890,17 @@ MonoBehaviour:
   testWalletAddress: 44kmkWSoRYPgft7hsmVRx7GTHyaQ5CesBDyFMLbBkjsP
   mockBalance: 100.5
   useMockData: 0
-
   kulinoCoinMintAddress: E5chNtjGFvCMVYoTwcP9DtrdMdctRCGdGahAAhnHbHc1
   solanaRpcUrls:
+  - https://solana-mainnet.g.alchemy.com/v2/demo
   - https://api.mainnet-beta.solana.com
   - https://solana-api.projectserum.com
   - https://rpc.ankr.com/solana
-  - https://solana-mainnet.g.alchemy.com/v2/demo
-
-  kulinoCoinMintAddress: 2tWC4JAdL4AxEFJXGKjPqPkLJZqfvxzHmBdWVBBc9TmL
-  solanaRpcUrl: https://api.mainnet-beta.solana.com
-
   kulinoCoinBalance: 0
   autoRefreshInterval: 30
   maxInitRetries: 10
   retryDelay: 2
-  maxRpcRetries: 3
+  maxRpcRetries: 2
   requestTimeout: 30
   enableDebugLogs: 1
   enableVerboseLogs: 1
@@ -17898,7 +17893,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 6825200583898109547}
-  m_Enabled: 0
+  m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: cdf73e6788291254e9c379aa4d3fe075, type: 3}
   m_Name: 
@@ -18732,6 +18727,10 @@ SceneRoots:
   - {fileID: 959775999}
   - {fileID: 1472300286}
   - {fileID: 1805859257}
+  - {fileID: 7746591736508916525}
+  - {fileID: 53229002}
+  - {fileID: 1184993519}
+  - {fileID: 1608075259}
   - {fileID: 200792488}
   - {fileID: 1806553397}
   - {fileID: 1857859920}
@@ -18741,7 +18740,3 @@ SceneRoots:
   - {fileID: 352103455}
   - {fileID: 1224814436}
   - {fileID: 1678268021}
-  - {fileID: 7746591736508916525}
-  - {fileID: 53229002}
-  - {fileID: 1184993519}
-  - {fileID: 1608075259}

@@ -2,26 +2,16 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 
 /// <summary>
-/// ✅ Mobile Input Helper - Universal Input Detection
-/// Automatically detects platform and handles input accordingly
-/// NO MODIFICATION NEEDED to existing scripts!
-/// 
-/// Features:
-/// - Auto-detect mobile vs desktop
-/// - Universal tap/click detection
-/// - Touch feedback (optional)
-/// - Multi-touch prevention
-/// 
-/// Setup:
-/// 1. Attach to any GameObject in scene (e.g., GameManager)
-/// 2. Configure settings in Inspector
-/// 3. Done! All Unity UI components will work automatically
+/// ✅ SIMPLIFIED Mobile Input Helper - NO ROTATION DETECTION
+/// Rotation detection handled by HTML (more reliable for WebGL)
+/// This script only handles input detection and optimization
 /// </summary>
+[DefaultExecutionOrder(-900)]
 public class MobileInputHelper : MonoBehaviour
 {
     public static MobileInputHelper Instance { get; private set; }
 
-    [Header("🎮 Platform Detection")]
+    [Header("📱 Platform Detection")]
     [SerializeField] private bool autoDetectPlatform = true;
     [SerializeField] private bool forceMobileMode = false;
 
@@ -32,69 +22,56 @@ public class MobileInputHelper : MonoBehaviour
     [Tooltip("Maximum time between taps for double-tap (ms)")]
     [SerializeField] private float doubleTapThreshold = 300f;
 
-    [Header("🎨 Visual Feedback")]
-    [Tooltip("Show touch position indicator (for debugging)")]
-    [SerializeField] private bool showTouchIndicator = false;
-
-    [SerializeField] private GameObject touchIndicatorPrefab;
-
-    [Header("🔊 Audio Feedback")]
-    [Tooltip("Play sound on button tap")]
-    [SerializeField] private bool playTapSound = true;
-
     [Header("⚙️ Performance")]
     [Tooltip("Enable touch optimization for low-end devices")]
     [SerializeField] private bool enableTouchOptimization = true;
 
     [Header("🐛 Debug")]
     [SerializeField] private bool enableDebugLogs = false;
+    [SerializeField] private bool showFPSCounter = false;
 
     // Runtime state
     private bool isMobile = false;
     private float lastTapTime = 0f;
     private int currentTouchCount = 0;
-    private GameObject touchIndicatorInstance;
+
+    // FPS calculation
+    private float deltaTime = 0.0f;
+    private float fpsUpdateInterval = 0.5f;
+    private float fpsTimer = 0f;
+    private int currentFPS = 60;
+    private float avgFrameTime = 0f;
 
     // Properties
     public bool IsMobile => isMobile;
     public bool IsMultiTouchActive => currentTouchCount > 1;
 
     void Awake()
-{
-    // Singleton
-    if (Instance != null && Instance != this)
     {
-        Destroy(gameObject);
-        return;
-    }
-    Instance = this;
-    
-    // ✅ FIX: Ensure root object before DontDestroyOnLoad
-    if (transform.parent != null)
-    {
-        transform.SetParent(null);
-        Log("Detached from parent to make root object");
-    }
-    
-    DontDestroyOnLoad(gameObject);
+        // Singleton
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+        Instance = this;
+        
+        if (transform.parent != null)
+        {
+            transform.SetParent(null);
+        }
+        
+        DontDestroyOnLoad(gameObject);
+        gameObject.name = "[MobileInputHelper - PERSISTENT]";
 
-    // Detect platform
-    DetectPlatform();
+        // Detect platform
+        DetectPlatform();
 
-    Log("✅ MobileInputHelper initialized");
-    Log($"Platform: {(isMobile ? "MOBILE" : "DESKTOP")}");
-    Log($"Multi-touch prevention: {preventMultiTouch}");
-}
+        Log("✅ MobileInputHelper initialized");
+    }
 
     void Start()
     {
-        // Setup touch indicator
-        if (showTouchIndicator && touchIndicatorPrefab != null)
-        {
-            touchIndicatorInstance = Instantiate(touchIndicatorPrefab);
-            touchIndicatorInstance.SetActive(false);
-        }
-
         // Configure Unity Input for mobile
         if (isMobile)
         {
@@ -107,28 +84,49 @@ public class MobileInputHelper : MonoBehaviour
         // Update touch count
         currentTouchCount = Input.touchCount;
 
-        // Handle touch indicator
-        if (showTouchIndicator && touchIndicatorInstance != null)
-        {
-            UpdateTouchIndicator();
-        }
-
         // Mobile-specific optimizations
         if (isMobile && enableTouchOptimization)
         {
             HandleMobileOptimizations();
         }
+
+        // Calculate FPS
+        if (showFPSCounter)
+        {
+            deltaTime += (Time.unscaledDeltaTime - deltaTime) * 0.1f;
+            fpsTimer += Time.deltaTime;
+            if (fpsTimer >= fpsUpdateInterval)
+            {
+                avgFrameTime = deltaTime * 1000.0f;
+                currentFPS = Mathf.RoundToInt(1.0f / deltaTime);
+                fpsTimer = 0f;
+            }
+        }
     }
 
-    // ========================================
-    // PLATFORM DETECTION
-    // ========================================
+    void OnGUI()
+    {
+        if (!showFPSCounter) return;
+
+        int w = Screen.width;
+        int h = Screen.height;
+
+        GUIStyle style = new GUIStyle();
+        style.alignment = TextAnchor.UpperLeft;
+        style.fontSize = h * 2 / 50;
+        style.normal.textColor = Color.yellow;
+
+        Rect rect = new Rect(10, 10, w, h * 2 / 100);
+        string text = $"FPS: {currentFPS} ({avgFrameTime:0.0} ms)";
+        GUI.Label(rect, text, style);
+    }
 
     void DetectPlatform()
     {
         if (forceMobileMode)
         {
             isMobile = true;
+            Log("Platform: FORCED MOBILE MODE");
             return;
         }
 
@@ -138,27 +136,19 @@ public class MobileInputHelper : MonoBehaviour
             return;
         }
 
-        // Detect based on platform
 #if UNITY_ANDROID || UNITY_IOS
         isMobile = true;
-#elif UNITY_EDITOR
-        // In editor, check for touch simulation
-        isMobile = false; // Default to desktop in editor
+#elif UNITY_WEBGL
+        isMobile = Application.isMobilePlatform;
 #else
-        // WebGL or other platforms - check for touch support
-        isMobile = Input.touchSupported;
+        isMobile = false;
 #endif
 
         Log($"Auto-detected platform: {(isMobile ? "Mobile" : "Desktop")}");
     }
 
-    // ========================================
-    // MOBILE CONFIGURATION
-    // ========================================
-
     void ConfigureMobileInput()
     {
-        // Set multi-touch mode
         if (preventMultiTouch)
         {
             Input.multiTouchEnabled = false;
@@ -170,56 +160,17 @@ public class MobileInputHelper : MonoBehaviour
             Log("✓ Multi-touch enabled");
         }
 
-        // Enable accelerometer if needed
-        // Input.gyro.enabled = true; // Uncomment if using gyroscope
-
         Log("✓ Mobile input configured");
     }
 
-    // ========================================
-    // TOUCH HANDLING
-    // ========================================
-
     void HandleMobileOptimizations()
     {
-        // Prevent accidental multi-touch
         if (preventMultiTouch && currentTouchCount > 1)
         {
-            // Cancel extra touches
             Log("⚠️ Multi-touch detected and prevented");
         }
     }
 
-    void UpdateTouchIndicator()
-    {
-        if (Input.touchCount > 0)
-        {
-            Touch touch = Input.GetTouch(0);
-            touchIndicatorInstance.SetActive(true);
-
-            // Convert touch position to world position
-            Vector3 worldPos = Camera.main.ScreenToWorldPoint(new Vector3(
-                touch.position.x,
-                touch.position.y,
-                10f
-            ));
-
-            touchIndicatorInstance.transform.position = worldPos;
-        }
-        else
-        {
-            touchIndicatorInstance.SetActive(false);
-        }
-    }
-
-    // ========================================
-    // PUBLIC API
-    // ========================================
-
-    /// <summary>
-    /// Check if tap/click occurred this frame
-    /// Universal method for mobile & desktop
-    /// </summary>
     public bool GetTap()
     {
         if (isMobile)
@@ -232,9 +183,6 @@ public class MobileInputHelper : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Check if tap/click is held
-    /// </summary>
     public bool GetTapHeld()
     {
         if (isMobile)
@@ -247,9 +195,6 @@ public class MobileInputHelper : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Get tap/click position
-    /// </summary>
     public Vector2 GetTapPosition()
     {
         if (isMobile && Input.touchCount > 0)
@@ -262,9 +207,6 @@ public class MobileInputHelper : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Check if double-tap occurred
-    /// </summary>
     public bool GetDoubleTap()
     {
         if (!GetTap()) return false;
@@ -283,9 +225,6 @@ public class MobileInputHelper : MonoBehaviour
         return false;
     }
 
-    /// <summary>
-    /// Check if tapping over UI element
-    /// </summary>
     public bool IsTapOverUI()
     {
         if (EventSystem.current == null) return false;
@@ -300,9 +239,6 @@ public class MobileInputHelper : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Vibrate device (mobile only)
-    /// </summary>
     public void VibrateDevice(long milliseconds = 50)
     {
         if (!isMobile) return;
@@ -313,26 +249,14 @@ public class MobileInputHelper : MonoBehaviour
 #endif
     }
 
-    /// <summary>
-    /// Play tap feedback sound
-    /// </summary>
     public void PlayTapFeedback()
     {
-        if (!playTapSound) return;
-
         if (SoundManager.Instance != null)
         {
             SoundManager.Instance.PlayButtonClick();
         }
     }
 
-    // ========================================
-    // UTILITY
-    // ========================================
-
-    /// <summary>
-    /// Force platform mode (for testing)
-    /// </summary>
     public void SetMobileMode(bool mobile)
     {
         isMobile = mobile;
@@ -344,9 +268,6 @@ public class MobileInputHelper : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Get current touch/click info (for debugging)
-    /// </summary>
     public string GetInputInfo()
     {
         if (isMobile)
@@ -359,24 +280,17 @@ public class MobileInputHelper : MonoBehaviour
         }
     }
 
-    // ========================================
-    // LOGGING
-    // ========================================
+    public void ToggleFPSCounter()
+    {
+        showFPSCounter = !showFPSCounter;
+        Log($"FPS counter: {(showFPSCounter ? "SHOWN" : "HIDDEN")}");
+    }
 
     void Log(string message)
     {
         if (enableDebugLogs)
             Debug.Log($"[MobileInputHelper] {message}");
     }
-
-    void LogWarning(string message)
-    {
-        Debug.LogWarning($"[MobileInputHelper] {message}");
-    }
-
-    // ========================================
-    // CONTEXT MENU (DEBUG)
-    // ========================================
 
     [ContextMenu("📱 Force Mobile Mode")]
     void Context_ForceMobile()
@@ -408,7 +322,6 @@ public class MobileInputHelper : MonoBehaviour
         Debug.Log($"Multi-touch: {Input.multiTouchEnabled}");
         Debug.Log($"Current Touches: {Input.touchCount}");
         Debug.Log($"Touch Optimization: {enableTouchOptimization}");
-        Debug.Log($"Tap Sound: {playTapSound}");
         Debug.Log("==================================");
     }
 
@@ -417,5 +330,11 @@ public class MobileInputHelper : MonoBehaviour
     {
         VibrateDevice(100);
         Debug.Log("[MobileInputHelper] ✓ Vibration triggered (mobile only)");
+    }
+
+    [ContextMenu("🔄 Toggle FPS Counter")]
+    void Context_ToggleFPS()
+    {
+        ToggleFPSCounter();
     }
 }

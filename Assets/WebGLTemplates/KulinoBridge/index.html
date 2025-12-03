@@ -15,12 +15,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-fullscreen" />
   
-  <!-- ✅ FIX: WebGL Performance Hints -->
-  <meta name="renderer" content="webkit" />
-  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
-  
   <style>
-    /* ✅ FIXED: SHARP RENDERING - NO BLUR */
+    /* ===== BASE STYLES ===== */
     html, body { 
       height: 100%; 
       width: 100%;
@@ -46,52 +42,24 @@
     /* ✅ CRITICAL: SHARP PIXEL-PERFECT CANVAS */
     #unity-canvas {
       display: block;
-      
-      /* ✅ BLUR FIX: Force crisp rendering */
       image-rendering: -webkit-optimize-contrast;
       image-rendering: -moz-crisp-edges;
       image-rendering: crisp-edges;
       image-rendering: pixelated;
-      
-      /* ✅ Center positioning */
       position: absolute;
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      
-      /* ✅ Full size with proper scaling */
       width: 100%;
       height: 100%;
       max-width: 100%;
       max-height: 100%;
-      
-      /* ✅ Maintain 16:9 aspect (1280x720) */
       object-fit: contain;
-      
-      /* ✅ Font rendering */
       -webkit-font-smoothing: subpixel-antialiased;
       -moz-osx-font-smoothing: auto;
-      
-      /* ✅ FIX: Prevent context loss on tab switch */
       will-change: transform;
       backface-visibility: hidden;
       -webkit-backface-visibility: hidden;
-    }
-    
-    /* Desktop full screen */
-    @media (min-width: 1280px) {
-      #unity-canvas {
-        width: 100%;
-        height: 100%;
-      }
-    }
-    
-    /* Mobile landscape */
-    @media (max-width: 1279px) and (orientation: landscape) {
-      #unity-canvas {
-        width: 100%;
-        height: 100%;
-      }
     }
     
     #unity-loading-bar { 
@@ -103,7 +71,7 @@
       z-index: 10;
     }
     
-    /* Rotation Prompt */
+    /* ✅ FIXED: SIMPLE ROTATION PROMPT - ONLY FOR MOBILE */
     #rotation-prompt {
       display: none;
       position: fixed;
@@ -127,7 +95,7 @@
     .rotation-icon {
       font-size: 80px;
       margin-bottom: 20px;
-      animation: rotate-icon 2s infinite;
+      animation: rotate-icon 2s infinite ease-in-out;
     }
     
     @keyframes rotate-icon {
@@ -157,7 +125,7 @@
 </head>
 
 <body>
-  <!-- Rotation Prompt -->
+  <!-- ✅ ROTATION PROMPT OVERLAY (MOBILE ONLY) -->
   <div id="rotation-prompt">
     <div class="rotation-icon">📱</div>
     <div class="rotation-text">Please rotate your device</div>
@@ -178,20 +146,12 @@
 
   <!-- Unity Show Banner -->
   <script>
-  // ✅ FIX: Global error suppression untuk tab switch errors
   window.onerror = function(message, source, lineno, colno, error) {
     console.error('[GLOBAL-ERROR]', message, 'at', source, lineno + ':' + colno);
     
-    // ✅ Suppress Unity initialization errors pada tab switch
     var suppressedErrors = [
-      'Module_main',
-      'callMain', 
-      'doRun',
-      'run(',
-      'runCaller',
-      'Module.run',
-      'abort(',
-      'ExitStatus'
+      'Module_main', 'callMain', 'doRun', 'run(', 'runCaller',
+      'Module.run', 'abort(', 'ExitStatus'
     ];
     
     var shouldSuppress = suppressedErrors.some(function(err) {
@@ -200,10 +160,10 @@
     
     if (shouldSuppress) {
       console.warn('[GLOBAL-ERROR] Suppressed Unity error (tab switch/reload)');
-      return true; // Prevent default error dialog
+      return true;
     }
     
-    return false; // Allow other errors to show
+    return false;
   };
   
   function unityShowBanner(msg, type) {
@@ -238,32 +198,27 @@
   let isTabVisible = true;
   let unityPaused = false;
   
-  // ✅ FIX: Proper tab switching without crash
   document.addEventListener('visibilitychange', function() {
     isTabVisible = !document.hidden;
     console.log('[TAB]', isTabVisible ? 'VISIBLE' : 'HIDDEN');
     
-    // ✅ Prevent WebGL context loss crash
     if (window.unityInstance) {
       try {
         if (!isTabVisible) {
-          // Tab hidden - pause Unity
           console.log('[TAB] Pausing Unity...');
           window.unityInstance.SendMessage('GameManager', 'OnApplicationPause', '1');
           unityPaused = true;
         } else {
-          // Tab visible - resume Unity
           console.log('[TAB] Resuming Unity...');
           window.unityInstance.SendMessage('GameManager', 'OnApplicationPause', '0');
           unityPaused = false;
         }
       } catch(e) {
-        console.warn('[TAB] SendMessage failed (normal if Unity not ready):', e.message);
+        console.warn('[TAB] SendMessage failed:', e.message);
       }
     }
   });
   
-  // ✅ FIX: Additional focus/blur handlers
   window.addEventListener('focus', function() {
     console.log('[WINDOW] Focused');
     isTabVisible = true;
@@ -274,7 +229,6 @@
     isTabVisible = false;
   });
   
-  // ✅ FIX: Handle page unload gracefully
   window.addEventListener('beforeunload', function() {
     console.log('[TAB] Page unloading - cleaning up');
     if (window.unityInstance) {
@@ -286,7 +240,6 @@
     }
   });
   
-  // ✅ FIX: Prevent WebGL context loss errors
   window.addEventListener('webglcontextlost', function(e) {
     console.error('[WEBGL] Context lost - preventing default');
     e.preventDefault();
@@ -297,34 +250,65 @@
   }, false);
   </script>
 
-  <!-- Orientation Detection -->
+  <!-- ✅ FIXED: SIMPLE ORIENTATION DETECTION (HTML ONLY) -->
   <script>
-  function isMobileBrowser() {
-    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-  }
-  
-  function isPortraitMode() {
-    return window.innerHeight > window.innerWidth;
-  }
-  
-  function checkOrientation() {
-    var prompt = document.getElementById('rotation-prompt');
-    var canvas = document.getElementById('unity-canvas');
+  (function() {
+    console.log('[ORIENTATION] Initializing...');
     
-    if (isMobileBrowser() && isPortraitMode()) {
-      prompt.classList.add('show');
-      if (canvas) canvas.style.display = 'none';
-    } else {
-      prompt.classList.remove('show');
-      if (canvas) canvas.style.display = 'block';
+    // Check if mobile
+    function isMobileDevice() {
+      return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     }
-  }
-  
-  window.addEventListener('load', checkOrientation);
-  window.addEventListener('resize', checkOrientation);
-  window.addEventListener('orientationchange', function() {
-    setTimeout(checkOrientation, 300);
-  });
+    
+    // Check if portrait
+    function isPortraitMode() {
+      return window.innerHeight > window.innerWidth;
+    }
+    
+    // Show/hide rotation prompt
+    function checkOrientation() {
+      var isMobile = isMobileDevice();
+      var isPortrait = isPortraitMode();
+      
+      var prompt = document.getElementById('rotation-prompt');
+      var canvas = document.getElementById('unity-canvas');
+      
+      console.log('[ORIENTATION] Mobile:', isMobile, 'Portrait:', isPortrait);
+      
+      // ✅ ONLY show prompt if mobile AND portrait
+      if (isMobile && isPortrait) {
+        console.log('[ORIENTATION] Showing rotation prompt');
+        if (prompt) prompt.classList.add('show');
+        if (canvas) canvas.style.pointerEvents = 'none'; // Disable input
+      } else {
+        console.log('[ORIENTATION] Hiding rotation prompt');
+        if (prompt) prompt.classList.remove('show');
+        if (canvas) canvas.style.pointerEvents = 'auto'; // Enable input
+      }
+    }
+    
+    // Check on various events
+    window.addEventListener('load', function() {
+      console.log('[ORIENTATION] Page loaded');
+      checkOrientation();
+    });
+    
+    window.addEventListener('resize', function() {
+      console.log('[ORIENTATION] Window resized');
+      checkOrientation();
+    });
+    
+    window.addEventListener('orientationchange', function() {
+      console.log('[ORIENTATION] Orientation changed');
+      // Wait for layout to stabilize
+      setTimeout(checkOrientation, 300);
+    });
+    
+    // Initial check
+    checkOrientation();
+    
+    console.log('[ORIENTATION] ✓ Detection active');
+  })();
   </script>
 
   <!-- Kulino Bridge -->
@@ -452,7 +436,6 @@
   <script>
     var canvas = document.querySelector("#unity-canvas");
     
-    // ✅ FIX: Add WebGL context preservation
     canvas.addEventListener('webglcontextlost', function(e) {
       console.error('[CANVAS] WebGL context lost');
       e.preventDefault();
@@ -473,12 +456,8 @@
       productName: "{{{ PRODUCT_NAME }}}",
       productVersion: "{{{ PRODUCT_VERSION }}}",
       showBanner: unityShowBanner,
-      
-      /* ✅ CRITICAL BLUR FIX: Use device pixel ratio */
       matchWebGLToCanvasSize: true,
       devicePixelRatio: window.devicePixelRatio || 1,
-      
-      /* ✅ FIX: WebGL context preservation */
       webglContextAttributes: {
         preserveDrawingBuffer: false,
         powerPreference: "high-performance"
@@ -496,23 +475,19 @@
         document.querySelector("#unity-loading-bar").style.display = "none";
         window.unityInstance = unityInstance;
         
-        // ✅ FIX: Add global error handler for Unity
         window.addEventListener('error', function(e) {
           console.error('[UNITY-ERROR]', e.message);
-          // Prevent error popup on tab switch
           if (e.message.includes('Module_main') || 
               e.message.includes('callMain') ||
               e.message.includes('doRun')) {
-            console.warn('[UNITY-ERROR] Suppressed Unity initialization error (tab switch)');
+            console.warn('[UNITY-ERROR] Suppressed Unity initialization error');
             e.preventDefault();
             return false;
           }
         });
         
-        // ✅ FIX: Add unhandled rejection handler
         window.addEventListener('unhandledrejection', function(e) {
           console.error('[UNITY-PROMISE]', e.reason);
-          // Suppress WebGL context errors
           if (e.reason && e.reason.toString().includes('WebGL')) {
             console.warn('[UNITY-PROMISE] Suppressed WebGL error');
             e.preventDefault();
@@ -523,12 +498,10 @@
           window.__kulino_unity_ready();
         }
         
-        checkOrientation();
-        console.log('✅ Unity loaded - Sharp rendering enabled');
+        console.log('✅ Unity loaded');
       }).catch((message) => {
         console.error('❌ Unity load failed', message);
         
-        // ✅ Better error message
         var errorMsg = 'Failed to load game';
         if (message.includes('memory')) {
           errorMsg += ': Not enough memory';

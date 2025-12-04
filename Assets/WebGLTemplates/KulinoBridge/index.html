@@ -250,66 +250,104 @@
   }, false);
   </script>
 
-  <!-- ✅ FIXED: SIMPLE ORIENTATION DETECTION (HTML ONLY) -->
-  <script>
-  (function() {
-    console.log('[ORIENTATION] Initializing...');
-    
-    // Check if mobile
-    function isMobileDevice() {
-      return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  <!-- ✅ FIXED: Orientation Detection -->
+<script>
+function isMobileBrowser() {
+  // ✅ IMPROVED: Better mobile detection
+  const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+  
+  // Check for mobile keywords
+  const mobileKeywords = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i;
+  const isMobileUA = mobileKeywords.test(userAgent);
+  
+  // Check for touch support
+  const isTouchDevice = ('ontouchstart' in window) || 
+                       (navigator.maxTouchPoints > 0) ||
+                       (navigator.msMaxTouchPoints > 0);
+  
+  // Check screen size
+  const isSmallScreen = window.innerWidth < 768;
+  
+  const isMobile = isMobileUA || (isTouchDevice && isSmallScreen);
+  
+  console.log('[ORIENTATION] Mobile Detection:', {
+    userAgent: isMobileUA,
+    touch: isTouchDevice,
+    smallScreen: isSmallScreen,
+    result: isMobile
+  });
+  
+  return isMobile;
+}
+
+function isPortraitMode() {
+  const portrait = window.innerHeight > window.innerWidth;
+  console.log('[ORIENTATION] Portrait check:', window.innerWidth, 'x', window.innerHeight, '=', portrait);
+  return portrait;
+}
+
+function checkOrientation() {
+  const mobile = isMobileBrowser();
+  const portrait = isPortraitMode();
+  const prompt = document.getElementById('rotation-prompt');
+  const canvas = document.getElementById('unity-canvas');
+  
+  console.log('[ORIENTATION] Check:', {mobile, portrait});
+  
+  if (mobile && portrait) {
+    // Show prompt
+    if (prompt) prompt.classList.add('show');
+    if (canvas) canvas.style.display = 'none';
+    console.log('[ORIENTATION] Portrait detected - showing prompt');
+  } else {
+    // Hide prompt
+    if (prompt) prompt.classList.remove('show');
+    if (canvas) {
+      canvas.style.display = 'block';
+      // Force resize
+      canvas.style.width = '100%';
+      canvas.style.height = '100%';
     }
-    
-    // Check if portrait
-    function isPortraitMode() {
-      return window.innerHeight > window.innerWidth;
-    }
-    
-    // Show/hide rotation prompt
-    function checkOrientation() {
-      var isMobile = isMobileDevice();
-      var isPortrait = isPortraitMode();
-      
-      var prompt = document.getElementById('rotation-prompt');
-      var canvas = document.getElementById('unity-canvas');
-      
-      console.log('[ORIENTATION] Mobile:', isMobile, 'Portrait:', isPortrait);
-      
-      // ✅ ONLY show prompt if mobile AND portrait
-      if (isMobile && isPortrait) {
-        console.log('[ORIENTATION] Showing rotation prompt');
-        if (prompt) prompt.classList.add('show');
-        if (canvas) canvas.style.pointerEvents = 'none'; // Disable input
-      } else {
-        console.log('[ORIENTATION] Hiding rotation prompt');
-        if (prompt) prompt.classList.remove('show');
-        if (canvas) canvas.style.pointerEvents = 'auto'; // Enable input
-      }
-    }
-    
-    // Check on various events
-    window.addEventListener('load', function() {
-      console.log('[ORIENTATION] Page loaded');
-      checkOrientation();
-    });
-    
-    window.addEventListener('resize', function() {
-      console.log('[ORIENTATION] Window resized');
-      checkOrientation();
-    });
-    
-    window.addEventListener('orientationchange', function() {
-      console.log('[ORIENTATION] Orientation changed');
-      // Wait for layout to stabilize
-      setTimeout(checkOrientation, 300);
-    });
-    
-    // Initial check
-    checkOrientation();
-    
-    console.log('[ORIENTATION] ✓ Detection active');
-  })();
-  </script>
+    console.log('[ORIENTATION] Landscape OK');
+  }
+}
+
+// ✅ Initialize on load
+window.addEventListener('load', function() {
+  console.log('[ORIENTATION] Page loaded, checking...');
+  setTimeout(checkOrientation, 100);
+});
+
+// ✅ Check on resize
+let resizeTimer;
+window.addEventListener('resize', function() {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(checkOrientation, 200);
+  console.log('[ORIENTATION] Resize detected');
+});
+
+// ✅ Check on orientation change
+window.addEventListener('orientationchange', function() {
+  console.log('[ORIENTATION] Orientation changed!');
+  setTimeout(checkOrientation, 300);
+});
+
+// ✅ Expose functions globally
+window.IsMobileBrowser = isMobileBrowser;
+window.IsPortraitMode = isPortraitMode;
+window.ShowRotationPromptJS = function() {
+  const prompt = document.getElementById('rotation-prompt');
+  if (prompt) prompt.classList.add('show');
+  console.log('[ORIENTATION] JS: Show prompt called');
+};
+window.HideRotationPromptJS = function() {
+  const prompt = document.getElementById('rotation-prompt');
+  if (prompt) prompt.classList.remove('show');
+  console.log('[ORIENTATION] JS: Hide prompt called');
+};
+
+console.log('[ORIENTATION] Detection system loaded');
+</script>
 
   <!-- Kulino Bridge -->
   <script>

@@ -2,12 +2,13 @@ using System;
 using System.Collections;
 using UnityEngine;
 using UnityEngine.Networking;
+using UnityEngine.SceneManagement;
 
 /// <summary>
-/// ✅ FIXED v8.0: KulinoCoinManager - 95 KC Detection GUARANTEED
-/// - RPC prioritas: Alchemy → Mainnet → Serum → Ankr
-/// - Improved error handling & logging
-/// - Force refresh mechanism
+/// ✅ FIXED v8.1: KulinoCoinManager - Scene Detection Fix
+/// - Added scene load detection untuk auto-refresh
+/// - Force refresh saat kembali ke MainMenu
+/// - Better WebGL initialization handling
 /// </summary>
 public class KulinoCoinManager : MonoBehaviour
 {
@@ -41,6 +42,10 @@ public class KulinoCoinManager : MonoBehaviour
     public int maxRpcRetries = 3;
     public int requestTimeout = 30;
 
+    [Header("🎬 Scene Settings")]
+    [Tooltip("Auto refresh saat load scene ini")]
+    public string[] refreshOnScenes = new string[] { "MainMenu", "Menu", "Lobby" };
+
     [Header("🔍 Debug")]
     public bool enableDebugLogs = true;
     public bool enableVerboseLogs = true;
@@ -52,6 +57,7 @@ public class KulinoCoinManager : MonoBehaviour
     private bool isInitialized = false;
     private bool isFetching = false;
     private int initRetryCount = 0;
+    private string lastSceneName = "";
 
     void Awake()
     {
@@ -71,13 +77,66 @@ public class KulinoCoinManager : MonoBehaviour
         DontDestroyOnLoad(gameObject);
         gameObject.name = "[KulinoCoinManager - PERSISTENT]";
         
+        // ✅ NEW: Subscribe to scene loaded
+        SceneManager.sceneLoaded += OnSceneLoaded;
+        
         Log("✅ KulinoCoinManager initialized");
+    }
+
+    void OnDestroy()
+    {
+        SceneManager.sceneLoaded -= OnSceneLoaded;
+    }
+
+    // ✅ NEW: Handle scene transitions
+    void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        Log($"🎬 Scene loaded: {scene.name}");
+        
+        // Skip jika scene sama
+        if (lastSceneName == scene.name)
+        {
+            return;
+        }
+        
+        lastSceneName = scene.name;
+        
+        // Check if scene needs refresh
+        bool needsRefresh = false;
+        foreach (string sceneName in refreshOnScenes)
+        {
+            if (scene.name.Contains(sceneName) || scene.name.Equals(sceneName, StringComparison.OrdinalIgnoreCase))
+            {
+                needsRefresh = true;
+                break;
+            }
+        }
+        
+        if (needsRefresh && isInitialized)
+        {
+            Log($"🔄 Scene '{scene.name}' requires refresh - triggering fetch");
+            StartCoroutine(DelayedSceneRefresh());
+        }
+    }
+
+    // ✅ NEW: Delayed refresh saat scene loaded
+    IEnumerator DelayedSceneRefresh()
+    {
+        yield return new WaitForSeconds(1f);
+        
+        if (isInitialized && !isFetching)
+        {
+            Log("🔄 Executing scene refresh");
+            FetchKulinoCoinBalance();
+        }
     }
 
     void Start()
     {
         #if UNITY_WEBGL && !UNITY_EDITOR
             Log("🌐 WebGL - Waiting for wallet");
+            // ✅ CRITICAL: Start checking immediately in WebGL
+            StartCoroutine(WaitForWalletWithRetry());
         #else
             Log("🖥️ Editor - Starting detection");
             StartCoroutine(WaitForWalletWithRetry());
@@ -167,7 +226,12 @@ public class KulinoCoinManager : MonoBehaviour
         if (isInitialized && walletAddress == walletAddr)
         {
             Log($"ℹ️ Already initialized: {ShortenAddress(walletAddr)}");
-            FetchKulinoCoinBalance();
+            // ✅ IMPORTANT: Still trigger fetch untuk refresh balance
+            if (!isFetching)
+            {
+                Log("🔄 Triggering refresh for existing wallet");
+                FetchKulinoCoinBalance();
+            }
             return;
         }
 
@@ -191,7 +255,7 @@ public class KulinoCoinManager : MonoBehaviour
         }
     }
 
-    // ✅ NEW: Force immediate fetch on init
+    // ✅ Force immediate fetch on init
     IEnumerator ForceImmediateFetch()
     {
         yield return new WaitForSeconds(0.5f);
@@ -222,6 +286,7 @@ public class KulinoCoinManager : MonoBehaviour
         Log("🔄 FETCHING KULINO COIN BALANCE");
         Log($"   Wallet: {ShortenAddress(walletAddress)}");
         Log($"   Mint: {ShortenAddress(kulinoCoinMintAddress)}");
+        Log($"   Scene: {SceneManager.GetActiveScene().name}");
         Log("═══════════════════════════════════");
 
         #if UNITY_EDITOR
@@ -274,7 +339,6 @@ public class KulinoCoinManager : MonoBehaviour
             LogError($"   Wallet: {walletAddress}");
             LogError($"   Mint: {kulinoCoinMintAddress}");
             LogError("   Check wallet has token account");
-            LogError("   Try Context Menu: 'Test Wallet'");
             
             SetBalance(0);
         }
@@ -419,6 +483,9 @@ public class KulinoCoinManager : MonoBehaviour
         kulinoCoinBalance = balance;
 
         Log($"💰 Balance: {oldBalance:F6} → {balance:F6} KC");
+        
+        // ✅ CRITICAL: Always invoke event, even if balance sama
+        // Ini penting untuk UI refresh
         OnBalanceUpdated?.Invoke(balance);
     }
 
@@ -510,8 +577,8 @@ public class KulinoCoinManager : MonoBehaviour
         Debug.Log($"Wallet: {(isInitialized ? walletAddress : "NOT SET")}");
         Debug.Log($"Balance: {kulinoCoinBalance:F6} KC");
         Debug.Log($"Fetching: {isFetching}");
+        Debug.Log($"Current Scene: {SceneManager.GetActiveScene().name}");
         Debug.Log($"Mock Mode: {useMockData}");
-        Debug.Log($"Test Wallet: {testWalletAddress}");
         Debug.Log("═══════════════════════════════════");
     }
 

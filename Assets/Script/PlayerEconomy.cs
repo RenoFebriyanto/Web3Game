@@ -2,7 +2,10 @@
 using UnityEngine;
 
 /// <summary>
-/// FIXED: Proper singleton pattern dengan cleanup
+/// ✅ FIXED v3.0: PlayerEconomy - Scene Transition Fixed
+/// - True singleton persistence
+/// - Proper save/load
+/// - Scene transition handling
 /// </summary>
 public class PlayerEconomy : MonoBehaviour
 {
@@ -11,6 +14,7 @@ public class PlayerEconomy : MonoBehaviour
     const string KEY_COINS = "Kulino_Coins_v1";
     const string KEY_SHARDS = "Kulino_Shards_v1";
     const string KEY_ENERGY = "Kulino_Energy_v1";
+    const string KEY_INITIALIZED = "Kulino_Economy_Initialized";
 
     public long Coins { get; private set; }
     public int Shards { get; private set; }
@@ -25,51 +29,87 @@ public class PlayerEconomy : MonoBehaviour
     [SerializeField] int defaultShards = 0;
     [SerializeField] int defaultMaxEnergy = 100;
 
+    [Header("Debug")]
+    [SerializeField] private bool isInitialized = false;
+
     void Awake()
-{
-    // ✅ ULTRA-STRONG singleton check
-    if (Instance != null)
     {
-        // Check if existing instance is valid
-        try
+        // ✅ ULTRA-STRONG singleton
+        if (Instance != null)
         {
-            if (Instance.gameObject != null && Instance.enabled)
+            try
             {
-                Debug.LogWarning($"[PlayerEconomy] Valid instance exists - destroying duplicate '{gameObject.name}'");
-                Destroy(gameObject);
-                return;
+                if (Instance.gameObject != null && Instance.enabled && Instance.isInitialized)
+                {
+                    Debug.LogWarning($"[PlayerEconomy] Valid instance exists - destroying duplicate '{gameObject.name}'");
+                    Destroy(gameObject);
+                    return;
+                }
+            }
+            catch
+            {
+                Debug.LogWarning("[PlayerEconomy] Previous instance invalid - taking over");
             }
         }
-        catch
+
+        Instance = this;
+
+        // ✅ Ensure root object
+        if (transform.parent != null)
         {
-            // Previous instance destroyed, take over
-            Debug.LogWarning("[PlayerEconomy] Previous instance invalid - taking over");
+            transform.SetParent(null);
+        }
+
+        DontDestroyOnLoad(gameObject);
+        gameObject.name = "[PlayerEconomy - PERSISTENT]";
+
+        Debug.Log("[PlayerEconomy] ✓ Initialized successfully");
+        
+        // ✅ Load or initialize
+        LoadOrInitialize();
+    }
+
+    void OnDestroy()
+    {
+        if (Instance == this)
+        {
+            Debug.LogWarning("[PlayerEconomy] ⚠️ Instance being destroyed!");
+            // Save before destroy
+            Save();
         }
     }
 
-    Instance = this;
-
-    // ✅ CRITICAL: Mark persistent FIRST
-    if (transform.parent != null)
+    /// <summary>
+    /// ✅ NEW: Load saved data or initialize with defaults
+    /// </summary>
+    void LoadOrInitialize()
     {
-        transform.SetParent(null);
+        bool wasInitialized = PlayerPrefs.GetInt(KEY_INITIALIZED, 0) == 1;
+
+        if (wasInitialized)
+        {
+            // ✅ Load saved data
+            Load();
+            isInitialized = true;
+        }
+        else
+        {
+            // ✅ First time - use defaults
+            Coins = defaultCoins;
+            Shards = defaultShards;
+            Energy = defaultEnergy;
+            MaxEnergy = defaultMaxEnergy;
+            
+            Debug.Log($"[PlayerEconomy] First time initialization with defaults: Coins={Coins}, Shards={Shards}, Energy={Energy}");
+            
+            // ✅ Mark as initialized and save
+            PlayerPrefs.SetInt(KEY_INITIALIZED, 1);
+            Save();
+            isInitialized = true;
+        }
+
+        OnEconomyChanged?.Invoke();
     }
-
-    DontDestroyOnLoad(gameObject);
-    gameObject.name = "[PlayerEconomy - PERSISTENT]";
-
-    Debug.Log("[PlayerEconomy] ✓ Initialized successfully");
-    Load();
-}
-
-void OnDestroy()
-{
-    if (Instance == this)
-    {
-        Debug.LogWarning("[PlayerEconomy] ⚠️ Instance being destroyed!");
-        // Don't clear immediately - let scene recreate if needed
-    }
-}
 
     void Load()
     {
@@ -83,7 +123,6 @@ void OnDestroy()
         Energy = Mathf.Clamp(Energy, 0, MaxEnergy);
 
         Debug.Log($"[PlayerEconomy] Loaded -> Coins={Coins}, Shards={Shards}, Energy={Energy}/{MaxEnergy}");
-        OnEconomyChanged?.Invoke();
     }
 
     void Save()
@@ -92,14 +131,19 @@ void OnDestroy()
         PlayerPrefs.SetInt(KEY_SHARDS, Shards);
         PlayerPrefs.SetInt(KEY_ENERGY, Energy);
         PlayerPrefs.Save();
+        
         Debug.Log($"[PlayerEconomy] Saved -> Coins={Coins}, Shards={Shards}, Energy={Energy}/{MaxEnergy}");
     }
 
     public void AddCoins(long amount)
     {
         if (amount == 0) return;
+        
+        long oldCoins = Coins;
         Coins = Math.Max(0, Coins + amount);
-        Debug.Log($"[PlayerEconomy] AddCoins({amount}) -> Total: {Coins}");
+        
+        Debug.Log($"[PlayerEconomy] AddCoins({amount}) -> {oldCoins} → {Coins}");
+        
         Save();
         OnEconomyChanged?.Invoke();
     }
@@ -112,8 +156,12 @@ void OnDestroy()
             Debug.LogWarning($"[PlayerEconomy] Cannot spend {amount} coins (have: {Coins})");
             return false;
         }
+        
+        long oldCoins = Coins;
         Coins -= amount;
-        Debug.Log($"[PlayerEconomy] SpendCoins({amount}) -> Remaining: {Coins}");
+        
+        Debug.Log($"[PlayerEconomy] SpendCoins({amount}) -> {oldCoins} → {Coins}");
+        
         Save();
         OnEconomyChanged?.Invoke();
         return true;
@@ -122,8 +170,12 @@ void OnDestroy()
     public void AddShards(int amount)
     {
         if (amount == 0) return;
+        
+        int oldShards = Shards;
         Shards = Math.Max(0, Shards + amount);
-        Debug.Log($"[PlayerEconomy] AddShards({amount}) -> Total: {Shards}");
+        
+        Debug.Log($"[PlayerEconomy] AddShards({amount}) -> {oldShards} → {Shards}");
+        
         Save();
         OnEconomyChanged?.Invoke();
     }
@@ -136,8 +188,12 @@ void OnDestroy()
             Debug.LogWarning($"[PlayerEconomy] Cannot spend {amount} shards (have: {Shards})");
             return false;
         }
+        
+        int oldShards = Shards;
         Shards -= amount;
-        Debug.Log($"[PlayerEconomy] SpendShards({amount}) -> Remaining: {Shards}");
+        
+        Debug.Log($"[PlayerEconomy] SpendShards({amount}) -> {oldShards} → {Shards}");
+        
         Save();
         OnEconomyChanged?.Invoke();
         return true;
@@ -146,8 +202,12 @@ void OnDestroy()
     public void AddEnergy(int amount)
     {
         if (amount == 0) return;
+        
+        int oldEnergy = Energy;
         Energy = Mathf.Clamp(Energy + amount, 0, MaxEnergy);
-        Debug.Log($"[PlayerEconomy] AddEnergy({amount}) -> Total: {Energy}/{MaxEnergy}");
+        
+        Debug.Log($"[PlayerEconomy] AddEnergy({amount}) -> {oldEnergy} → {Energy}/{MaxEnergy}");
+        
         Save();
         OnEconomyChanged?.Invoke();
     }
@@ -160,8 +220,12 @@ void OnDestroy()
             Debug.LogWarning($"[PlayerEconomy] Cannot consume {amount} energy (have: {Energy})");
             return false;
         }
+        
+        int oldEnergy = Energy;
         Energy = Mathf.Max(0, Energy - amount);
-        Debug.Log($"[PlayerEconomy] ConsumeEnergy({amount}) -> Remaining: {Energy}/{MaxEnergy}");
+        
+        Debug.Log($"[PlayerEconomy] ConsumeEnergy({amount}) -> {oldEnergy} → {Energy}/{MaxEnergy}");
+        
         Save();
         OnEconomyChanged?.Invoke();
         return true;
@@ -184,9 +248,10 @@ void OnDestroy()
         PlayerPrefs.DeleteKey(KEY_COINS);
         PlayerPrefs.DeleteKey(KEY_SHARDS);
         PlayerPrefs.DeleteKey(KEY_ENERGY);
+        PlayerPrefs.DeleteKey(KEY_INITIALIZED);
         PlayerPrefs.Save();
         Debug.Log("[PlayerEconomy] Saved data cleared");
-        Load();
+        LoadOrInitialize();
     }
 
     [ContextMenu("Debug: Print Status")]
@@ -195,9 +260,18 @@ void OnDestroy()
         Debug.Log("=== PLAYER ECONOMY STATUS ===");
         Debug.Log($"Instance: {(Instance != null ? "OK" : "NULL")}");
         Debug.Log($"GameObject: {gameObject.name}");
+        Debug.Log($"Initialized: {isInitialized}");
         Debug.Log($"Coins: {Coins:N0}");
         Debug.Log($"Shards: {Shards}");
         Debug.Log($"Energy: {Energy}/{MaxEnergy}");
+        Debug.Log($"Has Save Data: {PlayerPrefs.GetInt(KEY_INITIALIZED, 0) == 1}");
         Debug.Log("============================");
+    }
+
+    [ContextMenu("Debug: Force Save")]
+    void Debug_ForceSave()
+    {
+        Save();
+        Debug.Log("[PlayerEconomy] ✓ Force saved");
     }
 }

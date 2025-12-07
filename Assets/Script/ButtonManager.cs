@@ -5,10 +5,10 @@ using System.Runtime.InteropServices;
 #endif
 
 /// <summary>
-/// ✅ FIXED v2.0: ButtonManager dengan Auto-Reassign setelah scene load
-/// - Auto-reassign panel references setelah scene transition
+/// ✅ FIXED v3.0: ButtonManager dengan Button Listener Reassignment
+/// - Fixed: Button onClick listeners hilang setelah scene transition
+/// - Auto-reassign button listeners setiap kali panel di-reassign
 /// - Persistent across scenes
-/// - Fallback mechanism jika reference hilang
 /// </summary>
 public class ButtonManager : MonoBehaviour
 {
@@ -18,6 +18,16 @@ public class ButtonManager : MonoBehaviour
     public GameObject Level;
     public GameObject Quest;
     public GameObject Shop;
+
+    [Header("⚡ Button References (assign di Inspector)")]
+    [Tooltip("Assign button LEVEL dari hierarchy")]
+    public UnityEngine.UI.Button levelButton;
+    
+    [Tooltip("Assign button QUEST dari hierarchy")]
+    public UnityEngine.UI.Button questButton;
+    
+    [Tooltip("Assign button SHOP dari hierarchy")]
+    public UnityEngine.UI.Button shopButton;
 
     [Header("⌨️ Keyboard Shortcuts (Desktop Only)")]
     [Tooltip("Enable keyboard shortcuts? (Auto-disabled on mobile)")]
@@ -35,6 +45,16 @@ public class ButtonManager : MonoBehaviour
     public string levelPanelName = "LevelP";
     public string questPanelName = "QuestP";
     public string shopPanelName = "ContentShop";
+    
+    [Header("🔘 Button Names untuk Auto-Find")]
+    [Tooltip("Nama button LEVEL di hierarchy")]
+    public string levelButtonName = "Level";
+    
+    [Tooltip("Nama button QUEST di hierarchy")]
+    public string questButtonName = "Quest";
+    
+    [Tooltip("Nama button SHOP di hierarchy")]
+    public string shopButtonName = "Shop";
 
     [Header("🐛 Debug")]
     public bool enableDebugLogs = true;
@@ -48,7 +68,6 @@ public class ButtonManager : MonoBehaviour
 
     void Awake()
     {
-        // ✅ Singleton pattern
         if (Instance != null)
         {
             if (Instance != this)
@@ -61,7 +80,6 @@ public class ButtonManager : MonoBehaviour
 
         Instance = this;
 
-        // ✅ Make persistent
         if (transform.parent != null)
         {
             transform.SetParent(null);
@@ -73,13 +91,11 @@ public class ButtonManager : MonoBehaviour
 
         Log("✅ ButtonManager initialized as PERSISTENT");
 
-        // ✅ Subscribe to scene loaded event
         SceneManager.sceneLoaded += OnSceneLoaded;
     }
 
     void OnDestroy()
     {
-        // Unsubscribe
         SceneManager.sceneLoaded -= OnSceneLoaded;
 
         if (Instance == this)
@@ -88,40 +104,32 @@ public class ButtonManager : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// ✅ CRITICAL: Re-assign panel references setelah scene load
-    /// </summary>
     void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
         Log($"=== Scene Loaded: {scene.name} ===");
-
-        // ✅ Wait 1 frame untuk ensure semua GameObject sudah loaded
-        StartCoroutine(ReassignPanelsDelayed());
+        StartCoroutine(ReassignEverythingDelayed());
     }
 
-    System.Collections.IEnumerator ReassignPanelsDelayed()
+    System.Collections.IEnumerator ReassignEverythingDelayed()
     {
-        yield return null; // Wait 1 frame
-        yield return null; // Wait 1 more frame untuk safety
+        yield return null;
+        yield return null;
 
         ReassignPanels();
+        ReassignButtons(); // ✅ CRITICAL FIX
+        RebindButtonListeners(); // ✅ CRITICAL FIX
     }
 
-    /// <summary>
-    /// ✅ Re-assign panel references dengan fallback mechanism
-    /// </summary>
     void ReassignPanels()
     {
         Log("🔄 Re-assigning panel references...");
 
-        // ✅ Check existing references first
         bool levelValid = Level != null;
         bool questValid = Quest != null;
         bool shopValid = Shop != null;
 
         Log($"Current state: Level={levelValid}, Quest={questValid}, Shop={shopValid}");
 
-        // ✅ Re-assign jika null atau destroyed
         if (!levelValid)
         {
             Level = FindPanelByName(levelPanelName);
@@ -140,7 +148,6 @@ public class ButtonManager : MonoBehaviour
             Log($"Shop panel: {(Shop != null ? "✓ FOUND" : "❌ NOT FOUND")}");
         }
 
-        // ✅ Set initial state (Level active, others hidden)
         if (Level != null && Quest != null && Shop != null)
         {
             SetActiveSafe(Level, true);
@@ -152,13 +159,86 @@ public class ButtonManager : MonoBehaviour
         {
             LogWarning("⚠️ Some panels still missing after reassign!");
         }
-
-        Log("===========================================");
     }
 
     /// <summary>
-    /// ✅ Find panel GameObject by name (recursive search)
+    /// ✅ NEW: Re-assign button references
     /// </summary>
+    void ReassignButtons()
+    {
+        Log("🔘 Re-assigning button references...");
+
+        bool levelBtnValid = levelButton != null;
+        bool questBtnValid = questButton != null;
+        bool shopBtnValid = shopButton != null;
+
+        Log($"Current button state: Level={levelBtnValid}, Quest={questBtnValid}, Shop={shopBtnValid}");
+
+        if (!levelBtnValid)
+        {
+            levelButton = FindButtonByName(levelButtonName);
+            Log($"Level button: {(levelButton != null ? "✓ FOUND" : "❌ NOT FOUND")}");
+        }
+
+        if (!questBtnValid)
+        {
+            questButton = FindButtonByName(questButtonName);
+            Log($"Quest button: {(questButton != null ? "✓ FOUND" : "❌ NOT FOUND")}");
+        }
+
+        if (!shopBtnValid)
+        {
+            shopButton = FindButtonByName(shopButtonName);
+            Log($"Shop button: {(shopButton != null ? "✓ FOUND" : "❌ NOT FOUND")}");
+        }
+    }
+
+    /// <summary>
+    /// ✅ CRITICAL FIX: Re-bind button onClick listeners
+    /// </summary>
+    void RebindButtonListeners()
+    {
+        Log("🔗 Re-binding button onClick listeners...");
+
+        // ✅ LEVEL Button
+        if (levelButton != null)
+        {
+            levelButton.onClick.RemoveAllListeners();
+            levelButton.onClick.AddListener(ShowLevel);
+            Log("✓ Level button listener bound");
+        }
+        else
+        {
+            LogWarning("❌ Level button is NULL!");
+        }
+
+        // ✅ QUEST Button
+        if (questButton != null)
+        {
+            questButton.onClick.RemoveAllListeners();
+            questButton.onClick.AddListener(ShowQuest);
+            Log("✓ Quest button listener bound");
+        }
+        else
+        {
+            LogWarning("❌ Quest button is NULL!");
+        }
+
+        // ✅ SHOP Button
+        if (shopButton != null)
+        {
+            shopButton.onClick.RemoveAllListeners();
+            shopButton.onClick.AddListener(ShowShop);
+            Log("✓ Shop button listener bound");
+        }
+        else
+        {
+            LogWarning("❌ Shop button is NULL!");
+        }
+
+        Log("✅ All button listeners rebound");
+    }
+
     GameObject FindPanelByName(string panelName)
     {
         if (string.IsNullOrEmpty(panelName))
@@ -166,7 +246,6 @@ public class ButtonManager : MonoBehaviour
             return null;
         }
 
-        // Method 1: Direct find (fastest)
         GameObject found = GameObject.Find(panelName);
         if (found != null)
         {
@@ -174,7 +253,6 @@ public class ButtonManager : MonoBehaviour
             return found;
         }
 
-        // Method 2: Search in Canvas
         Canvas[] canvases = FindObjectsByType<Canvas>(FindObjectsSortMode.None);
         foreach (var canvas in canvases)
         {
@@ -191,8 +269,47 @@ public class ButtonManager : MonoBehaviour
     }
 
     /// <summary>
-    /// ✅ Recursive search in children
+    /// ✅ NEW: Find button by name
     /// </summary>
+    UnityEngine.UI.Button FindButtonByName(string buttonName)
+    {
+        if (string.IsNullOrEmpty(buttonName))
+        {
+            return null;
+        }
+
+        // Method 1: Direct find
+        GameObject found = GameObject.Find(buttonName);
+        if (found != null)
+        {
+            UnityEngine.UI.Button btn = found.GetComponent<UnityEngine.UI.Button>();
+            if (btn != null)
+            {
+                Log($"Found button '{buttonName}' via GameObject.Find");
+                return btn;
+            }
+        }
+
+        // Method 2: Search in Canvas
+        Canvas[] canvases = FindObjectsByType<Canvas>(FindObjectsSortMode.None);
+        foreach (var canvas in canvases)
+        {
+            Transform result = SearchInChildren(canvas.transform, buttonName);
+            if (result != null)
+            {
+                UnityEngine.UI.Button btn = result.GetComponent<UnityEngine.UI.Button>();
+                if (btn != null)
+                {
+                    Log($"Found button '{buttonName}' in Canvas: {canvas.name}");
+                    return btn;
+                }
+            }
+        }
+
+        LogWarning($"❌ Button '{buttonName}' not found!");
+        return null;
+    }
+
     Transform SearchInChildren(Transform parent, string targetName)
     {
         if (parent.name == targetName)
@@ -214,25 +331,23 @@ public class ButtonManager : MonoBehaviour
 
     void Start()
     {
-        // ✅ Initial setup
         ReassignPanels();
+        ReassignButtons();
+        RebindButtonListeners();
     }
 
     void Update()
     {
-        // ✅ Skip keyboard input on mobile devices
         bool isMobile = Application.isMobilePlatform;
         if (isMobile || !enableKeyboardShortcuts)
         {
             return;
         }
 
-        // Keyboard shortcuts (desktop only)
         if (Input.GetKeyDown(KeyCode.Alpha1)) ShowLevel();
         if (Input.GetKeyDown(KeyCode.Alpha2)) ShowQuest();
         if (Input.GetKeyDown(KeyCode.Alpha3)) ShowShop();
 
-        // ESC untuk exit (testing)
         if (Input.GetKeyDown(KeyCode.Escape))
         {
             Log("ESC pressed - triggering exit");
@@ -252,13 +367,8 @@ public class ButtonManager : MonoBehaviour
         }
     }
 
-    // ========================================
-    // PANEL SWITCHING METHODS
-    // ========================================
-
     public void ShowLevel()
     {
-        // ✅ Validate references before use
         if (!ValidateReferences())
         {
             LogWarning("References invalid - attempting reassign...");
@@ -311,17 +421,10 @@ public class ButtonManager : MonoBehaviour
         Log("Switched to Shop panel");
     }
 
-    /// <summary>
-    /// ✅ Validate all panel references
-    /// </summary>
     bool ValidateReferences()
     {
         return Level != null && Quest != null && Shop != null;
     }
-
-    // ========================================
-    // ECONOMY BUTTONS (Coin/Shard/Energy)
-    // ========================================
 
     public void OnCoinButtonClicked()
     {
@@ -355,10 +458,6 @@ public class ButtonManager : MonoBehaviour
             SoundManager.Instance.PlayButtonClick();
         }
     }
-
-    // ========================================
-    // EXIT BUTTON (WebGL)
-    // ========================================
 
     public void OnExitButtonClicked()
     {
@@ -401,10 +500,6 @@ public class ButtonManager : MonoBehaviour
         ExitGame();
     }
 
-    // ========================================
-    // LOGGING
-    // ========================================
-
     void Log(string message)
     {
         if (enableDebugLogs)
@@ -421,14 +516,12 @@ public class ButtonManager : MonoBehaviour
         Debug.LogError($"[ButtonManager] ❌ {message}");
     }
 
-    // ========================================
-    // CONTEXT MENU (DEBUG)
-    // ========================================
-
-    [ContextMenu("🔄 Force Reassign Panels")]
-    void Context_ForceReassign()
+    [ContextMenu("🔄 Force Reassign All")]
+    void Context_ForceReassignAll()
     {
         ReassignPanels();
+        ReassignButtons();
+        RebindButtonListeners();
     }
 
     [ContextMenu("📊 Print Status")]
@@ -442,27 +535,25 @@ public class ButtonManager : MonoBehaviour
         Debug.Log($"  Level: {(Level != null ? Level.name : "NULL")}");
         Debug.Log($"  Quest: {(Quest != null ? Quest.name : "NULL")}");
         Debug.Log($"  Shop: {(Shop != null ? Shop.name : "NULL")}");
+        Debug.Log($"\nButton References:");
+        Debug.Log($"  Level Button: {(levelButton != null ? levelButton.name : "NULL")}");
+        Debug.Log($"  Quest Button: {(questButton != null ? questButton.name : "NULL")}");
+        Debug.Log($"  Shop Button: {(shopButton != null ? shopButton.name : "NULL")}");
         Debug.Log($"\nPanel Names:");
         Debug.Log($"  Level: {levelPanelName}");
         Debug.Log($"  Quest: {questPanelName}");
         Debug.Log($"  Shop: {shopPanelName}");
+        Debug.Log($"\nButton Names:");
+        Debug.Log($"  Level: {levelButtonName}");
+        Debug.Log($"  Quest: {questButtonName}");
+        Debug.Log($"  Shop: {shopButtonName}");
         Debug.Log("===========================");
     }
 
-    [ContextMenu("🧪 Test: Find Panels")]
-    void Context_TestFindPanels()
+    [ContextMenu("🔘 Test: Rebind Listeners")]
+    void Context_TestRebind()
     {
-        Debug.Log("=== TESTING PANEL SEARCH ===");
-        
-        GameObject level = FindPanelByName(levelPanelName);
-        Debug.Log($"Level ({levelPanelName}): {(level != null ? "✓ FOUND" : "❌ NOT FOUND")}");
-        
-        GameObject quest = FindPanelByName(questPanelName);
-        Debug.Log($"Quest ({questPanelName}): {(quest != null ? "✓ FOUND" : "❌ NOT FOUND")}");
-        
-        GameObject shop = FindPanelByName(shopPanelName);
-        Debug.Log($"Shop ({shopPanelName}): {(shop != null ? "✓ FOUND" : "❌ NOT FOUND")}");
-        
-        Debug.Log("============================");
+        RebindButtonListeners();
+        Debug.Log("✓ Button listeners rebound");
     }
 }

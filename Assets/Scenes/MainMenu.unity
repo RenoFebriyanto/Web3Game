@@ -16288,10 +16288,19 @@ MonoBehaviour:
   Level: {fileID: 899492595}
   Quest: {fileID: 1839927779}
   Shop: {fileID: 812974244}
+  levelButton: {fileID: 803948464}
+  questButton: {fileID: 1479339843}
+  shopButton: {fileID: 1200799438}
   enableKeyboardShortcuts: 1
   exitURL: https://game.kulinohouse.com
   showExitConfirmation: 1
-  enableDebugLogs: 0
+  levelPanelName: LevelP
+  questPanelName: QuestP
+  shopPanelName: ContentShop
+  levelButtonName: Level
+  questButtonName: Quest
+  shopButtonName: Shop
+  enableDebugLogs: 1
 --- !u!114 &1962172647
 MonoBehaviour:
   m_ObjectHideFlags: 0

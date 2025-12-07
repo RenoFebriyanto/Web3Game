@@ -6,7 +6,7 @@ using System.Runtime.InteropServices;
 #endif
 
 /// <summary>
-/// ✅ CLEAN: OrientationManager - Detection Only (UI di index.html)
+/// ✅ FIXED: OrientationManager - Detection Only (no JS notification)
 /// </summary>
 [DefaultExecutionOrder(-800)]
 public class OrientationManager : MonoBehaviour
@@ -32,7 +32,6 @@ public class OrientationManager : MonoBehaviour
 #if UNITY_WEBGL && !UNITY_EDITOR
     [DllImport("__Internal")] private static extern bool IsPortraitMode();
     [DllImport("__Internal")] private static extern bool IsMobileBrowser();
-    [DllImport("__Internal")] private static extern void NotifyOrientationToJS(bool isPortrait);
 #endif
 
     void Awake()
@@ -112,9 +111,6 @@ public class OrientationManager : MonoBehaviour
             {
                 bool portrait = IsPortraitMode();
                 isLandscape = !portrait;
-                
-                // ✅ Notify JavaScript untuk handle UI
-                NotifyOrientationToJS(portrait);
             }
             catch
             {

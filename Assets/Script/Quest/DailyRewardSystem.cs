@@ -3,10 +3,10 @@ using UnityEngine;
 using UnityEngine.Events;
 
 /// <summary>
-/// ✅✅✅ INDESTRUCTIBLE VERSION: NEVER gets destroyed
-/// - Uses hideFlags to prevent destruction
-/// - Survives scene transitions
-/// - Protected against Unity cleanup
+/// ✅ COMPLETE FIXED: DailyRewardSystem - Scene Transition Safe
+/// - Ultra-strong singleton
+/// - Proper DontDestroyOnLoad
+/// - Never gets destroyed
 /// </summary>
 public class DailyRewardSystem : MonoBehaviour
 {
@@ -42,27 +42,45 @@ public class DailyRewardSystem : MonoBehaviour
     private int rolledEnergyAmount = 0;
     private bool isSubscribed = false;
 
+    // ✅ FIXED: Ultra-strong singleton
     void Awake()
     {
-        // ✅✅✅ CRITICAL: Indestructible singleton
+        // ✅ CRITICAL: Check for existing instance
         if (Instance != null)
         {
             if (Instance != this)
             {
-                Log($"❌ Duplicate found - DESTROYING duplicate");
-                Destroy(gameObject);
-                return;
+                // Check if existing instance is still valid
+                try
+                {
+                    if (Instance.gameObject != null && Instance.enabled)
+                    {
+                        LogWarning($"Valid instance exists - destroying duplicate '{gameObject.name}'");
+                        Destroy(gameObject);
+                        return;
+                    }
+                }
+                catch
+                {
+                    // Existing instance is corrupted, take over
+                    LogWarning("Previous instance invalid - taking over");
+                }
             }
         }
 
         Instance = this;
 
-        // ✅ TRIPLE PROTECTION against destruction
-        DontDestroyOnLoad(gameObject);
-        gameObject.hideFlags = HideFlags.DontUnloadUnusedAsset;
-        gameObject.name = "[DailyRewardSystem - INDESTRUCTIBLE]";
+        // ✅ CRITICAL: Ensure root object and DontDestroyOnLoad
+        if (transform.parent != null)
+        {
+            Log("Moving to root (was child of " + transform.parent.name + ")");
+            transform.SetParent(null);
+        }
 
-        Log("✅✅✅ DailyRewardSystem initialized as INDESTRUCTIBLE");
+        DontDestroyOnLoad(gameObject);
+        gameObject.name = "[DailyRewardSystem - PERSISTENT]";
+
+        Log("✅ Initialized successfully");
     }
 
     void Start()
@@ -485,7 +503,6 @@ public class DailyRewardSystem : MonoBehaviour
         Debug.Log($"GameObject: {gameObject.name}");
         Debug.Log($"Instance: {(Instance != null ? "✅ OK" : "❌ NULL")}");
         Debug.Log($"Is This Instance: {(Instance == this ? "✅ YES" : "❌ NO")}");
-        Debug.Log($"HideFlags: {gameObject.hideFlags}");
         Debug.Log($"Subscribed: {isSubscribed}");
         Debug.Log($"Reward Available: {isRewardAvailable}");
         Debug.Log($"Reward Claimed: {isRewardClaimed}");

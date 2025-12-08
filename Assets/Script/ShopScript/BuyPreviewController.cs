@@ -373,7 +373,7 @@ public class BuyPreviewController : MonoBehaviour
             {
                 if (buyWithRupiahBtnText != null)
                 {
-                    buyWithRupiahBtnText.text = $"Buy (Rp {data.rupiahPrice:N0})";
+                    buyWithRupiahBtnText.text = $"{data.rupiahPrice:N0}";
                 }
 
                 buyWithRupiahBtn.onClick.AddListener(() =>

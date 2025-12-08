@@ -1,14 +1,11 @@
+// ShopItemUI.cs - UPDATED untuk display harga Rupiah
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
-/// <summary>
-/// UPDATED ShopItemUI - Displays amount as title for currency items
-/// Version: 2.0 - Smart Title Display
-/// </summary>
 public class ShopItemUI : MonoBehaviour
 {
-    [Header("UI refs (assign in prefab)")]
+    [Header("UI refs")]
     public Image iconImage;
     public TMP_Text nameText;
     public TMP_Text coinPriceText;
@@ -16,7 +13,7 @@ public class ShopItemUI : MonoBehaviour
     public TMP_Text kulinoCoinPriceText;
     public Button buyButton;
 
-    [Header("Optional: root objects for layout")]
+    [Header("Root objects")]
     public GameObject coinIconRoot;
     public GameObject shardIconRoot;
     public GameObject kulinoCoinIconRoot;
@@ -34,57 +31,21 @@ public class ShopItemUI : MonoBehaviour
         // Set icon
         if (iconImage != null) iconImage.sprite = data.iconGrid;
 
-        // ✅ SMART TITLE: Display amount untuk currency items (Coin, Shard, Energy)
+        // ✅ SMART TITLE
         if (nameText != null)
         {
             string displayTitle = GetSmartTitle(data);
             nameText.text = displayTitle;
-            Debug.Log($"[ShopItemUI] {data.itemId} title set to: {displayTitle}");
         }
 
-        // ✅ Show ALL enabled payment methods
-        bool hasKulinoCoin = data.allowBuyWithKulinoCoin && data.kulinoCoinPrice > 0;
-        bool hasShard = data.allowBuyWithShards && data.shardPrice > 0;
-        bool hasCoin = data.allowBuyWithCoins && data.coinPrice > 0;
-
-        bool isKulinoCoinOnly = hasKulinoCoin && !hasShard && !hasCoin;
-
-        bool showKulinoCoin = hasKulinoCoin;
-        bool showShard = hasShard && !isKulinoCoinOnly;
-        bool showCoin = hasCoin && !isKulinoCoinOnly;
-
-        Debug.Log($"[ShopItemUI] {data.displayName} Setup:");
-        Debug.Log($"  - Coin: allow={data.allowBuyWithCoins}, price={data.coinPrice}, show={showCoin}");
-        Debug.Log($"  - Shard: allow={data.allowBuyWithShards}, price={data.shardPrice}, show={showShard}");
-        Debug.Log($"  - KC: allow={data.allowBuyWithKulinoCoin}, price={data.kulinoCoinPrice}, show={showKulinoCoin}");
-
-        // Update price texts
-        if (coinPriceText != null)
-            coinPriceText.text = showCoin ? data.coinPrice.ToString("N0") : "";
-
-        if (shardPriceText != null)
-            shardPriceText.text = showShard ? data.shardPrice.ToString("N0") : "";
-
-        if (kulinoCoinPriceText != null)
-            kulinoCoinPriceText.text = showKulinoCoin ? $"{data.kulinoCoinPrice:F6} KC" : "";
-
-        // Show/hide icon groups
-        if (coinIconRoot != null) 
+        // ✅ CRITICAL: Check if item uses Rupiah pricing (SHARD items)
+        if (data.UseRupiahPricing)
         {
-            coinIconRoot.SetActive(showCoin);
-            Debug.Log($"  - Coin Icon: {(showCoin ? "VISIBLE" : "HIDDEN")}");
+            SetupRupiahPricing(data);
         }
-        
-        if (shardIconRoot != null) 
+        else
         {
-            shardIconRoot.SetActive(showShard);
-            Debug.Log($"  - Shard Icon: {(showShard ? "VISIBLE" : "HIDDEN")}");
-        }
-        
-        if (kulinoCoinIconRoot != null) 
-        {
-            kulinoCoinIconRoot.SetActive(showKulinoCoin);
-            Debug.Log($"  - KC Icon: {(showKulinoCoin ? "VISIBLE" : "HIDDEN")}");
+            SetupRegularPricing(data);
         }
 
         // Buy button
@@ -99,22 +60,69 @@ public class ShopItemUI : MonoBehaviour
     }
 
     /// <summary>
-    /// ✅ NEW: Smart title - Show amount for currency items, original name for others
+    /// ✅ NEW: Setup untuk Shard items dengan harga Rupiah
     /// </summary>
+    void SetupRupiahPricing(ShopItemData data)
+    {
+        Debug.Log($"[ShopItemUI] {data.displayName} uses RUPIAH pricing: Rp {data.rupiahPrice:N0}");
+
+        // ✅ Tampilkan harga Rupiah di KC price text
+        if (kulinoCoinPriceText != null)
+        {
+            kulinoCoinPriceText.text = $"Rp {data.rupiahPrice:N0}";
+        }
+
+        // ✅ Show ONLY KC icon (untuk Rupiah display)
+        if (coinIconRoot != null) coinIconRoot.SetActive(false);
+        if (shardIconRoot != null) shardIconRoot.SetActive(false);
+        if (kulinoCoinIconRoot != null) kulinoCoinIconRoot.SetActive(true);
+
+        Debug.Log($"[ShopItemUI] {data.displayName} - Showing Rupiah price: Rp {data.rupiahPrice:N0}");
+    }
+
+    /// <summary>
+    /// ✅ Setup untuk items lain (Coin, Energy, Booster, Bundle)
+    /// </summary>
+    void SetupRegularPricing(ShopItemData data)
+    {
+        bool hasKulinoCoin = data.allowBuyWithKulinoCoin && data.kulinoCoinPrice > 0;
+        bool hasShard = data.allowBuyWithShards && data.shardPrice > 0;
+        bool hasCoin = data.allowBuyWithCoins && data.coinPrice > 0;
+
+        bool isKulinoCoinOnly = hasKulinoCoin && !hasShard && !hasCoin;
+
+        bool showKulinoCoin = hasKulinoCoin;
+        bool showShard = hasShard && !isKulinoCoinOnly;
+        bool showCoin = hasCoin && !isKulinoCoinOnly;
+
+        // Update price texts
+        if (coinPriceText != null)
+            coinPriceText.text = showCoin ? data.coinPrice.ToString("N0") : "";
+
+        if (shardPriceText != null)
+            shardPriceText.text = showShard ? data.shardPrice.ToString("N0") : "";
+
+        if (kulinoCoinPriceText != null)
+            kulinoCoinPriceText.text = showKulinoCoin ? $"{data.kulinoCoinPrice:F6} KC" : "";
+
+        // Show/hide icon groups
+        if (coinIconRoot != null) coinIconRoot.SetActive(showCoin);
+        if (shardIconRoot != null) shardIconRoot.SetActive(showShard);
+        if (kulinoCoinIconRoot != null) kulinoCoinIconRoot.SetActive(showKulinoCoin);
+    }
+
     string GetSmartTitle(ShopItemData data)
     {
-        // Untuk currency items (Coin, Shard, Energy) - tampilkan nilai
         if (data.rewardType == ShopRewardType.Coin ||
             data.rewardType == ShopRewardType.Shard ||
             data.rewardType == ShopRewardType.Energy)
         {
             if (data.rewardAmount > 0)
             {
-                return data.rewardAmount.ToString("N0"); // Contoh: "100" atau "1,000"
+                return data.rewardAmount.ToString("N0");
             }
         }
 
-        // Untuk Booster dan Bundle - gunakan displayName
         return data.displayName;
     }
 }

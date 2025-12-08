@@ -1,4 +1,4 @@
-// ShopItemData.cs - SUDAH BAGUS, HANYA TAMBAHKAN COMMENT
+// ShopItemData.cs - UPDATED dengan Rupiah support
 using UnityEngine;
 using System.Collections.Generic;
 
@@ -30,11 +30,18 @@ public class ShopItemData : ScriptableObject
     public bool allowBuyWithCoins = true;
     public bool allowBuyWithShards = false;
 
-    [Header("💎 Kulino Coin Pricing")]
-    [Tooltip("Harga dalam Kulino Coin (0 = tidak bisa beli dengan Kulino Coin)")]
-    public double kulinoCoinPrice = 0;
+    [Header("💰 Rupiah Pricing (FOR SHARD ONLY)")]
+    [Tooltip("Harga dalam Rupiah - HANYA untuk Shard items")]
+    public double rupiahPrice = 0;
+    
+    [Tooltip("Boleh dibeli dengan Rupiah? (auto-convert ke KC)")]
+    public bool allowBuyWithRupiah = false;
 
-    [Tooltip("Boleh dibeli dengan Kulino Coin dari wallet?")]
+    [Header("💎 Kulino Coin Pricing (FOR OTHER ITEMS)")]
+    [Tooltip("Harga dalam Kulino Coin - untuk items selain Shard")]
+    public double kulinoCoinPrice = 0;
+    
+    [Tooltip("Boleh dibeli dengan Kulino Coin?")]
     public bool allowBuyWithKulinoCoin = false;
 
     [Header("Reward (what player gets when bought)")]
@@ -49,4 +56,7 @@ public class ShopItemData : ScriptableObject
 
     // Helper: check if this is a bundle
     public bool IsBundle => rewardType == ShopRewardType.Bundle && bundleItems != null && bundleItems.Count > 0;
+    
+    // ✅ NEW: Helper untuk check apakah item ini pakai Rupiah
+    public bool UseRupiahPricing => rewardType == ShopRewardType.Shard && allowBuyWithRupiah && rupiahPrice > 0;
 }

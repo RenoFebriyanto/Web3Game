@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
-public enum Currency { Coins, Shards, KulinoCoin }
+public enum Currency { Coins, Shards, KulinoCoin, Rupiah }
 
 /// <summary>
 /// ShopManager - CLEANED v9.0
@@ -29,7 +29,9 @@ public class ShopManager : MonoBehaviour
     public Sprite iconShard;
     public Sprite iconEnergy;
 
-    
+    [Header("🏢 Company Wallet (for Rupiah transactions)")]
+    [Tooltip("Wallet perusahaan Kulino untuk menerima pembayaran Shard")]
+    public string companyWalletAddress = "9QM8aSCHFp76RacWXgXFQQxUKXt5Vf2zLzSkdMdQuByk";
 
     [Header("🔄 Scroll Settings")]
     public ScrollRect scrollRect;
@@ -517,6 +519,7 @@ double GetShardIDRPrice(int shardAmount)
             buyPreviewUI.Show(data);
     }
 
+    // ✅ UPDATE: TryBuy method untuk handle Rupiah
     public bool TryBuy(ShopItemData data, Currency currency)
     {
         if (data == null) return false;
@@ -547,6 +550,10 @@ double GetShardIDRPrice(int shardAmount)
                 price = data.shardPrice;
                 canAfford = PlayerEconomy.Instance.Shards >= price;
                 break;
+
+            case Currency.Rupiah:
+                // ✅ NEW: Handle Rupiah payment (convert to KC)
+                return HandleRupiahPayment(data);
 
             case Currency.KulinoCoin:
                 if (!data.allowBuyWithKulinoCoin)
@@ -585,6 +592,181 @@ double GetShardIDRPrice(int shardAmount)
         buyPreviewUI?.Close();
         ShowPurchasePopup(data, currency);
         return true;
+    }
+
+    // ✅ NEW: Handle pembayaran Rupiah
+    bool HandleRupiahPayment(ShopItemData data)
+    {
+        if (!data.UseRupiahPricing)
+        {
+            Debug.LogError("[ShopManager] Item doesn't support Rupiah pricing!");
+            SoundManager.Instance?.PlayPurchaseFail();
+            return false;
+        }
+
+        // Check KC price API
+        if (KulinoCoinPriceAPI.Instance == null)
+        {
+            Debug.LogError("[ShopManager] KulinoCoinPriceAPI not found!");
+            SoundManager.Instance?.PlayPurchaseFail();
+            return false;
+        }
+
+        // Get current KC price in Rupiah
+        double kcPriceIDR = KulinoCoinPriceAPI.Instance.GetCurrentPrice();
+        
+        if (kcPriceIDR <= 0)
+        {
+            Debug.LogError("[ShopManager] Invalid KC price!");
+            SoundManager.Instance?.PlayPurchaseFail();
+            return false;
+        }
+
+        // Calculate required KC amount
+        double rupiahAmount = data.rupiahPrice;
+        double requiredKC = rupiahAmount / kcPriceIDR;
+
+        Debug.Log("═══════════════════════════════════");
+        Debug.Log("[ShopManager] 💰 RUPIAH PAYMENT");
+        Debug.Log($"  Item: {data.displayName}");
+        Debug.Log($"  Rupiah Price: Rp {rupiahAmount:N0}");
+        Debug.Log($"  KC Price: Rp {kcPriceIDR:N2} per KC");
+        Debug.Log($"  Required KC: {requiredKC:F6} KC");
+        Debug.Log($"  Destination: {ShortenAddress(companyWalletAddress)}");
+        Debug.Log("═══════════════════════════════════");
+
+        // Check player balance
+        if (KulinoCoinManager.Instance == null)
+        {
+            Debug.LogError("[ShopManager] KulinoCoinManager not found!");
+            SoundManager.Instance?.PlayPurchaseFail();
+            return false;
+        }
+
+        double playerBalance = KulinoCoinManager.Instance.GetBalance();
+        
+        if (playerBalance < requiredKC)
+        {
+            Debug.LogWarning($"[ShopManager] Insufficient KC! Need {requiredKC:F6}, have {playerBalance:F6}");
+            SoundManager.Instance?.PlayPurchaseFail();
+            return false;
+        }
+
+        // Close preview and initiate payment
+        buyPreviewUI?.Close();
+        
+        _pendingPurchaseData = data;
+        StartCoroutine(InitiateRupiahPayment(data, requiredKC, rupiahAmount));
+        
+        return true;
+    }
+
+    // ✅ NEW: Initiate Rupiah payment via Phantom
+    IEnumerator InitiateRupiahPayment(ShopItemData data, double kcAmount, double rupiahAmount)
+    {
+        Debug.Log($"[ShopManager] 🔄 Initiating Rupiah payment...");
+        
+        var payload = new RupiahPaymentPayload
+        {
+            destinationWallet = companyWalletAddress,
+            kcAmount = kcAmount,
+            rupiahAmount = rupiahAmount,
+            itemId = data.itemId,
+            itemName = data.displayName,
+            rewardAmount = data.rewardAmount,
+            nonce = System.Guid.NewGuid().ToString(),
+            timestamp = System.DateTimeOffset.UtcNow.ToUnixTimeSeconds()
+        };
+        
+        string json = JsonUtility.ToJson(payload);
+        
+        Debug.Log($"[ShopManager] 📤 Payment payload:");
+        Debug.Log($"  Destination: {ShortenAddress(companyWalletAddress)}");
+        Debug.Log($"  Amount: {kcAmount:F6} KC (= Rp {rupiahAmount:N0})");
+        
+#if UNITY_WEBGL && !UNITY_EDITOR
+        try
+        {
+            // ✅ Call JavaScript function untuk payment
+            string jsCode = $"if(typeof requestRupiahPayment === 'function') {{ requestRupiahPayment('{json}'); }}";
+            Application.ExternalEval(jsCode);
+            
+            Debug.Log("[ShopManager] ✓ Payment request sent to JavaScript");
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogError($"[ShopManager] Failed to call JavaScript: {ex.Message}");
+            SoundManager.Instance?.PlayPurchaseFail();
+            _pendingPurchaseData = null;
+        }
+#else
+        // ✅ EDITOR MODE: Simulate success
+        yield return new WaitForSeconds(2f);
+        
+        Debug.Log("[ShopManager] 🧪 EDITOR MODE: Simulating payment success");
+        
+        string mockResponse = $"{{\"success\":true,\"txHash\":\"MOCK_RUPIAH_TX_{System.DateTime.Now.Ticks}\",\"kcAmount\":{kcAmount},\"rupiahAmount\":{rupiahAmount}}}";
+        
+        OnRupiahPaymentResult(mockResponse);
+#endif
+        
+        yield return null;
+    }
+
+    // ✅ NEW: Callback dari JavaScript saat payment selesai
+    public void OnRupiahPaymentResult(string resultJson)
+    {
+        Debug.Log($"[ShopManager] 📥 Rupiah payment result: {resultJson}");
+
+        try
+        {
+            var result = JsonUtility.FromJson<PaymentResult>(resultJson);
+
+            if (result.success)
+            {
+                Debug.Log($"[ShopManager] ✅ RUPIAH PAYMENT SUCCESS!");
+                Debug.Log($"  TX Hash: {result.txHash}");
+                
+                if (_pendingPurchaseData != null)
+                {
+                    GrantReward(_pendingPurchaseData);
+                    _pendingPurchaseData = null;
+                    SoundManager.Instance?.PlayPurchaseSuccess();
+                }
+
+                // Refresh KC balance
+                StartCoroutine(RefreshKCBalanceDelayed(2f));
+            }
+            else
+            {
+                Debug.LogError($"[ShopManager] ❌ RUPIAH PAYMENT FAILED: {result.error}");
+                SoundManager.Instance?.PlayPurchaseFail();
+                _pendingPurchaseData = null;
+            }
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogError($"[ShopManager] ❌ Parse error: {ex.Message}");
+            SoundManager.Instance?.PlayPurchaseFail();
+            _pendingPurchaseData = null;
+        }
+    }
+
+    IEnumerator RefreshKCBalanceDelayed(float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        
+        if (KulinoCoinManager.Instance != null)
+        {
+            Debug.Log("[ShopManager] 🔄 Refreshing KC balance after payment...");
+            KulinoCoinManager.Instance.RefreshBalance();
+        }
+    }
+
+    string ShortenAddress(string addr)
+    {
+        if (string.IsNullOrEmpty(addr) || addr.Length < 10) return addr;
+        return $"{addr.Substring(0, 6)}...{addr.Substring(addr.Length - 4)}";
     }
 
     void ShowPurchasePopup(ShopItemData data, Currency currency)
@@ -886,5 +1068,29 @@ void Context_PrintShardPrices()
         public string itemName;
         public string nonce;
         public long timestamp;
+    }
+
+    // ✅ NEW: Payment payload untuk Rupiah transaction
+    [System.Serializable]
+    class RupiahPaymentPayload
+    {
+        public string destinationWallet;  // Wallet perusahaan
+        public double kcAmount;           // Jumlah KC yang harus ditransfer
+        public double rupiahAmount;       // Nilai Rupiah equivalent
+        public string itemId;
+        public string itemName;
+        public int rewardAmount;
+        public string nonce;
+        public long timestamp;
+    }
+
+    [System.Serializable]
+    class PaymentResult
+    {
+        public bool success;
+        public string error;
+        public string txHash;
+        public double kcAmount;
+        public double rupiahAmount;
     }
 }

@@ -36,6 +36,14 @@ public class BuyPreviewController : MonoBehaviour
     public GameObject shardPriceGroup;
     public GameObject kulinoCoinPriceGroup;
 
+    [Header("Rupiah Price Display (for Shard)")]
+    public TMP_Text rupiahPriceText;
+    public GameObject rupiahPriceGroup;
+    
+    [Header("Buttons - Add Rupiah button")]
+    public Button buyWithRupiahBtn;
+    public TMP_Text buyWithRupiahBtnText;
+
     [Header("Buttons")]
     public Button buyWithCoinsBtn;
     public Button buyWithShardsBtn;
@@ -117,13 +125,33 @@ public class BuyPreviewController : MonoBehaviour
         if (titleText != null) titleText.text = data.displayName ?? "";
         if (descText != null) descText.text = data.description ?? "";
 
-        if (coinPriceText != null) coinPriceText.text = data.coinPrice > 0 ? data.coinPrice.ToString("N0") : "";
-        if (shardPriceText != null) shardPriceText.text = data.shardPrice > 0 ? data.shardPrice.ToString("N0") : "";
-        if (kulinoCoinPriceText != null) kulinoCoinPriceText.text = data.kulinoCoinPrice > 0 ? data.kulinoCoinPrice.ToString("F6") + " KC" : "";
-
-        if (coinPriceGroup != null) coinPriceGroup.SetActive(data.allowBuyWithCoins && data.coinPrice > 0);
-        if (shardPriceGroup != null) shardPriceGroup.SetActive(data.allowBuyWithShards && data.shardPrice > 0);
-        if (kulinoCoinPriceGroup != null) kulinoCoinPriceGroup.SetActive(data.allowBuyWithKulinoCoin && data.kulinoCoinPrice > 0);
+        // ✅ UPDATED: Show prices based on item type
+        if (data.UseRupiahPricing)
+        {
+            // ✅ Shard items - show Rupiah price
+            if (coinPriceText != null) coinPriceText.text = "";
+            if (shardPriceText != null) shardPriceText.text = "";
+            if (kulinoCoinPriceText != null) kulinoCoinPriceText.text = "";
+            if (rupiahPriceText != null) rupiahPriceText.text = $"Rp {data.rupiahPrice:N0}";
+            
+            if (coinPriceGroup != null) coinPriceGroup.SetActive(false);
+            if (shardPriceGroup != null) shardPriceGroup.SetActive(false);
+            if (kulinoCoinPriceGroup != null) kulinoCoinPriceGroup.SetActive(false);
+            if (rupiahPriceGroup != null) rupiahPriceGroup.SetActive(true);
+        }
+        else
+        {
+            // ✅ Regular items - show normal prices
+            if (coinPriceText != null) coinPriceText.text = data.coinPrice > 0 ? data.coinPrice.ToString("N0") : "";
+            if (shardPriceText != null) shardPriceText.text = data.shardPrice > 0 ? data.shardPrice.ToString("N0") : "";
+            if (kulinoCoinPriceText != null) kulinoCoinPriceText.text = data.kulinoCoinPrice > 0 ? data.kulinoCoinPrice.ToString("F6") + " KC" : "";
+            if (rupiahPriceText != null) rupiahPriceText.text = "";
+            
+            if (coinPriceGroup != null) coinPriceGroup.SetActive(data.allowBuyWithCoins && data.coinPrice > 0);
+            if (shardPriceGroup != null) shardPriceGroup.SetActive(data.allowBuyWithShards && data.shardPrice > 0);
+            if (kulinoCoinPriceGroup != null) kulinoCoinPriceGroup.SetActive(data.allowBuyWithKulinoCoin && data.kulinoCoinPrice > 0);
+            if (rupiahPriceGroup != null) rupiahPriceGroup.SetActive(false);
+        }
 
         if (data.IsBundle)
         {
@@ -283,10 +311,11 @@ public class BuyPreviewController : MonoBehaviour
 
     void SetupButtons(ShopItemData data)
     {
+        // ✅ Regular buttons (Coins, Shards)
         if (buyWithCoinsBtn != null)
         {
             buyWithCoinsBtn.onClick.RemoveAllListeners();
-            buyWithCoinsBtn.gameObject.SetActive(data.allowBuyWithCoins && data.coinPrice > 0);
+            buyWithCoinsBtn.gameObject.SetActive(data.allowBuyWithCoins && data.coinPrice > 0 && !data.UseRupiahPricing);
             if (data.allowBuyWithCoins && data.coinPrice > 0)
             {
                 buyWithCoinsBtn.onClick.AddListener(() =>
@@ -302,7 +331,7 @@ public class BuyPreviewController : MonoBehaviour
         if (buyWithShardsBtn != null)
         {
             buyWithShardsBtn.onClick.RemoveAllListeners();
-            buyWithShardsBtn.gameObject.SetActive(data.allowBuyWithShards && data.shardPrice > 0);
+            buyWithShardsBtn.gameObject.SetActive(data.allowBuyWithShards && data.shardPrice > 0 && !data.UseRupiahPricing);
             if (data.allowBuyWithShards && data.shardPrice > 0)
             {
                 buyWithShardsBtn.onClick.AddListener(() =>
@@ -315,12 +344,13 @@ public class BuyPreviewController : MonoBehaviour
             }
         }
 
+        // ✅ KC button (for non-Shard items)
         if (buyWithKulinoCoinBtn != null)
         {
             buyWithKulinoCoinBtn.onClick.RemoveAllListeners();
-            buyWithKulinoCoinBtn.gameObject.SetActive(data.allowBuyWithKulinoCoin && data.kulinoCoinPrice > 0);
+            buyWithKulinoCoinBtn.gameObject.SetActive(data.allowBuyWithKulinoCoin && data.kulinoCoinPrice > 0 && !data.UseRupiahPricing);
 
-            if (data.allowBuyWithKulinoCoin && data.kulinoCoinPrice > 0)
+            if (data.allowBuyWithKulinoCoin && data.kulinoCoinPrice > 0 && !data.UseRupiahPricing)
             {
                 buyWithKulinoCoinBtn.onClick.AddListener(() =>
                 {
@@ -328,6 +358,30 @@ public class BuyPreviewController : MonoBehaviour
                     {
                         Debug.Log("[BuyPreview] Attempting to buy with Kulino Coin");
                         manager.TryBuy(data, Currency.KulinoCoin);
+                    }
+                });
+            }
+        }
+
+        // ✅ NEW: Rupiah button (ONLY for Shard items)
+        if (buyWithRupiahBtn != null)
+        {
+            buyWithRupiahBtn.onClick.RemoveAllListeners();
+            buyWithRupiahBtn.gameObject.SetActive(data.UseRupiahPricing);
+
+            if (data.UseRupiahPricing)
+            {
+                if (buyWithRupiahBtnText != null)
+                {
+                    buyWithRupiahBtnText.text = $"Buy (Rp {data.rupiahPrice:N0})";
+                }
+
+                buyWithRupiahBtn.onClick.AddListener(() =>
+                {
+                    if (manager != null)
+                    {
+                        Debug.Log($"[BuyPreview] Attempting to buy with Rupiah: Rp {data.rupiahPrice:N0}");
+                        manager.TryBuy(data, Currency.Rupiah);
                     }
                 });
             }

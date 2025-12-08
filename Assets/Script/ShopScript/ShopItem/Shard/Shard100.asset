@@ -20,8 +20,10 @@ MonoBehaviour:
   shardPrice: 0
   allowBuyWithCoins: 0
   allowBuyWithShards: 0
-  kulinoCoinPrice: 0.00001
-  allowBuyWithKulinoCoin: 1
+  rupiahPrice: 15000
+  allowBuyWithRupiah: 1
+  kulinoCoinPrice: 0
+  allowBuyWithKulinoCoin: 0
   rewardType: 2
   rewardAmount: 100
   bundleItems: []

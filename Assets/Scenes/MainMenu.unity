@@ -1232,7 +1232,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 4.5, y: -7.4999995}
+  m_AnchoredPosition: {x: 4.5, y: -7.5}
   m_SizeDelta: {x: -11, y: -15.000001}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &177437396
@@ -1931,7 +1931,9 @@ MonoBehaviour:
   cancelButton: {fileID: 1751623460}
   titleText: {fileID: 1508894775}
   messageText: {fileID: 1110612460}
-  buyKulinoCoinURL: https://phantom.app/
+  kulinoCoinMint: E5chNtjGFvCMVYoTwcP9DtrdMdctRCGdGahAAhnHbHc1
+  jupiterSwapURL: https://jup.ag/swap/SOL-E5chNtjGFvCMVYoTwcP9DtrdMdctRCGdGahAAhnHbHc1
+  phantomBrowserURL: https://phantom.app/ul/browse/https%3A%2F%2Fjup.ag%2Fswap%2FSOL-E5chNtjGFvCMVYoTwcP9DtrdMdctRCGdGahAAhnHbHc1
   enableDebugLogs: 1
 --- !u!1 &211790582
 GameObject:
@@ -6679,7 +6681,7 @@ MonoBehaviour:
   m_Intensity: 1
   m_LightVolumeIntensity: 1
   m_LightVolumeEnabled: 0
-  m_ApplyToSortingLayers: 00000000
+  m_ApplyToSortingLayers: 00000000899bc06f
   m_LightCookieSprite: {fileID: 0}
   m_DeprecatedPointLightCookieSprite: {fileID: 0}
   m_LightOrder: 0
@@ -10218,6 +10220,10 @@ PrefabInstance:
       propertyPath: m_AnchoredPosition.y
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 6229914313476699171, guid: 4b4efcb264c13f349abf788ce1b75455, type: 3}
+      propertyPath: m_AnchoredPosition.x
+      value: -2.5
+      objectReference: {fileID: 0}
     - target: {fileID: 6768678057981286046, guid: 4b4efcb264c13f349abf788ce1b75455, type: 3}
       propertyPath: m_Name
       value: PopupClaimQuest
@@ -11339,8 +11345,8 @@ Canvas:
   m_GameObject: {fileID: 1224814432}
   m_Enabled: 1
   serializedVersion: 3
-  m_RenderMode: 0
-  m_Camera: {fileID: 0}
+  m_RenderMode: 1
+  m_Camera: {fileID: 519420031}
   m_PlaneDistance: 100
   m_PixelPerfect: 0
   m_ReceivesEvents: 1
@@ -11350,7 +11356,7 @@ Canvas:
   m_VertexColorAlwaysGammaSpace: 0
   m_AdditionalShaderChannelsFlag: 25
   m_UpdateRectTransformForStandalone: 0
-  m_SortingLayerID: 0
+  m_SortingLayerID: 1874893705
   m_SortingOrder: 0
   m_TargetDisplay: 0
 --- !u!224 &1224814436
@@ -12208,7 +12214,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: -0.000869751}
+  m_AnchoredPosition: {x: 0, y: 0.0005645752}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1346469500
@@ -13947,7 +13953,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0.5}
   m_AnchorMax: {x: 1, y: 0.5}
-  m_AnchoredPosition: {x: -9.224997, y: -5}
+  m_AnchoredPosition: {x: -9.224998, y: -5}
   m_SizeDelta: {x: -18.45, y: 41.1781}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1492551059
@@ -18536,7 +18542,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: -0.000869751}
+  m_AnchoredPosition: {x: 0, y: 0.0005645752}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &2110658981
@@ -19108,6 +19114,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Level1
       objectReference: {fileID: 0}
+    - target: {fileID: 5972053873806337223, guid: f50c2678650e56b4dacc0139bc0c2fda, type: 3}
+      propertyPath: InitialModule.startSize.scalar
+      value: 25
+      objectReference: {fileID: 0}
     - target: {fileID: 7245811170275486647, guid: f50c2678650e56b4dacc0139bc0c2fda, type: 3}
       propertyPath: m_Pivot.x
       value: 0.5
@@ -19186,6 +19196,38 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7245811170275486647, guid: f50c2678650e56b4dacc0139bc0c2fda, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8206225363285278415, guid: f50c2678650e56b4dacc0139bc0c2fda, type: 3}
+      propertyPath: InitialModule.startSize.scalar
+      value: 25
+      objectReference: {fileID: 0}
+    - target: {fileID: 8206225363285278415, guid: f50c2678650e56b4dacc0139bc0c2fda, type: 3}
+      propertyPath: InitialModule.startColor.maxColor.b
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 8206225363285278415, guid: f50c2678650e56b4dacc0139bc0c2fda, type: 3}
+      propertyPath: InitialModule.startColor.maxColor.g
+      value: 0.4021423
+      objectReference: {fileID: 0}
+    - target: {fileID: 8206225363285278415, guid: f50c2678650e56b4dacc0139bc0c2fda, type: 3}
+      propertyPath: InitialModule.startColor.maxColor.r
+      value: 0.03773582
+      objectReference: {fileID: 0}
+    - target: {fileID: 8206225363851310665, guid: f50c2678650e56b4dacc0139bc0c2fda, type: 3}
+      propertyPath: m_SortingOrder
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8206225363851310666, guid: f50c2678650e56b4dacc0139bc0c2fda, type: 3}
+      propertyPath: InitialModule.startSize.scalar
+      value: 8
+      objectReference: {fileID: 0}
+    - target: {fileID: 8206225363851310666, guid: f50c2678650e56b4dacc0139bc0c2fda, type: 3}
+      propertyPath: InitialModule.startSize.minScalar
+      value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: 9110437557781542204, guid: f50c2678650e56b4dacc0139bc0c2fda, type: 3}
+      propertyPath: m_SortingOrder
       value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []

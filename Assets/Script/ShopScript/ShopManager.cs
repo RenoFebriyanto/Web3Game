@@ -709,10 +709,7 @@ double GetShardIDRPrice(int shardAmount)
                 OpenPhantomBuyCoinPopup.Instance.Show(
                     "Not Enough Kulino Coin",
                     "You don't have enough Kulino Coin. Buy some in Phantom Wallet?",
-                    () => {
-                        Debug.Log("[ShopManager] 🔄 Continue clicked - Opening Phantom Wallet");
-                        OpenPhantomWallet();
-                    }
+                    null  // ✅ FIXED: Pass null to use default Jupiter swap URL
                 );
                 break;
         }

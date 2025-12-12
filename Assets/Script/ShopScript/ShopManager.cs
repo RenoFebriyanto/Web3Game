@@ -654,79 +654,69 @@ double GetShardIDRPrice(int shardAmount)
         return true;
     }
 
-    /// <summary>
-/// ✅ FIXED: Show popup alert untuk insufficient funds dengan proper action
-/// </summary>
-void ShowInsufficientFundsAlert(ShopItemData data, Currency currency)
-{
-    Debug.Log($"[ShopManager] ⚠️ Insufficient {currency}!");
-
-    // Play fail sound
-    if (SoundManager.Instance != null)
+    void ShowInsufficientFundsAlert(ShopItemData data, Currency currency)
     {
-        SoundManager.Instance.PlayPurchaseFail();
+        Debug.Log($"[ShopManager] ⚠️ Insufficient {currency}!");
+
+        if (SoundManager.Instance != null)
+        {
+            SoundManager.Instance.PlayPurchaseFail();
+        }
+
+        if (buyPreviewUI != null)
+        {
+            buyPreviewUI.Close();
+        }
+
+        if (OpenPhantomBuyCoinPopup.Instance == null)
+        {
+            Debug.LogError("[ShopManager] OpenPhantomBuyCoinPopup.Instance is NULL!");
+            return;
+        }
+
+        switch (currency)
+        {
+            case Currency.Coins:
+                Debug.Log("[ShopManager] Showing popup for insufficient Coins");
+
+                OpenPhantomBuyCoinPopup.Instance.Show(
+                    "Not Enough Coins",
+                    "You don't have enough Coins. Go to shop to buy more?",
+                    () => {
+                        Debug.Log("[ShopManager] 🔄 Continue clicked - Opening Shop filter Items");
+                        OpenShopFilterItems();
+                    }
+                );
+                break;
+
+            case Currency.Shards:
+                Debug.Log("[ShopManager] Showing popup for insufficient Shards");
+
+                OpenPhantomBuyCoinPopup.Instance.Show(
+                    "Not Enough Shards",
+                    "You don't have enough Shards. Go to shop to buy more?",
+                    () => {
+                        Debug.Log("[ShopManager] 🔄 Continue clicked - Opening Shop filter Shard");
+                        OpenShopFilterShard();
+                    }
+                );
+                break;
+
+            case Currency.KulinoCoin:
+            case Currency.Rupiah:
+                Debug.Log("[ShopManager] Showing popup for insufficient KC");
+
+                OpenPhantomBuyCoinPopup.Instance.Show(
+                    "Not Enough Kulino Coin",
+                    "You don't have enough Kulino Coin. Buy some in Phantom Wallet?",
+                    () => {
+                        Debug.Log("[ShopManager] 🔄 Continue clicked - Opening Phantom Wallet");
+                        OpenPhantomWallet();
+                    }
+                );
+                break;
+        }
     }
-
-    // Close buy preview
-    if (buyPreviewUI != null)
-    {
-        buyPreviewUI.Close();
-    }
-
-    // Check popup instance
-    if (OpenPhantomBuyCoinPopup.Instance == null)
-    {
-        Debug.LogError("[ShopManager] OpenPhantomBuyCoinPopup.Instance is NULL!");
-        return;
-    }
-
-    switch (currency)
-    {
-        case Currency.Coins:
-            Debug.Log("[ShopManager] Showing popup for insufficient Coins");
-            
-            OpenPhantomBuyCoinPopup.Instance.Show(
-                "Not Enough Coins",
-                "You don't have enough Coins. Go to shop to buy more?",
-                () => {
-                    Debug.Log("[ShopManager] 🔄 Continue clicked - Opening Shop filter Items");
-                    OpenShopFilterItems();
-                }
-            );
-            break;
-
-        case Currency.Shards:
-            Debug.Log("[ShopManager] Showing popup for insufficient Shards");
-            
-            OpenPhantomBuyCoinPopup.Instance.Show(
-                "Not Enough Shards",
-                "You don't have enough Shards. Go to shop to buy more?",
-                () => {
-                    Debug.Log("[ShopManager] 🔄 Continue clicked - Opening Shop filter Shard");
-                    OpenShopFilterShard();
-                }
-            );
-            break;
-
-        case Currency.KulinoCoin:
-        case Currency.Rupiah:
-            Debug.Log("[ShopManager] Showing popup for insufficient KC");
-            
-            OpenPhantomBuyCoinPopup.Instance.Show(
-                "Not Enough Kulino Coin",
-                "You don't have enough Kulino Coin. Buy some in Phantom Wallet?",
-                 {
-                    Debug.Log("[ShopManager] 🔄 Continue clicked - Opening Phantom Wallet");
-                    OpenPhantomWallet();
-                }
-            );
-            break;
-    }
-}
-
-    /// <summary>
-    /// ✅ Helper: Open shop with Items filter
-    /// </summary>
     void OpenShopFilterItems()
     {
         Debug.Log("[ShopManager] Opening Shop → Filter: Items");

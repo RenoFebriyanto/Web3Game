@@ -21,6 +21,10 @@ public class LevelSelectionItem : MonoBehaviour
     [Tooltip("Energy cost per level")]
     public int energyCostPerLevel = 10;
 
+    [Header("✨ NEW: Particle Effect")]
+    [Tooltip("Particle effect GameObject (child of this level item)")]
+    public GameObject particleEffect;
+
     Button btn;
 
     void Awake()
@@ -54,6 +58,13 @@ public class LevelSelectionItem : MonoBehaviour
                         LevelProgressManager.Instance.IsUnlocked(levelConfig.number) :
                         (levelConfig.number == 1);
 
+        // ✅ Check if this is the NEWEST unlocked level
+        int highestUnlocked = LevelProgressManager.Instance != null ?
+                              LevelProgressManager.Instance.GetHighestUnlocked() : 1;
+
+        bool isNewestUnlock = unlocked && (levelConfig.number == highestUnlocked);
+
+        // Update UI
         if (numberText != null)
         {
             numberText.text = levelConfig.number.ToString();
@@ -70,9 +81,42 @@ public class LevelSelectionItem : MonoBehaviour
             btn.interactable = unlocked;
         }
 
+        // ✅ PARTICLE CONTROL
+        UpdateParticleEffect(unlocked, isNewestUnlock);
+
         RefreshStars();
 
-        Debug.Log($"[LevelSelectionItem] ✓ {levelConfig.id} refreshed (unlocked: {unlocked})");
+        Debug.Log($"[LevelSelectionItem] ✓ {levelConfig.id} refreshed (unlocked: {unlocked}, newest: {isNewestUnlock})");
+    }
+
+    /// <summary>
+    /// ✅ NEW: Control particle effect based on level status
+    /// </summary>
+    void UpdateParticleEffect(bool unlocked, bool isNewestUnlock)
+    {
+        if (particleEffect == null) return;
+
+        // Rule:
+        // - Locked level = NO particle
+        // - Newest unlocked level = SHOW particle
+        // - Old unlocked levels = NO particle
+
+        if (!unlocked)
+        {
+            // Level LOCKED → Particle OFF
+            particleEffect.SetActive(false);
+        }
+        else if (isNewestUnlock)
+        {
+            // Level BARU UNLOCK → Particle ON
+            particleEffect.SetActive(true);
+            Debug.Log($"[LevelSelectionItem] ✨ Particle ON for newest level: {levelConfig.number}");
+        }
+        else
+        {
+            // Level LAMA (sudah unlock sebelumnya) → Particle OFF
+            particleEffect.SetActive(false);
+        }
     }
 
     void RefreshStars()
@@ -102,11 +146,15 @@ public class LevelSelectionItem : MonoBehaviour
             return;
         }
 
-
-
-        // ✅ ENOUGH ENERGY - Show level preview
+        // Show level preview
         LevelPreviewController.ShowPreview(levelConfig);
 
         Debug.Log($"[LevelSelectionItem] Showing preview for {levelConfig.id}");
+    }
+
+    [ContextMenu("Debug: Force Refresh")]
+    void Context_ForceRefresh()
+    {
+        Refresh();
     }
 }

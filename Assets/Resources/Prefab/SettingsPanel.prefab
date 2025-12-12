@@ -260,6 +260,7 @@ GameObject:
   m_Component:
   - component: {fileID: 6513649704222483128}
   - component: {fileID: 4977081898113112753}
+  - component: {fileID: 5562950226331800983}
   m_Layer: 5
   m_Name: SettingsPanel
   m_TagString: Untagged
@@ -305,6 +306,29 @@ MonoBehaviour:
   sfxSlider: {fileID: 7734724365969087925}
   settingsPanel: {fileID: 422621935128966314}
   updateRealtime: 0
+--- !u!223 &5562950226331800983
+Canvas:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 422621935128966314}
+  m_Enabled: 1
+  serializedVersion: 3
+  m_RenderMode: 2
+  m_Camera: {fileID: 0}
+  m_PlaneDistance: 100
+  m_PixelPerfect: 0
+  m_ReceivesEvents: 1
+  m_OverrideSorting: 1
+  m_OverridePixelPerfect: 0
+  m_SortingBucketNormalizedSize: 0
+  m_VertexColorAlwaysGammaSpace: 0
+  m_AdditionalShaderChannelsFlag: 25
+  m_UpdateRectTransformForStandalone: 0
+  m_SortingLayerID: 1874893705
+  m_SortingOrder: 1
+  m_TargetDisplay: 0
 --- !u!1 &901561311778542541
 GameObject:
   m_ObjectHideFlags: 0

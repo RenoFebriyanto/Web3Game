@@ -89,34 +89,24 @@ public class LevelSelectionItem : MonoBehaviour
         Debug.Log($"[LevelSelectionItem] ✓ {levelConfig.id} refreshed (unlocked: {unlocked}, newest: {isNewestUnlock})");
     }
 
-    /// <summary>
-    /// ✅ NEW: Control particle effect based on level status
-    /// </summary>
     void UpdateParticleEffect(bool unlocked, bool isNewestUnlock)
     {
         if (particleEffect == null) return;
 
-        // Rule:
-        // - Locked level = NO particle
-        // - Newest unlocked level = SHOW particle
-        // - Old unlocked levels = NO particle
-
         if (!unlocked)
         {
-            // Level LOCKED → Particle OFF
             particleEffect.SetActive(false);
+            return;
         }
-        else if (isNewestUnlock)
-        {
-            // Level BARU UNLOCK → Particle ON
-            particleEffect.SetActive(true);
-            Debug.Log($"[LevelSelectionItem] ✨ Particle ON for newest level: {levelConfig.number}");
-        }
-        else
-        {
-            // Level LAMA (sudah unlock sebelumnya) → Particle OFF
-            particleEffect.SetActive(false);
-        }
+
+        // ✅ Show particle untuk 3 level terakhir yang unlocked
+        int highestUnlocked = LevelProgressManager.Instance != null ?
+                              LevelProgressManager.Instance.GetHighestUnlocked() : 1;
+
+        int showParticleRange = 3; // Particle untuk 3 level terakhir
+        bool showParticle = levelConfig.number >= (highestUnlocked - showParticleRange + 1);
+
+        particleEffect.SetActive(showParticle);
     }
 
     void RefreshStars()

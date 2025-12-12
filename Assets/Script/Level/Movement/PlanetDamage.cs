@@ -1,8 +1,8 @@
 using UnityEngine;
 
 /// <summary>
-/// ✅ FIXED: Planet Damage dengan proper sound support
-/// Supports Shield, SpeedBoost, dan collision sound
+/// ✅ UPDATED: Planet Damage dengan Camera Shake Effect
+/// Supports Shield, SpeedBoost, dan collision sound + camera shake
 /// </summary>
 [RequireComponent(typeof(Collider2D))]
 public class PlanetDamage : MonoBehaviour
@@ -36,7 +36,7 @@ public class PlanetDamage : MonoBehaviour
                 Debug.Log("[PlanetDamage] SpeedBoost active - Planet destroyed!");
             }
 
-            // ✅ Play planet destroy sound
+            // Play planet destroy sound
             if (SoundManager.Instance != null)
             {
                 SoundManager.Instance.PlayPlanetDestroy();
@@ -63,13 +63,13 @@ public class PlanetDamage : MonoBehaviour
                 Debug.Log("[PlanetDamage] Shield absorbed hit!");
             }
 
-            // ✅ Play shield break sound
+            // Play shield break sound
             if (SoundManager.Instance != null)
             {
                 SoundManager.Instance.PlayShieldBreak();
             }
 
-            // ✅ Play planet destroy sound (planet hancur karena shield absorb)
+            // Play planet destroy sound (planet hancur karena shield absorb)
             if (SoundManager.Instance != null)
             {
                 SoundManager.Instance.PlayPlanetDestroy();
@@ -94,7 +94,13 @@ public class PlanetDamage : MonoBehaviour
             Debug.Log("[PlanetDamage] Normal collision - Player takes damage");
         }
 
-        // ✅ Play planet collision sound (player kena damage)
+        // ✅ NEW: Trigger camera shake saat normal collision
+        if (CameraShake.Instance != null)
+        {
+            CameraShake.Instance.TriggerShake();
+        }
+
+        // Play planet collision sound (player kena damage)
         if (SoundManager.Instance != null)
         {
             SoundManager.Instance.PlayPlanetCollision();
@@ -109,7 +115,7 @@ public class PlanetDamage : MonoBehaviour
         if (ph != null)
         {
             ph.TakeDamage(damage);
-            
+
             if (enableDebugLogs)
             {
                 Debug.Log($"[PlanetDamage] Player took {damage} damage. Lives: {ph.currentLives}/{ph.maxLives}");
@@ -143,6 +149,17 @@ public class PlanetDamage : MonoBehaviour
         else
         {
             Debug.LogError("❌ SoundManager.Instance is NULL!");
+        }
+
+        // ✅ NEW: Test camera shake
+        if (CameraShake.Instance != null)
+        {
+            CameraShake.Instance.TriggerShake();
+            Debug.Log("✓ Triggered camera shake");
+        }
+        else
+        {
+            Debug.LogError("❌ CameraShake.Instance is NULL!");
         }
     }
 

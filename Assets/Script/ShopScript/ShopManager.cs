@@ -519,7 +519,8 @@ double GetShardIDRPrice(int shardAmount)
             buyPreviewUI.Show(data);
     }
 
-    // ✅ UPDATE: TryBuy method untuk handle Rupiah
+    // ✅ UPDATE TryBuy method - replace existing with this
+
     public bool TryBuy(ShopItemData data, Currency currency)
     {
         if (data == null) return false;
@@ -552,7 +553,6 @@ double GetShardIDRPrice(int shardAmount)
                 break;
 
             case Currency.Rupiah:
-                // ✅ NEW: Handle Rupiah payment (convert to KC)
                 return HandleRupiahPayment(data);
 
             case Currency.KulinoCoin:
@@ -571,10 +571,10 @@ double GetShardIDRPrice(int shardAmount)
                 price = data.kulinoCoinPrice;
                 KulinoCoinManager.Instance.RefreshBalance();
                 System.Threading.Thread.Sleep(500);
-                
+
                 double currentBalance = KulinoCoinManager.Instance.GetBalance();
                 canAfford = currentBalance >= price;
-                
+
                 if (!canAfford)
                 {
                     Debug.LogWarning($"[ShopManager] Insufficient KC! Need {price:F6}, have {currentBalance:F6}");
@@ -582,16 +582,98 @@ double GetShardIDRPrice(int shardAmount)
                 break;
         }
 
+        // ✅ NEW: Show alert if cannot afford
         if (!canAfford)
         {
             Debug.Log($"[ShopManager] Not enough {currency}");
-            SoundManager.Instance?.PlayPurchaseFail();
+            ShowInsufficientFundsAlert(data, currency); // ← ADD THIS LINE
             return false;
         }
 
         buyPreviewUI?.Close();
         ShowPurchasePopup(data, currency);
         return true;
+    }
+
+    // ✅ ADD THIS METHOD in ShopManager.cs
+
+    /// <summary>
+    /// ✅ Show insufficient funds popup/alert
+    /// </summary>
+    void ShowInsufficientFundsAlert(ShopItemData data, Currency currency)
+    {
+        Debug.Log($"[ShopManager] ⚠️ Insufficient {currency}!");
+
+        // Play fail sound
+        if (SoundManager.Instance != null)
+        {
+            SoundManager.Instance.PlayPurchaseFail();
+        }
+
+        // Close buy preview
+        if (buyPreviewUI != null)
+        {
+            buyPreviewUI.Close();
+        }
+
+        switch (currency)
+        {
+            case Currency.Coins:
+                // Not enough coins → Open Shop, filter Items (Coins)
+                Debug.Log("[ShopManager] Opening Shop → Filter: Items (Coins)");
+
+                if (ButtonManager.Instance != null)
+                {
+                    ButtonManager.Instance.ShowShop();
+                }
+
+                StartCoroutine(ShowItemsAfterDelay());
+                break;
+
+            case Currency.Shards:
+                // Not enough shards → Open Shop, filter Shard
+                Debug.Log("[ShopManager] Opening Shop → Filter: Shard");
+
+                if (ButtonManager.Instance != null)
+                {
+                    ButtonManager.Instance.ShowShop();
+                }
+
+                StartCoroutine(ShowShardsAfterDelay());
+                break;
+
+            case Currency.KulinoCoin:
+            case Currency.Rupiah:
+                // Not enough KC → Open Phantom Buy popup
+                Debug.Log("[ShopManager] Opening Phantom Buy Coin popup");
+
+                if (OpenPhantomBuyCoinPopup.Instance != null)
+                {
+                    OpenPhantomBuyCoinPopup.Instance.Show(
+                        "Not Enough Kulino Coin",
+                        "Not Enough Kulino Coin, Go to buy some?"
+                    );
+                }
+                else
+                {
+                    Debug.LogError("[ShopManager] OpenPhantomBuyCoinPopup.Instance is NULL!");
+                }
+                break;
+        }
+    }
+
+    IEnumerator ShowItemsAfterDelay()
+    {
+        yield return new WaitForSeconds(0.3f);
+        ShowItems();
+        ScrollToTop();
+    }
+
+    IEnumerator ShowShardsAfterDelay()
+    {
+        yield return new WaitForSeconds(0.3f);
+        ShowShard();
+        ScrollToTop();
     }
 
     // ✅ NEW: Handle pembayaran Rupiah

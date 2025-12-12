@@ -519,8 +519,6 @@ double GetShardIDRPrice(int shardAmount)
             buyPreviewUI.Show(data);
     }
 
-    // ✅ UPDATE TryBuy method - replace existing with this
-
     public bool TryBuy(ShopItemData data, Currency currency)
     {
         if (data == null) return false;
@@ -544,15 +542,77 @@ double GetShardIDRPrice(int shardAmount)
                 if (!data.allowBuyWithCoins) return false;
                 price = data.coinPrice;
                 canAfford = PlayerEconomy.Instance.Coins >= price;
+
+                if (!canAfford)
+                {
+                    Debug.Log($"[ShopManager] Insufficient Coins! Need {price:N0}, have {PlayerEconomy.Instance.Coins:N0}");
+                    ShowInsufficientFundsAlert(data, Currency.Coins);
+                    return false;
+                }
                 break;
 
             case Currency.Shards:
                 if (!data.allowBuyWithShards) return false;
                 price = data.shardPrice;
                 canAfford = PlayerEconomy.Instance.Shards >= price;
+
+                if (!canAfford)
+                {
+                    Debug.Log($"[ShopManager] Insufficient Shards! Need {price:N0}, have {PlayerEconomy.Instance.Shards:N0}");
+                    ShowInsufficientFundsAlert(data, Currency.Shards);
+                    return false;
+                }
                 break;
 
             case Currency.Rupiah:
+                // ✅ FIXED: Check balance first before handling payment
+                if (!data.UseRupiahPricing)
+                {
+                    Debug.LogError("[ShopManager] Item doesn't support Rupiah pricing!");
+                    SoundManager.Instance?.PlayPurchaseFail();
+                    return false;
+                }
+
+                // Check KC price API
+                if (KulinoCoinPriceAPI.Instance == null)
+                {
+                    Debug.LogError("[ShopManager] KulinoCoinPriceAPI not found!");
+                    SoundManager.Instance?.PlayPurchaseFail();
+                    return false;
+                }
+
+                // Get current KC price
+                double kcPriceIDR = KulinoCoinPriceAPI.Instance.GetCurrentPrice();
+                if (kcPriceIDR <= 0)
+                {
+                    Debug.LogError("[ShopManager] Invalid KC price!");
+                    SoundManager.Instance?.PlayPurchaseFail();
+                    return false;
+                }
+
+                // Calculate required KC
+                double rupiahAmount = data.rupiahPrice;
+                double requiredKC = rupiahAmount / kcPriceIDR;
+
+                // ✅ CRITICAL: Check balance
+                if (KulinoCoinManager.Instance == null)
+                {
+                    Debug.LogError("[ShopManager] KulinoCoinManager not found!");
+                    SoundManager.Instance?.PlayPurchaseFail();
+                    return false;
+                }
+
+                double playerBalance = KulinoCoinManager.Instance.GetBalance();
+
+                if (playerBalance < requiredKC)
+                {
+                    // ✅ INSUFFICIENT KC - Show popup
+                    Debug.LogWarning($"[ShopManager] Insufficient KC! Need {requiredKC:F6}, have {playerBalance:F6}");
+                    ShowInsufficientFundsAlert(data, Currency.Rupiah);
+                    return false;
+                }
+
+                // ✅ Enough balance - proceed with payment
                 return HandleRupiahPayment(data);
 
             case Currency.KulinoCoin:
@@ -564,11 +624,14 @@ double GetShardIDRPrice(int shardAmount)
 
                 if (KulinoCoinManager.Instance == null)
                 {
+                    Debug.LogError("[ShopManager] KulinoCoinManager not found!");
                     SoundManager.Instance?.PlayPurchaseFail();
                     return false;
                 }
 
                 price = data.kulinoCoinPrice;
+
+                // Refresh balance
                 KulinoCoinManager.Instance.RefreshBalance();
                 System.Threading.Thread.Sleep(500);
 
@@ -577,89 +640,148 @@ double GetShardIDRPrice(int shardAmount)
 
                 if (!canAfford)
                 {
+                    // ✅ INSUFFICIENT KC - Show popup
                     Debug.LogWarning($"[ShopManager] Insufficient KC! Need {price:F6}, have {currentBalance:F6}");
+                    ShowInsufficientFundsAlert(data, Currency.KulinoCoin);
+                    return false;
                 }
                 break;
         }
 
-        // ✅ NEW: Show alert if cannot afford
-        if (!canAfford)
-        {
-            Debug.Log($"[ShopManager] Not enough {currency}");
-            ShowInsufficientFundsAlert(data, currency); // ← ADD THIS LINE
-            return false;
-        }
-
+        // ✅ Can afford - close preview and proceed
         buyPreviewUI?.Close();
         ShowPurchasePopup(data, currency);
         return true;
     }
 
-    // ✅ ADD THIS METHOD in ShopManager.cs
+    /// <summary>
+/// ✅ FIXED: Show popup alert untuk insufficient funds dengan proper action
+/// </summary>
+void ShowInsufficientFundsAlert(ShopItemData data, Currency currency)
+{
+    Debug.Log($"[ShopManager] ⚠️ Insufficient {currency}!");
+
+    // Play fail sound
+    if (SoundManager.Instance != null)
+    {
+        SoundManager.Instance.PlayPurchaseFail();
+    }
+
+    // Close buy preview
+    if (buyPreviewUI != null)
+    {
+        buyPreviewUI.Close();
+    }
+
+    // Check popup instance
+    if (OpenPhantomBuyCoinPopup.Instance == null)
+    {
+        Debug.LogError("[ShopManager] OpenPhantomBuyCoinPopup.Instance is NULL!");
+        return;
+    }
+
+    switch (currency)
+    {
+        case Currency.Coins:
+            Debug.Log("[ShopManager] Showing popup for insufficient Coins");
+            
+            OpenPhantomBuyCoinPopup.Instance.Show(
+                "Not Enough Coins",
+                "You don't have enough Coins. Go to shop to buy more?",
+                () => {
+                    Debug.Log("[ShopManager] 🔄 Continue clicked - Opening Shop filter Items");
+                    OpenShopFilterItems();
+                }
+            );
+            break;
+
+        case Currency.Shards:
+            Debug.Log("[ShopManager] Showing popup for insufficient Shards");
+            
+            OpenPhantomBuyCoinPopup.Instance.Show(
+                "Not Enough Shards",
+                "You don't have enough Shards. Go to shop to buy more?",
+                () => {
+                    Debug.Log("[ShopManager] 🔄 Continue clicked - Opening Shop filter Shard");
+                    OpenShopFilterShard();
+                }
+            );
+            break;
+
+        case Currency.KulinoCoin:
+        case Currency.Rupiah:
+            Debug.Log("[ShopManager] Showing popup for insufficient KC");
+            
+            OpenPhantomBuyCoinPopup.Instance.Show(
+                "Not Enough Kulino Coin",
+                "You don't have enough Kulino Coin. Buy some in Phantom Wallet?",
+                 {
+                    Debug.Log("[ShopManager] 🔄 Continue clicked - Opening Phantom Wallet");
+                    OpenPhantomWallet();
+                }
+            );
+            break;
+    }
+}
 
     /// <summary>
-    /// ✅ Show insufficient funds popup/alert
+    /// ✅ Helper: Open shop with Items filter
     /// </summary>
-    void ShowInsufficientFundsAlert(ShopItemData data, Currency currency)
+    void OpenShopFilterItems()
     {
-        Debug.Log($"[ShopManager] ⚠️ Insufficient {currency}!");
+        Debug.Log("[ShopManager] Opening Shop → Filter: Items");
 
-        // Play fail sound
-        if (SoundManager.Instance != null)
+        // Open shop panel
+        if (ButtonManager.Instance != null)
         {
-            SoundManager.Instance.PlayPurchaseFail();
+            ButtonManager.Instance.ShowShop();
         }
 
-        // Close buy preview
-        if (buyPreviewUI != null)
+        // Wait for panel to open, then set filter
+        StartCoroutine(ShowItemsAfterDelay());
+    }
+
+    /// <summary>
+    /// ✅ Helper: Open shop with Shard filter
+    /// </summary>
+    void OpenShopFilterShard()
+    {
+        Debug.Log("[ShopManager] Opening Shop → Filter: Shard");
+
+        // Open shop panel
+        if (ButtonManager.Instance != null)
         {
-            buyPreviewUI.Close();
+            ButtonManager.Instance.ShowShop();
         }
 
-        switch (currency)
-        {
-            case Currency.Coins:
-                // Not enough coins → Open Shop, filter Items (Coins)
-                Debug.Log("[ShopManager] Opening Shop → Filter: Items (Coins)");
+        // Wait for panel to open, then set filter
+        StartCoroutine(ShowShardsAfterDelay());
+    }
 
-                if (ButtonManager.Instance != null)
-                {
-                    ButtonManager.Instance.ShowShop();
-                }
+    /// <summary>
+    /// ✅ Helper: Open Phantom Wallet
+    /// </summary>
+    void OpenPhantomWallet()
+    {
+        Debug.Log("[ShopManager] Opening Phantom Wallet");
 
-                StartCoroutine(ShowItemsAfterDelay());
-                break;
-
-            case Currency.Shards:
-                // Not enough shards → Open Shop, filter Shard
-                Debug.Log("[ShopManager] Opening Shop → Filter: Shard");
-
-                if (ButtonManager.Instance != null)
-                {
-                    ButtonManager.Instance.ShowShop();
-                }
-
-                StartCoroutine(ShowShardsAfterDelay());
-                break;
-
-            case Currency.KulinoCoin:
-            case Currency.Rupiah:
-                // Not enough KC → Open Phantom Buy popup
-                Debug.Log("[ShopManager] Opening Phantom Buy Coin popup");
-
-                if (OpenPhantomBuyCoinPopup.Instance != null)
-                {
-                    OpenPhantomBuyCoinPopup.Instance.Show(
-                        "Not Enough Kulino Coin",
-                        "Not Enough Kulino Coin, Go to buy some?"
-                    );
-                }
-                else
-                {
-                    Debug.LogError("[ShopManager] OpenPhantomBuyCoinPopup.Instance is NULL!");
-                }
-                break;
-        }
+#if UNITY_WEBGL && !UNITY_EDITOR
+    try
+    {
+        string phantomURL = "https://phantom.app/";
+        string jsCode = $"window.open('{phantomURL}', '_blank');";
+        Application.ExternalEval(jsCode);
+        Debug.Log("[ShopManager] ✓ Phantom Wallet opened");
+    }
+    catch (System.Exception ex)
+    {
+        Debug.LogError($"[ShopManager] Failed to open Phantom: {ex.Message}");
+        Application.OpenURL("https://phantom.app/");
+    }
+#else
+        Application.OpenURL("https://phantom.app/");
+        Debug.Log("[ShopManager] 🧪 EDITOR: Phantom URL opened");
+#endif
     }
 
     IEnumerator ShowItemsAfterDelay()

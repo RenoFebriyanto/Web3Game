@@ -7,42 +7,39 @@ using System.Runtime.InteropServices;
 #endif
 
 /// <summary>
-/// ✅ Popup untuk beli Kulino Coin via Phantom Wallet
-/// Attach ke: OpenPhantomBuyCoin GameObject
+/// ✅ FIXED v2.0: Popup untuk beli Kulino Coin via Phantom Wallet
+/// - Auto-redirect ke Jupiter DEX untuk swap SOL → Kulino Coin
+/// - Support mobile & desktop
 /// </summary>
 public class OpenPhantomBuyCoinPopup : MonoBehaviour
 {
     public static OpenPhantomBuyCoinPopup Instance { get; private set; }
 
     [Header("🎨 UI References")]
-    [Tooltip("Root GameObject popup")]
     public GameObject rootPopup;
-
-    [Tooltip("Blur overlay background")]
     public GameObject blurOverlay;
 
     [Header("🔘 Buttons")]
-    [Tooltip("Continue button (kuning) - buka Phantom")]
     public Button continueButton;
-
-    [Tooltip("Cancel button (biru) - close popup")]
     public Button cancelButton;
 
-    [Header("📝 Text Display (Optional)")]
+    [Header("📝 Text Display")]
     public TMP_Text titleText;
     public TMP_Text messageText;
 
-    [Header("⚙️ Settings")]
-    [Tooltip("URL untuk buy Kulino Coin")]
-    public string buyKulinoCoinURL = "https://phantom.app/";
+    [Header("⚙️ Kulino Coin Settings")]
+    [Tooltip("Mint address Kulino Coin")]
+    public string kulinoCoinMint = "E5chNtjGFvCMVYoTwcP9DtrdMdctRCGdGahAAhnHbHc1";
+
+    [Header("🌐 DEX URLs")]
+    [Tooltip("Desktop: Jupiter swap URL")]
+    public string jupiterSwapURL = "https://jup.ag/swap/SOL-E5chNtjGFvCMVYoTwcP9DtrdMdctRCGdGahAAhnHbHc1";
+
+    [Tooltip("Mobile: Phantom browser deep link")]
+    public string phantomBrowserURL = "https://phantom.app/ul/browse/https%3A%2F%2Fjup.ag%2Fswap%2FSOL-E5chNtjGFvCMVYoTwcP9DtrdMdctRCGdGahAAhnHbHc1";
 
     [Header("🐛 Debug")]
     public bool enableDebugLogs = true;
-
-#if UNITY_WEBGL && !UNITY_EDITOR
-    [DllImport("__Internal")]
-    private static extern void OpenPhantomWallet(string url);
-#endif
 
     void Awake()
     {
@@ -53,30 +50,14 @@ public class OpenPhantomBuyCoinPopup : MonoBehaviour
         }
         Instance = this;
 
-        // Auto-find components
         if (rootPopup == null)
             rootPopup = gameObject;
-
-        if (continueButton == null)
-        {
-            var continueObj = transform.Find("Continue");
-            if (continueObj != null)
-                continueButton = continueObj.GetComponent<Button>();
-        }
-
-        if (cancelButton == null)
-        {
-            var cancelObj = transform.Find("Cancel");
-            if (cancelObj != null)
-                cancelButton = cancelObj.GetComponent<Button>();
-        }
 
         SetupButtons();
     }
 
     void Start()
     {
-        // Hide popup initially
         if (rootPopup != null)
             rootPopup.SetActive(false);
 
@@ -98,7 +79,6 @@ public class OpenPhantomBuyCoinPopup : MonoBehaviour
             cancelButton.onClick.AddListener(OnCancelClicked);
         }
 
-        // Setup blur overlay close
         if (blurOverlay != null)
         {
             var blurBtn = blurOverlay.GetComponent<Button>();
@@ -113,9 +93,13 @@ public class OpenPhantomBuyCoinPopup : MonoBehaviour
     }
 
     /// <summary>
-    /// Show popup dengan custom message
+    /// ✅ FIXED: Show popup - support 2 atau 3 argumen
+    /// Argumen ketiga (buttonText) optional untuk customize button text
     /// </summary>
-    public void Show(string title = "Not Enough Kulino Coin", string message = "Not Enough Kulino Coin, Go to buy some?")
+    /// <param name="title">Popup title</param>
+    /// <param name="message">Popup message</param>
+    /// <param name="buttonText">Optional: Custom button text (default: "Continue")</param>
+    public void Show(string title = "Not Enough Kulino Coin", string message = "Not Enough Kulino Coin, Go to buy some?", string buttonText = "")
     {
         if (rootPopup != null)
             rootPopup.SetActive(true);
@@ -123,12 +107,24 @@ public class OpenPhantomBuyCoinPopup : MonoBehaviour
         if (blurOverlay != null)
             blurOverlay.SetActive(true);
 
-        // Update text
+        // Set title
         if (titleText != null)
             titleText.text = title;
 
+        // Set message
         if (messageText != null)
             messageText.text = message;
+
+        // ✅ Optional: Update button text jika provided
+        if (!string.IsNullOrEmpty(buttonText) && continueButton != null)
+        {
+            var btnText = continueButton.GetComponentInChildren<TMP_Text>();
+            if (btnText != null)
+            {
+                btnText.text = buttonText;
+                Log($"✓ Button text updated: {buttonText}");
+            }
+        }
 
         // Play sound
         if (SoundManager.Instance != null)
@@ -139,9 +135,6 @@ public class OpenPhantomBuyCoinPopup : MonoBehaviour
         Log($"✓ Popup shown: {title}");
     }
 
-    /// <summary>
-    /// Close popup
-    /// </summary>
     public void Close()
     {
         if (rootPopup != null)
@@ -155,26 +148,21 @@ public class OpenPhantomBuyCoinPopup : MonoBehaviour
 
     void OnContinueClicked()
     {
-        Log("Continue button clicked → Opening Phantom Wallet");
+        Log("Continue clicked → Opening DEX to buy Kulino Coin");
 
-        // Play sound
         if (SoundManager.Instance != null)
         {
             SoundManager.Instance.PlayButtonClick();
         }
 
-        // Open Phantom Wallet
-        OpenPhantomWalletToBuy();
-
-        // Close popup
+        OpenKulinoCoinSwap();
         Close();
     }
 
     void OnCancelClicked()
     {
-        Log("Cancel button clicked");
+        Log("Cancel clicked");
 
-        // Play sound
         if (SoundManager.Instance != null)
         {
             SoundManager.Instance.PlayButtonClick();
@@ -183,27 +171,59 @@ public class OpenPhantomBuyCoinPopup : MonoBehaviour
         Close();
     }
 
-    void OpenPhantomWalletToBuy()
+    /// <summary>
+    /// ✅ FIXED: Open Jupiter DEX untuk swap SOL → Kulino Coin
+    /// Auto-detect mobile/desktop
+    /// </summary>
+    void OpenKulinoCoinSwap()
     {
+        bool isMobile = IsMobileDevice();
+        string targetURL = isMobile ? phantomBrowserURL : jupiterSwapURL;
+
+        Log($"Opening DEX: {(isMobile ? "MOBILE" : "DESKTOP")} → {targetURL}");
+
 #if UNITY_WEBGL && !UNITY_EDITOR
         try
         {
-            // ✅ Call JavaScript function untuk buka Phantom
-            string jsCode = $"window.open('{buyKulinoCoinURL}', '_blank');";
+            // ✅ WebGL: Open in new tab
+            string jsCode = $"window.open('{targetURL}', '_blank');";
             Application.ExternalEval(jsCode);
             
-            Log($"✓ Opened Phantom Wallet: {buyKulinoCoinURL}");
+            Log($"✓ Opened: {targetURL}");
         }
         catch (System.Exception ex)
         {
-            LogError($"Failed to open Phantom: {ex.Message}");
+            LogError($"Failed to open URL: {ex.Message}");
+            
             // Fallback
-            Application.OpenURL(buyKulinoCoinURL);
+            Application.OpenURL(targetURL);
         }
 #else
-        // Editor mode: just open URL
-        Application.OpenURL(buyKulinoCoinURL);
-        Log($"🧪 EDITOR: Opened URL: {buyKulinoCoinURL}");
+        // ✅ Editor: Just open URL
+        Application.OpenURL(targetURL);
+        Log($"🧪 EDITOR: Opened URL: {targetURL}");
+#endif
+    }
+
+    /// <summary>
+    /// Detect mobile device
+    /// </summary>
+    bool IsMobileDevice()
+    {
+#if UNITY_ANDROID || UNITY_IOS
+        return true;
+#elif UNITY_WEBGL
+        // Check via Application.isMobilePlatform
+        if (Application.isMobilePlatform)
+            return true;
+
+        // Check screen size as fallback
+        if (Screen.width < 1024)
+            return true;
+
+        return false;
+#else
+        return false;
 #endif
     }
 
@@ -224,9 +244,17 @@ public class OpenPhantomBuyCoinPopup : MonoBehaviour
         Show();
     }
 
-    [ContextMenu("🧪 Test: Close Popup")]
-    void Test_Close()
+    [ContextMenu("🧪 Test: Open Swap (Desktop)")]
+    void Test_OpenSwapDesktop()
     {
-        Close();
+        Application.OpenURL(jupiterSwapURL);
+        Debug.Log($"[Test] Opened: {jupiterSwapURL}");
+    }
+
+    [ContextMenu("🧪 Test: Open Swap (Mobile)")]
+    void Test_OpenSwapMobile()
+    {
+        Application.OpenURL(phantomBrowserURL);
+        Debug.Log($"[Test] Opened: {phantomBrowserURL}");
     }
 }

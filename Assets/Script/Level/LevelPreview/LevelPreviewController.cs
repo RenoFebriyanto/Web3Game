@@ -670,87 +670,156 @@ public class LevelPreviewController : MonoBehaviour
     }
 
     public void OnPlayButtonClicked()
-{
-    if (currentLevel == null)
     {
-        LogError("No level selected!");
-        return;
-    }
-
-    // ✅ NEW: Check energy cost (gratis jika sudah pernah dimainkan)
-    int energyCost = LevelProgressManager.Instance != null 
-        ? LevelProgressManager.Instance.GetEnergyCost(currentLevel.number) 
-        : 10;
-
-    bool needsEnergy = energyCost > 0;
-
-    Log($"Level {currentLevel.number} - Energy cost: {energyCost} (needs payment: {needsEnergy})");
-
-    // ✅ Check & consume energy (jika perlu)
-    if (needsEnergy && PlayerEconomy.Instance != null)
-    {
-        int currentEnergy = PlayerEconomy.Instance.Energy;
-
-        if (currentEnergy < energyCost)
+        if (currentLevel == null)
         {
-            LogWarning($"Not enough energy! Need {energyCost}, have {currentEnergy}");
-
-            // Show popup
-            if (PopUpAlert.Instance != null)
-            {
-                PopUpAlert.Instance.ShowNotEnoughEnergy();
-            }
-
-            // Play fail sound
-            if (SoundManager.Instance != null)
-            {
-                SoundManager.Instance.PlayCannotPlay();
-            }
-
-            return; // STOP - tidak bisa main
-        }
-
-        // ✅ Consume energy
-        bool consumed = PlayerEconomy.Instance.ConsumeEnergy(energyCost);
-
-        if (!consumed)
-        {
-            LogError("Failed to consume energy!");
+            LogError("No level selected!");
             return;
         }
 
-        Log($"✓ Energy consumed: {energyCost} (Remaining: {PlayerEconomy.Instance.Energy})");
+        // ✅ Check energy cost
+        int energyCost = LevelProgressManager.Instance != null
+            ? LevelProgressManager.Instance.GetEnergyCost(currentLevel.number)
+            : 10;
 
-        // ✅ CRITICAL: Mark level as played (agar next time gratis)
-        if (LevelProgressManager.Instance != null)
+        bool needsEnergy = energyCost > 0;
+
+        Log($"Level {currentLevel.number} - Energy cost: {energyCost} (needs payment: {needsEnergy})");
+
+        // ✅ Check & consume energy (jika perlu)
+        if (needsEnergy && PlayerEconomy.Instance != null)
         {
-            LevelProgressManager.Instance.MarkLevelAsPlayed(currentLevel.number);
-            Log($"✓ Level {currentLevel.number} marked as played");
+            int currentEnergy = PlayerEconomy.Instance.Energy;
+
+            if (currentEnergy < energyCost)
+            {
+                LogWarning($"Not enough energy! Need {energyCost}, have {currentEnergy}");
+
+                // ✅ FIXED: Show OpenPhantomBuyCoin popup instead of LVLPOPUP
+                if (OpenPhantomBuyCoinPopup.Instance != null)
+                {
+                    OpenPhantomBuyCoinPopup.Instance.Show(
+                        "Not Enough Energy",
+                        "You don't have enough Energy to play this level. Go to shop to buy more?",
+                        () => {
+                            // ✅ Callback saat Continue clicked
+                            OpenShopEnergyCategory();
+                        }
+                    );
+                }
+                else
+                {
+                    LogError("OpenPhantomBuyCoinPopup.Instance is NULL!");
+                }
+
+                // Play fail sound
+                if (SoundManager.Instance != null)
+                {
+                    SoundManager.Instance.PlayCannotPlay();
+                }
+
+                return; // STOP - tidak bisa main
+            }
+
+            // ✅ Energy cukup - consume
+            bool consumed = PlayerEconomy.Instance.ConsumeEnergy(energyCost);
+
+            if (!consumed)
+            {
+                LogError("Failed to consume energy!");
+                return;
+            }
+
+            Log($"✓ Energy consumed: {energyCost} (Remaining: {PlayerEconomy.Instance.Energy})");
+
+            // Mark level as played
+            if (LevelProgressManager.Instance != null)
+            {
+                LevelProgressManager.Instance.MarkLevelAsPlayed(currentLevel.number);
+                Log($"✓ Level {currentLevel.number} marked as played");
+            }
+        }
+        else
+        {
+            Log($"✓ Level {currentLevel.number} is FREE (already played or level 1)");
+        }
+
+        // Save level data
+        PlayerPrefs.SetString("SelectedLevelId", currentLevel.id);
+        PlayerPrefs.SetInt("SelectedLevelNumber", currentLevel.number);
+
+        SaveGeneratedRewards();
+
+        PlayerPrefs.Save();
+
+        // Play click sound
+        if (SoundManager.Instance != null)
+        {
+            SoundManager.Instance.PlayButtonClick();
+        }
+
+        Log($"Starting level {currentLevel.number}...");
+
+        SceneManager.LoadScene(gameplaySceneName);
+    }
+
+    /// <summary>
+    /// ✅ NEW: Open Shop dengan filter Energy category
+    /// Called dari OpenPhantomBuyCoin Continue button callback
+    /// </summary>
+    void OpenShopEnergyCategory()
+    {
+        Log("Opening Shop → Energy category");
+
+        // Close level preview panel
+        if (levelPreviewPanel != null)
+        {
+            levelPreviewPanel.SetActive(false);
+        }
+
+        // Open shop panel
+        if (ButtonManager.Instance != null)
+        {
+            ButtonManager.Instance.ShowShop();
+            Log("✓ Shop panel opened");
+        }
+        else
+        {
+            LogError("ButtonManager.Instance is NULL!");
+        }
+
+        // Set filter to Items (Energy category)
+        StartCoroutine(SetShopFilterAfterDelay());
+    }
+
+    /// <summary>
+    /// ✅ Helper: Set shop filter dengan delay
+    /// </summary>
+    System.Collections.IEnumerator SetShopFilterAfterDelay()
+    {
+        // Wait for shop panel to open
+        yield return new WaitForSeconds(0.3f);
+
+        if (ShopManager.Instance != null)
+        {
+            ShopManager.Instance.ShowItems();
+            Log("✓ Shop filter set to Items (Energy)");
+        }
+        else
+        {
+            // Try find ShopManager
+            var shopManager = FindFirstObjectByType<ShopManager>();
+            if (shopManager != null)
+            {
+                shopManager.ShowItems();
+                Log("✓ Shop filter set to Items (Energy)");
+            }
+            else
+            {
+                LogError("ShopManager not found!");
+            }
         }
     }
-    else
-    {
-        Log($"✓ Level {currentLevel.number} is FREE (already played or level 1)");
-    }
-
-    // Save level data
-    PlayerPrefs.SetString("SelectedLevelId", currentLevel.id);
-    PlayerPrefs.SetInt("SelectedLevelNumber", currentLevel.number);
-
-    SaveGeneratedRewards();
-
-    PlayerPrefs.Save();
-
-    // Play click sound
-    if (SoundManager.Instance != null)
-    {
-        SoundManager.Instance.PlayButtonClick();
-    }
-
-    Log($"Starting level {currentLevel.number}...");
-
-    SceneManager.LoadScene(gameplaySceneName);
-}
 
 
 

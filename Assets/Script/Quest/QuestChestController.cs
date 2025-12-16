@@ -17,6 +17,10 @@ public class QuestChestController : MonoBehaviour
     public Image[] crateImages;
     public Slider progressSlider;
 
+    [Header("Particle Effects")]
+    [Tooltip("Assign CrateShine particle untuk setiap crate")]
+    public GameObject[] crateParticles;
+
     [Header("Crate Sprites")]
     public Sprite crateLocked;
     public Sprite crateReady;
@@ -214,32 +218,52 @@ public class QuestChestController : MonoBehaviour
     void UpdateVisuals()
     {
         int max = thresholds.Length > 0 ? thresholds[thresholds.Length - 1] : 1;
-        
+
         if (progressSlider != null)
         {
             progressSlider.minValue = 0;
             progressSlider.maxValue = max;
             progressSlider.value = Mathf.Clamp(claimedCount, 0, max);
             progressSlider.interactable = false;
-            
+
             Log($"✓ Slider updated: {claimedCount}/{max}");
         }
 
+        // ✅ Update crate visuals AND particles
         for (int i = 0; i < crateImages.Length && i < thresholds.Length; i++)
         {
             if (crateImages[i] == null) continue;
 
-            if (claimedCrates[i])
+            // Determine crate state
+            bool isLocked = claimedCount < thresholds[i];
+            bool isReady = claimedCount >= thresholds[i] && !claimedCrates[i];
+            bool isClaimed = claimedCrates[i];
+
+            // Update sprite
+            if (isClaimed)
             {
                 crateImages[i].sprite = crateClaimed;
             }
-            else if (claimedCount >= thresholds[i])
+            else if (isReady)
             {
                 crateImages[i].sprite = crateReady;
             }
             else
             {
                 crateImages[i].sprite = crateLocked;
+            }
+
+            // ✅ UPDATED: Particle ON untuk READY atau CLAIMED
+            if (crateParticles != null && i < crateParticles.Length && crateParticles[i] != null)
+            {
+                bool shouldShowParticle = isReady || isClaimed; // ⭐ CHANGED
+                crateParticles[i].SetActive(shouldShowParticle);
+
+                if (enableDebugLogs)
+                {
+                    string state = isClaimed ? "CLAIMED ✨" : (isReady ? "READY ✨" : "LOCKED");
+                    Log($"Crate {i}: {state}, Particle={shouldShowParticle}");
+                }
             }
         }
 

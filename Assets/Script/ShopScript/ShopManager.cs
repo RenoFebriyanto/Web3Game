@@ -14,6 +14,8 @@ public enum Currency { Coins, Shards, KulinoCoin, Rupiah }
 /// </summary>
 public class ShopManager : MonoBehaviour
 {
+    public static ShopManager Instance { get; private set; }
+
     [Header("🎨 Prefabs")]
     public GameObject categoryContainerPrefab;
     public GameObject itemUIPrefab;

@@ -162,6 +162,25 @@ public class FragmentMissionUI : MonoBehaviour
                 if (sr != null && sr.sprite != null)
                 {
                     box.iconImage.sprite = sr.sprite;
+
+                    // ✅ FIX: Auto-adjust icon size
+                    box.iconImage.preserveAspect = true;
+                    box.iconImage.type = Image.Type.Simple;
+
+                    // Set proper RectTransform
+                    RectTransform iconRect = box.iconImage.GetComponent<RectTransform>();
+                    if (iconRect != null)
+                    {
+                        // Anchor to center
+                        iconRect.anchorMin = new Vector2(0.5f, 0.5f);
+                        iconRect.anchorMax = new Vector2(0.5f, 0.5f);
+                        iconRect.pivot = new Vector2(0.5f, 0.5f);
+
+                        // Set max size (adjust sesuai box size Anda)
+                        float maxSize = 80f; // Sesuaikan dengan ukuran box
+                        iconRect.sizeDelta = new Vector2(maxSize, maxSize);
+                    }
+
                     box.iconImage.gameObject.SetActive(true);
                 }
             }

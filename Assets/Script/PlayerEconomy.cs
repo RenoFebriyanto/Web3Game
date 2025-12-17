@@ -7,6 +7,9 @@ using UnityEngine;
 /// - Proper save/load
 /// - Scene transition handling
 /// </summary>
+/// 
+
+[DefaultExecutionOrder(-1000)] // ✅ Tambahkan ini
 public class PlayerEconomy : MonoBehaviour
 {
     public static PlayerEconomy Instance { get; private set; }

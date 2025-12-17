@@ -1620,6 +1620,7 @@ MonoBehaviour:
   coinsTMP: {fileID: 177437396}
   shardsTMP: {fileID: 323800871}
   energyTMP: {fileID: 1834429147}
+  enableDebugLogs: 0
 --- !u!1 &187350254
 GameObject:
   m_ObjectHideFlags: 0
@@ -19481,23 +19482,6 @@ RectTransform:
   m_CorrespondingSourceObject: {fileID: 7245811170275486647, guid: f50c2678650e56b4dacc0139bc0c2fda, type: 3}
   m_PrefabInstance: {fileID: 3154662036278082925}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &1293946799516845115
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6825200583898109547}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: cdf73e6788291254e9c379aa4d3fe075, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  targetCoins: 0
-  targetShards: 0
-  targetEnergy: 9
-  targetMaxEnergy: 0
-  applyOnStart: 1
 --- !u!114 &1362787023700209247
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -20328,7 +20312,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 2545425199311499502}
-  - component: {fileID: 1293946799516845115}
   - component: {fileID: 4148763635971817604}
   - component: {fileID: 381420581376703684}
   m_Layer: 0

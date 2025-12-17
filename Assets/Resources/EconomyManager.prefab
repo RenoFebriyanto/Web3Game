@@ -48,3 +48,4 @@ MonoBehaviour:
   defaultCoins: 5000
   defaultShards: 0
   defaultMaxEnergy: 100
+  isInitialized: 0

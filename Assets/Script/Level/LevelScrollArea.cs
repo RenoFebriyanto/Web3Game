@@ -2,7 +2,7 @@ using UnityEngine;
 using System.Collections;
 
 /// <summary>
-/// ✅ FIXED v2.0: LevelScrollArea dengan proper viewport validation
+/// ✅ FIXED v2.1: LevelScrollArea - Removed obsolete CheckOrientation call
 /// - Detection Only
 /// - No JS notification
 /// - Complete null safety
@@ -97,7 +97,7 @@ public class LevelScrollArea : MonoBehaviour,
                 isValid = false;
             }
             
-            // ✅ NEW: Check viewport
+            // Check viewport
             if (scrollRect.viewport == null)
             {
                 LogWarning("⚠️ ScrollRect.viewport is NULL!");
@@ -123,7 +123,7 @@ public class LevelScrollArea : MonoBehaviour,
             Log($"✓ Auto-detected container: {levelItemsContainer.name}");
         }
 
-        CheckOrientation();
+        // ✅ REMOVED: CheckOrientation() - method tidak ada (handled by HTML)
     }
 
     void OnEnable()
@@ -277,7 +277,7 @@ public class LevelScrollArea : MonoBehaviour,
             return 1f;
         }
 
-        // ✅ Check 3: Viewport (CRITICAL FIX)
+        // ✅ Check 3: Viewport
         if (scrollRect.viewport == null)
         {
             LogWarning("Cannot calculate position: scrollRect.viewport is null");
@@ -312,7 +312,7 @@ public class LevelScrollArea : MonoBehaviour,
 
         // Calculate scroll position
         float contentHeight = contentRect.rect.height;
-        float viewportHeight = scrollRect.viewport.rect.height; // ✅ Safe now!
+        float viewportHeight = scrollRect.viewport.rect.height;
         float targetY = Mathf.Abs(targetRect.anchoredPosition.y);
         float scrollableHeight = contentHeight - viewportHeight;
 

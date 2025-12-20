@@ -1,33 +1,22 @@
-using System.Collections;
 using UnityEngine;
-using UnityEngine.UI;
-using UnityEngine.EventSystems;
+using System.Collections;
 
 /// <summary>
-/// LevelScrollArea - STANDALONE VERSION
-/// 
-/// FITUR:
-/// ✅ Scroll area luas (tidak perlu cursor pas di level item)
-/// ✅ Auto-scroll ke level terbaru saat panel dibuka
-/// ✅ Smooth animation
-/// ✅ Manual scroll tetap bisa
-/// 
-/// CARA SETUP:
-/// 1. Buat GameObject di Level Panel: "LevelScrollArea"
-/// 2. Attach script ini
-/// 3. Setup RectTransform stretch (full panel)
-/// 4. Assign scrollRect & levelItemsContainer di Inspector
+/// ✅ FIXED v2.0: LevelScrollArea dengan proper viewport validation
+/// - Detection Only
+/// - No JS notification
+/// - Complete null safety
 /// </summary>
 [RequireComponent(typeof(RectTransform))]
 public class LevelScrollArea : MonoBehaviour,
-    IBeginDragHandler,
-    IDragHandler,
-    IEndDragHandler,
-    IScrollHandler
+    UnityEngine.EventSystems.IBeginDragHandler,
+    UnityEngine.EventSystems.IDragHandler,
+    UnityEngine.EventSystems.IEndDragHandler,
+    UnityEngine.EventSystems.IScrollHandler
 {
     [Header("📜 Target ScrollRect")]
     [Tooltip("ScrollRect yang akan dikontrol. Kosongkan untuk auto-detect.")]
-    public ScrollRect scrollRect;
+    public UnityEngine.UI.ScrollRect scrollRect;
 
     [Header("🎨 Visual Settings")]
     [Tooltip("Show debug overlay? (untuk testing)")]
@@ -56,7 +45,7 @@ public class LevelScrollArea : MonoBehaviour,
     [Header("🐛 Debug")]
     public bool enableDebugLogs = false;
 
-    private Image overlayImage;
+    private UnityEngine.UI.Image overlayImage;
     private RectTransform rectTransform;
     private bool isDragging = false;
     private Coroutine autoScrollCoroutine;
@@ -65,57 +54,81 @@ public class LevelScrollArea : MonoBehaviour,
     {
         rectTransform = GetComponent<RectTransform>();
 
-        // Setup overlay image
-        overlayImage = GetComponent<Image>();
+        overlayImage = GetComponent<UnityEngine.UI.Image>();
         if (overlayImage == null)
         {
-            overlayImage = gameObject.AddComponent<Image>();
+            overlayImage = gameObject.AddComponent<UnityEngine.UI.Image>();
         }
 
         UpdateOverlayVisual();
-
         Log("LevelScrollArea initialized");
     }
 
     void Start()
-{
-    // Auto-detect ScrollRect
-    if (scrollRect == null)
     {
-        scrollRect = GetComponentInParent<ScrollRect>();
+        // Auto-detect ScrollRect
         if (scrollRect == null)
         {
-            scrollRect = FindFirstObjectByType<ScrollRect>();
-        }
+            scrollRect = GetComponentInParent<UnityEngine.UI.ScrollRect>();
+            if (scrollRect == null)
+            {
+                scrollRect = FindFirstObjectByType<UnityEngine.UI.ScrollRect>();
+            }
 
+            if (scrollRect != null)
+            {
+                Log($"✓ Auto-detected ScrollRect: {scrollRect.name}");
+            }
+            else
+            {
+                LogWarning("⚠️ ScrollRect not found!");
+            }
+        }
+        
+        // ✅ CRITICAL FIX: Validate ALL ScrollRect components
         if (scrollRect != null)
         {
-            Log($"✓ Auto-detected ScrollRect: {scrollRect.name}");
+            bool isValid = true;
+            
+            // Check content
+            if (scrollRect.content == null)
+            {
+                LogWarning("⚠️ ScrollRect.content is NULL!");
+                isValid = false;
+            }
+            
+            // ✅ NEW: Check viewport
+            if (scrollRect.viewport == null)
+            {
+                LogWarning("⚠️ ScrollRect.viewport is NULL!");
+                isValid = false;
+            }
+            
+            // Disable if invalid
+            if (!isValid)
+            {
+                LogWarning("⚠️ ScrollRect incomplete - auto-scroll DISABLED");
+                scrollRect = null; // Disable to prevent crashes
+            }
+            else
+            {
+                Log("✓ ScrollRect fully validated (content + viewport OK)");
+            }
         }
-        else
-        {
-            LogWarning("⚠️ ScrollRect not found!");
-        }
-    }
-    
-    // ✅ FIX: Validate ScrollRect content
-    if (scrollRect != null && scrollRect.content == null)
-    {
-        LogWarning("⚠️ ScrollRect.content is NULL! Auto-scroll disabled.");
-        scrollRect = null; // Disable to prevent errors
-    }
 
-    // Auto-detect level container
-    if (levelItemsContainer == null && scrollRect != null)
-    {
-        levelItemsContainer = scrollRect.content;
-        Log($"✓ Auto-detected container: {levelItemsContainer.name}");
+        // Auto-detect level container
+        if (levelItemsContainer == null && scrollRect != null && scrollRect.content != null)
+        {
+            levelItemsContainer = scrollRect.content;
+            Log($"✓ Auto-detected container: {levelItemsContainer.name}");
+        }
+
+        CheckOrientation();
     }
-}
 
     void OnEnable()
     {
-        if (autoScrollOnEnable)
+        if (autoScrollOnEnable && scrollRect != null)
         {
             if (autoScrollCoroutine != null)
             {
@@ -157,7 +170,7 @@ public class LevelScrollArea : MonoBehaviour,
     // SCROLL EVENT HANDLERS
     // ========================================
 
-    public void OnBeginDrag(PointerEventData eventData)
+    public void OnBeginDrag(UnityEngine.EventSystems.PointerEventData eventData)
     {
         if (scrollRect != null)
         {
@@ -167,7 +180,7 @@ public class LevelScrollArea : MonoBehaviour,
         }
     }
 
-    public void OnDrag(PointerEventData eventData)
+    public void OnDrag(UnityEngine.EventSystems.PointerEventData eventData)
     {
         if (scrollRect != null && isDragging)
         {
@@ -175,7 +188,7 @@ public class LevelScrollArea : MonoBehaviour,
         }
     }
 
-    public void OnEndDrag(PointerEventData eventData)
+    public void OnEndDrag(UnityEngine.EventSystems.PointerEventData eventData)
     {
         if (scrollRect != null && isDragging)
         {
@@ -185,7 +198,7 @@ public class LevelScrollArea : MonoBehaviour,
         }
     }
 
-    public void OnScroll(PointerEventData eventData)
+    public void OnScroll(UnityEngine.EventSystems.PointerEventData eventData)
     {
         if (scrollRect != null)
         {
@@ -202,9 +215,16 @@ public class LevelScrollArea : MonoBehaviour,
     {
         yield return new WaitForSeconds(autoScrollDelay);
 
+        // ✅ Validate before scroll
         if (scrollRect == null)
         {
             LogWarning("Cannot auto-scroll: scrollRect is null!");
+            yield break;
+        }
+
+        if (scrollRect.viewport == null)
+        {
+            LogWarning("Cannot auto-scroll: viewport is null!");
             yield break;
         }
 
@@ -238,66 +258,79 @@ public class LevelScrollArea : MonoBehaviour,
         return 1;
     }
 
+    /// <summary>
+    /// ✅ FIXED: Complete null safety untuk viewport
+    /// </summary>
     float CalculateScrollPositionForLevel(int levelNumber)
-{
-    // ✅ FIX: Add null checks
-    if (levelItemsContainer == null || scrollRect == null)
     {
-        LogWarning("Cannot calculate position: container or scrollRect is null");
-        return 1f;
-    }
-    
-    if (scrollRect.content == null)
-    {
-        LogWarning("Cannot calculate position: scrollRect.content is null");
-        return 1f;
-    }
-
-    Transform targetItem = FindLevelItemByNumber(levelNumber);
-
-    if (targetItem == null)
-    {
-        LogWarning($"Level item {levelNumber} not found");
-        
-        // Fallback: estimate position
-        int totalLevels = levelItemsContainer.childCount;
-        if (totalLevels > 0)
+        // ✅ Check 1: Basic components
+        if (levelItemsContainer == null || scrollRect == null)
         {
-            float estimated = 1f - ((float)(levelNumber - 1) / totalLevels);
-            Log($"Using estimated position: {estimated:F2}");
-            return Mathf.Clamp01(estimated);
+            LogWarning("Cannot calculate position: container or scrollRect is null");
+            return 1f;
         }
-        return 1f;
+        
+        // ✅ Check 2: Content
+        if (scrollRect.content == null)
+        {
+            LogWarning("Cannot calculate position: scrollRect.content is null");
+            return 1f;
+        }
+
+        // ✅ Check 3: Viewport (CRITICAL FIX)
+        if (scrollRect.viewport == null)
+        {
+            LogWarning("Cannot calculate position: scrollRect.viewport is null");
+            return 1f;
+        }
+
+        // Find target level item
+        Transform targetItem = FindLevelItemByNumber(levelNumber);
+
+        if (targetItem == null)
+        {
+            LogWarning($"Level item {levelNumber} not found");
+            
+            // Fallback: estimate position
+            int totalLevels = levelItemsContainer.childCount;
+            if (totalLevels > 0)
+            {
+                float estimated = 1f - ((float)(levelNumber - 1) / totalLevels);
+                Log($"Using estimated position: {estimated:F2}");
+                return Mathf.Clamp01(estimated);
+            }
+            return 1f;
+        }
+
+        RectTransform contentRect = scrollRect.content;
+        RectTransform targetRect = targetItem.GetComponent<RectTransform>();
+
+        if (contentRect == null || targetRect == null)
+        {
+            return 1f;
+        }
+
+        // Calculate scroll position
+        float contentHeight = contentRect.rect.height;
+        float viewportHeight = scrollRect.viewport.rect.height; // ✅ Safe now!
+        float targetY = Mathf.Abs(targetRect.anchoredPosition.y);
+        float scrollableHeight = contentHeight - viewportHeight;
+
+        if (scrollableHeight <= 0)
+        {
+            return 1f; // Content smaller than viewport
+        }
+
+        float calculatedPosition = 1f - (targetY / scrollableHeight);
+        
+        // Adjust to center target in viewport
+        float adjustment = (viewportHeight * 0.3f) / scrollableHeight;
+        calculatedPosition = Mathf.Clamp01(calculatedPosition + adjustment);
+
+        Log($"📐 Calculated position for level {levelNumber}: {calculatedPosition:F2}");
+
+        return calculatedPosition;
     }
-
-    RectTransform contentRect = scrollRect.content;
-    RectTransform targetRect = targetItem.GetComponent<RectTransform>();
-
-    if (contentRect == null || targetRect == null)
-    {
-        return 1f;
-    }
-
-    float contentHeight = contentRect.rect.height;
-    float viewportHeight = scrollRect.viewport.rect.height;
-    float targetY = Mathf.Abs(targetRect.anchoredPosition.y);
-    float scrollableHeight = contentHeight - viewportHeight;
-
-    if (scrollableHeight <= 0)
-    {
-        return 1f; // Content smaller than viewport
-    }
-
-    float calculatedPosition = 1f - (targetY / scrollableHeight);
-    
-    // Adjust to center target in viewport
-    float adjustment = (viewportHeight * 0.3f) / scrollableHeight;
-    calculatedPosition = Mathf.Clamp01(calculatedPosition + adjustment);
-
-    Log($"📐 Calculated position for level {levelNumber}: {calculatedPosition:F2}");
-
-    return calculatedPosition;
-}
 
     Transform FindLevelItemByNumber(int levelNumber)
     {
@@ -322,33 +355,33 @@ public class LevelScrollArea : MonoBehaviour,
     }
 
     IEnumerator SmoothScrollTo(float targetPosition)
-{
-    // ✅ FIX: Null check before accessing
-    if (scrollRect == null || scrollRect.content == null) 
     {
-        LogWarning("Cannot scroll: scrollRect or content is null");
-        yield break;
+        // ✅ Validate before scroll
+        if (scrollRect == null || scrollRect.content == null || scrollRect.viewport == null) 
+        {
+            LogWarning("Cannot scroll: scrollRect, content, or viewport is null");
+            yield break;
+        }
+
+        float startPosition = scrollRect.verticalNormalizedPosition;
+        float elapsed = 0f;
+
+        Log($"🔄 Smooth scroll: {startPosition:F2} → {targetPosition:F2}");
+
+        while (elapsed < scrollAnimationDuration)
+        {
+            elapsed += Time.deltaTime;
+            float t = elapsed / scrollAnimationDuration;
+            float curveValue = scrollCurve.Evaluate(t);
+
+            scrollRect.verticalNormalizedPosition = Mathf.Lerp(startPosition, targetPosition, curveValue);
+
+            yield return null;
+        }
+
+        scrollRect.verticalNormalizedPosition = targetPosition;
+        Log($"✓ Scroll complete");
     }
-
-    float startPosition = scrollRect.verticalNormalizedPosition;
-    float elapsed = 0f;
-
-    Log($"🔄 Smooth scroll: {startPosition:F2} → {targetPosition:F2}");
-
-    while (elapsed < scrollAnimationDuration)
-    {
-        elapsed += Time.deltaTime;
-        float t = elapsed / scrollAnimationDuration;
-        float curveValue = scrollCurve.Evaluate(t);
-
-        scrollRect.verticalNormalizedPosition = Mathf.Lerp(startPosition, targetPosition, curveValue);
-
-        yield return null;
-    }
-
-    scrollRect.verticalNormalizedPosition = targetPosition;
-    Log($"✓ Scroll complete");
-}
 
     // ========================================
     // PUBLIC API
@@ -460,6 +493,13 @@ public class LevelScrollArea : MonoBehaviour,
     {
         Debug.Log("=== LEVEL SCROLL AREA INFO ===");
         Debug.Log($"ScrollRect: {(scrollRect != null ? scrollRect.name : "NULL")}");
+        
+        if (scrollRect != null)
+        {
+            Debug.Log($"  - Content: {(scrollRect.content != null ? "OK" : "NULL")}");
+            Debug.Log($"  - Viewport: {(scrollRect.viewport != null ? "OK" : "NULL")}");
+        }
+        
         Debug.Log($"Container: {(levelItemsContainer != null ? levelItemsContainer.name : "NULL")}");
         
         if (LevelProgressManager.Instance != null)
@@ -474,5 +514,61 @@ public class LevelScrollArea : MonoBehaviour,
 
         Debug.Log($"Auto Scroll: {autoScrollOnEnable}");
         Debug.Log("==============================");
+    }
+
+    [ContextMenu("🔧 Validate Setup")]
+    void Context_ValidateSetup()
+    {
+        Debug.Log("=== VALIDATION CHECK ===");
+        
+        bool allOK = true;
+        
+        if (scrollRect == null)
+        {
+            Debug.LogError("❌ ScrollRect is NULL!");
+            allOK = false;
+        }
+        else
+        {
+            Debug.Log("✓ ScrollRect assigned");
+            
+            if (scrollRect.content == null)
+            {
+                Debug.LogError("❌ ScrollRect.content is NULL!");
+                allOK = false;
+            }
+            else
+            {
+                Debug.Log("✓ ScrollRect.content OK");
+            }
+            
+            if (scrollRect.viewport == null)
+            {
+                Debug.LogError("❌ ScrollRect.viewport is NULL!");
+                allOK = false;
+            }
+            else
+            {
+                Debug.Log("✓ ScrollRect.viewport OK");
+            }
+        }
+        
+        if (levelItemsContainer == null)
+        {
+            Debug.LogWarning("⚠️ levelItemsContainer is NULL (will auto-detect)");
+        }
+        else
+        {
+            Debug.Log($"✓ Level container: {levelItemsContainer.name}");
+        }
+        
+        if (allOK)
+        {
+            Debug.Log("=== ✅ ALL CHECKS PASSED ===");
+        }
+        else
+        {
+            Debug.Log("=== ❌ SETUP INCOMPLETE ===");
+        }
     }
 }

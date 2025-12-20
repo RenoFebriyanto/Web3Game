@@ -1,23 +1,58 @@
 <!DOCTYPE html>
 <html lang="en-us">
+
 <head>
   <meta charset="utf-8" />
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
   <title>{{{ PRODUCT_NAME }}} - Kulino</title>
   <link rel="shortcut icon" href="TemplateData/favicon.ico" />
   <link rel="stylesheet" href="TemplateData/style.css" />
-  
+
   <!-- Mobile Viewport -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-  
+
   <!-- Landscape Enforcement -->
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-fullscreen" />
-  
-  <!-- ✅ CSS UNTUK ROTATION PROMPT -->
-<style>
-  /* Rotation Prompt */
+
+  <style>
+  /* ===== FULL RESET ===== */
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    position: fixed;
+    background: #000;
+  }
+
+  /* ===== Unity Container ===== */
+  #unity-container {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+  }
+
+  /* ===== Canvas ALWAYS Visible (No Display None!) ===== */
+  #unity-canvas {
+    display: block !important;
+    width: 100% !important;
+    height: 100% !important;
+    position: absolute;
+    top: 0;
+    left: 0;
+    background: #000;
+  }
+
+  /* ===== Rotation Prompt Overlay ===== */
   #rotation-prompt {
     display: none;
     position: fixed;
@@ -25,49 +60,94 @@
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0, 0, 0, 0.95);
-    z-index: 9999;
+    background: rgba(0, 0, 0, 0.98);
+    z-index: 99999;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     text-align: center;
     padding: 20px;
+    pointer-events: none;
   }
   
   #rotation-prompt.show {
     display: flex !important;
+    pointer-events: auto;
   }
   
   .rotation-icon {
-    font-size: 80px;
-    margin-bottom: 20px;
-    animation: rotate-icon 2s infinite;
+    font-size: 100px;
+    margin-bottom: 30px;
+    animation: rotate-pulse 2s ease-in-out infinite;
+    filter: drop-shadow(0 0 20px rgba(255,255,255,0.5));
   }
   
-  @keyframes rotate-icon {
-    0%, 100% { transform: rotate(0deg); }
-    50% { transform: rotate(90deg); }
+  @keyframes rotate-pulse {
+    0%, 100% { 
+      transform: rotate(0deg) scale(1); 
+      opacity: 1;
+    }
+    25% { 
+      transform: rotate(-15deg) scale(1.1); 
+      opacity: 0.8;
+    }
+    50% { 
+      transform: rotate(90deg) scale(1.2); 
+      opacity: 1;
+    }
+    75% { 
+      transform: rotate(105deg) scale(1.1); 
+      opacity: 0.8;
+    }
   }
   
   .rotation-text {
-    font-size: 24px;
+    font-size: 28px;
     font-weight: bold;
     color: #fff;
-    margin-bottom: 10px;
+    margin-bottom: 15px;
+    text-shadow: 0 2px 10px rgba(0,0,0,0.8);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
   }
   
   .rotation-subtext {
-    font-size: 16px;
+    font-size: 18px;
     color: #aaa;
+    line-height: 1.5;
+    text-shadow: 0 1px 5px rgba(0,0,0,0.8);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
   }
 
-  /* Canvas Full Screen */
-  #unity-canvas {
-    display: block;
-    width: 100% !important;
-    height: 100% !important;
-    max-width: 100%;
-    max-height: 100%;
+  /* ===== Loading Bar ===== */
+  #unity-loading-bar {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 1000;
+  }
+
+  #unity-warning {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+  }
+
+  /* ===== Debug Info (Remove in production) ===== */
+  #debug-info {
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    background: rgba(0,0,0,0.8);
+    color: #0f0;
+    padding: 10px;
+    font-family: monospace;
+    font-size: 12px;
+    z-index: 100000;
+    border: 1px solid #0f0;
+    display: none; /* Set to 'block' for debugging */
   }
 </style>
 
@@ -101,325 +181,470 @@
 
   <!-- Unity Show Banner -->
   <script>
-  window.onerror = function(message, source, lineno, colno, error) {
-    console.error('[GLOBAL-ERROR]', message, 'at', source, lineno + ':' + colno);
-    
-    var suppressedErrors = [
-      'Module_main', 'callMain', 'doRun', 'run(', 'runCaller',
-      'Module.run', 'abort(', 'ExitStatus'
-    ];
-    
-    var shouldSuppress = suppressedErrors.some(function(err) {
-      return message.includes(err) || (source && source.includes(err));
-    });
-    
-    if (shouldSuppress) {
-      console.warn('[GLOBAL-ERROR] Suppressed Unity error (tab switch/reload)');
-      return true;
-    }
-    
-    return false;
-  };
-  
-  function unityShowBanner(msg, type) {
-    try {
-      var warningBanner = document.querySelector("#unity-warning");
-      function updateBannerVisibility() {
-        warningBanner.style.display = warningBanner.children.length ? "block" : "none";
+    window.onerror = function (message, source, lineno, colno, error) {
+      console.error('[GLOBAL-ERROR]', message, 'at', source, lineno + ':' + colno);
+
+      var suppressedErrors = [
+        'Module_main', 'callMain', 'doRun', 'run(', 'runCaller',
+        'Module.run', 'abort(', 'ExitStatus'
+      ];
+
+      var shouldSuppress = suppressedErrors.some(function (err) {
+        return message.includes(err) || (source && source.includes(err));
+      });
+
+      if (shouldSuppress) {
+        console.warn('[GLOBAL-ERROR] Suppressed Unity error (tab switch/reload)');
+        return true;
       }
-      var div = document.createElement("div");
-      div.textContent = msg;
-      div.style.padding = "8px";
-      div.style.margin = "6px";
-      if (type === "error") div.style.background = "rgba(200,0,0,0.9)";
-      else if (type === "warning") div.style.background = "rgba(200,160,0,0.9)";
-      else div.style.background = "rgba(0,0,0,0.6)";
-      warningBanner.appendChild(div);
-      if (type !== "error") {
-        setTimeout(function() { 
-          warningBanner.removeChild(div); 
-          updateBannerVisibility(); 
-        }, 5000);
+
+      return false;
+    };
+
+    function unityShowBanner(msg, type) {
+      try {
+        var warningBanner = document.querySelector("#unity-warning");
+        function updateBannerVisibility() {
+          warningBanner.style.display = warningBanner.children.length ? "block" : "none";
+        }
+        var div = document.createElement("div");
+        div.textContent = msg;
+        div.style.padding = "8px";
+        div.style.margin = "6px";
+        if (type === "error") div.style.background = "rgba(200,0,0,0.9)";
+        else if (type === "warning") div.style.background = "rgba(200,160,0,0.9)";
+        else div.style.background = "rgba(0,0,0,0.6)";
+        warningBanner.appendChild(div);
+        if (type !== "error") {
+          setTimeout(function () {
+            warningBanner.removeChild(div);
+            updateBannerVisibility();
+          }, 5000);
+        }
+        updateBannerVisibility();
+      } catch (e) {
+        console.warn('unityShowBanner error', e);
       }
-      updateBannerVisibility();
-    } catch(e){ 
-      console.warn('unityShowBanner error', e); 
     }
-  }
   </script>
 
   <!-- Tab Visibility Handler -->
   <script>
-  let isTabVisible = true;
-  let unityPaused = false;
-  
-  document.addEventListener('visibilitychange', function() {
-    isTabVisible = !document.hidden;
-    console.log('[TAB]', isTabVisible ? 'VISIBLE' : 'HIDDEN');
-    
-    if (window.unityInstance) {
-      try {
-        if (!isTabVisible) {
-          console.log('[TAB] Pausing Unity...');
-          window.unityInstance.SendMessage('GameManager', 'OnApplicationPause', '1');
-          unityPaused = true;
-        } else {
-          console.log('[TAB] Resuming Unity...');
-          window.unityInstance.SendMessage('GameManager', 'OnApplicationPause', '0');
-          unityPaused = false;
+    let isTabVisible = true;
+    let unityPaused = false;
+
+    document.addEventListener('visibilitychange', function () {
+      isTabVisible = !document.hidden;
+      console.log('[TAB]', isTabVisible ? 'VISIBLE' : 'HIDDEN');
+
+      if (window.unityInstance) {
+        try {
+          if (!isTabVisible) {
+            console.log('[TAB] Pausing Unity...');
+            window.unityInstance.SendMessage('GameManager', 'OnApplicationPause', '1');
+            unityPaused = true;
+          } else {
+            console.log('[TAB] Resuming Unity...');
+            window.unityInstance.SendMessage('GameManager', 'OnApplicationPause', '0');
+            unityPaused = false;
+          }
+        } catch (e) {
+          console.warn('[TAB] SendMessage failed:', e.message);
         }
-      } catch(e) {
-        console.warn('[TAB] SendMessage failed:', e.message);
       }
-    }
-  });
-  
-  window.addEventListener('focus', function() {
-    console.log('[WINDOW] Focused');
-    isTabVisible = true;
-  });
-  
-  window.addEventListener('blur', function() {
-    console.log('[WINDOW] Blurred');
-    isTabVisible = false;
-  });
-  
-  window.addEventListener('beforeunload', function() {
-    console.log('[TAB] Page unloading - cleaning up');
-    if (window.unityInstance) {
-      try {
-        window.unityInstance.Quit();
-      } catch(e) {
-        console.warn('[TAB] Quit failed:', e.message);
+    });
+
+    window.addEventListener('focus', function () {
+      console.log('[WINDOW] Focused');
+      isTabVisible = true;
+    });
+
+    window.addEventListener('blur', function () {
+      console.log('[WINDOW] Blurred');
+      isTabVisible = false;
+    });
+
+    window.addEventListener('beforeunload', function () {
+      console.log('[TAB] Page unloading - cleaning up');
+      if (window.unityInstance) {
+        try {
+          window.unityInstance.Quit();
+        } catch (e) {
+          console.warn('[TAB] Quit failed:', e.message);
+        }
       }
-    }
-  });
-  
-  window.addEventListener('webglcontextlost', function(e) {
-    console.error('[WEBGL] Context lost - preventing default');
-    e.preventDefault();
-  }, false);
-  
-  window.addEventListener('webglcontextrestored', function() {
-    console.log('[WEBGL] Context restored');
-  }, false);
+    });
+
+    window.addEventListener('webglcontextlost', function (e) {
+      console.error('[WEBGL] Context lost - preventing default');
+      e.preventDefault();
+    }, false);
+
+    window.addEventListener('webglcontextrestored', function () {
+      console.log('[WEBGL] Context restored');
+    }, false);
   </script>
 
-  <!-- ✅ ORIENTATION DETECTION JAVASCRIPT -->
+  <!-- ✅ FINAL WORKING VERSION: Orientation Detection -->
 <script>
 (function() {
-  console.log('[ORIENT] Initializing...');
+  'use strict';
+  
+  console.log('%c[ORIENT] Starting v3.0 (TESTED)', 'color: #0f0; font-weight: bold');
 
-  // ✅ CRITICAL: Define all functions BEFORE Unity loads
+  // ===== CONFIGURATION =====
+  const CONFIG = {
+    MOBILE_MAX_WIDTH: 900,        // Increased to catch more phones
+    TABLET_MIN_WIDTH: 768,        // Tablets usually >= 768px
+    PORTRAIT_MIN_RATIO: 1.15,     // height/width > 1.15 = portrait
+    DEBOUNCE_DELAY: 500,          // Wait 500ms before checking
+    RECHECK_INTERVAL: 2000        // Recheck every 2s if needed
+  };
+
+  let recheckTimer = null;
+  let debounceTimer = null;
+  let lastState = { mobile: false, portrait: false };
+  let checkCount = 0;
+
+  // ===== DEBUG PANEL (Optional) =====
+  function updateDebugInfo(info) {
+    const debugEl = document.getElementById('debug-info');
+    if (debugEl && debugEl.style.display !== 'none') {
+      debugEl.innerHTML = `
+        <strong>ORIENTATION DEBUG</strong><br>
+        Width: ${window.innerWidth}px<br>
+        Height: ${window.innerHeight}px<br>
+        Ratio: ${(window.innerHeight / window.innerWidth).toFixed(2)}<br>
+        Mobile: ${info.mobile ? 'YES' : 'NO'}<br>
+        Portrait: ${info.portrait ? 'YES' : 'NO'}<br>
+        Checks: ${checkCount}<br>
+        Prompt: ${info.promptVisible ? 'VISIBLE' : 'HIDDEN'}
+      `;
+    }
+  }
+
+  // ===== MOBILE DETECTION =====
   window.IsMobileBrowser = function() {
     const ua = navigator.userAgent || navigator.vendor || window.opera;
-    const isMobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
-    const hasTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
-    const isSmallScreen = window.innerWidth < 1024;
-    const isMobile = isMobileUA || (hasTouch && isSmallScreen);
+    const width = window.innerWidth;
+    const height = window.innerHeight;
     
-    console.log('[ORIENT] Detection:', {
-      userAgent: isMobileUA,
+    // Check for mobile user agents (phones only, not tablets)
+    const mobilePattern = /Android.*Mobile|iPhone|iPod|BlackBerry|IEMobile|Opera Mini/i;
+    const isMobileUA = mobilePattern.test(ua);
+    
+    // Check screen size (phones are usually < 768px)
+    const isSmallScreen = width < CONFIG.MOBILE_MAX_WIDTH;
+    
+    // Check touch support
+    const hasTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+    
+    // Final decision: must have mobile UA + small screen + touch
+    const isMobile = isMobileUA && isSmallScreen && hasTouch;
+    
+    console.log('[ORIENT] Mobile check:', {
+      ua: isMobileUA,
+      width: width,
+      height: height,
+      smallScreen: isSmallScreen,
       touch: hasTouch,
-      screenWidth: window.innerWidth,
-      result: isMobile
+      result: isMobile ? '📱 MOBILE' : '🖥️ DESKTOP'
     });
     
     return isMobile;
   };
 
+  // ===== PORTRAIT DETECTION =====
   window.IsPortraitMode = function() {
-    const portrait = window.innerHeight > window.innerWidth;
-    console.log('[ORIENT] Check:', window.innerWidth, 'x', window.innerHeight, '=', portrait ? 'PORTRAIT' : 'LANDSCAPE');
-    return portrait;
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    const ratio = h / w;
+    
+    // Method 1: Screen Orientation API (most reliable)
+    if (window.screen && window.screen.orientation) {
+      const type = window.screen.orientation.type;
+      const isPortrait = type.includes('portrait');
+      console.log('[ORIENT] screen.orientation:', type, '→', isPortrait ? '📱 PORTRAIT' : '🖼️ LANDSCAPE');
+      return isPortrait;
+    }
+    
+    // Method 2: window.orientation (iOS Safari)
+    if (typeof window.orientation !== 'undefined') {
+      // 0 or 180 = portrait, 90 or -90 = landscape
+      const isPortrait = (Math.abs(window.orientation) === 0 || Math.abs(window.orientation) === 180);
+      console.log('[ORIENT] window.orientation:', window.orientation, '→', isPortrait ? '📱 PORTRAIT' : '🖼️ LANDSCAPE');
+      return isPortrait;
+    }
+    
+    // Method 3: Dimension ratio (fallback)
+    const isPortrait = ratio > CONFIG.PORTRAIT_MIN_RATIO;
+    console.log('[ORIENT] Dimension check:', w, 'x', h, 'ratio:', ratio.toFixed(2), '→', isPortrait ? '📱 PORTRAIT' : '🖼️ LANDSCAPE');
+    return isPortrait;
   };
 
-  // ✅ CRITICAL: Define NotifyOrientationToJS (required by Unity)
-  window.NotifyOrientationToJS = function(isPortrait) {
-    console.log('[ORIENT] Unity notified, portrait:', isPortrait);
-    checkOrientation();
-  };
-
-  // ✅ Check and update UI
+  // ===== MAIN CHECK FUNCTION =====
   function checkOrientation() {
+    checkCount++;
+    
     const mobile = window.IsMobileBrowser();
     const portrait = window.IsPortraitMode();
     const prompt = document.getElementById('rotation-prompt');
     const canvas = document.getElementById('unity-canvas');
     
-    console.log('[ORIENT] Mobile:', mobile, '| Portrait:', portrait);
+    console.log(`%c[ORIENT] Check #${checkCount}`, 'color: #ff0; font-weight: bold', {
+      mobile: mobile,
+      portrait: portrait,
+      dimensions: window.innerWidth + 'x' + window.innerHeight
+    });
     
+    // ===== DECISION LOGIC =====
     if (mobile && portrait) {
-      if (prompt) prompt.classList.add('show');
-      if (canvas) canvas.style.display = 'none';
-      console.log('[ORIENT] ⚠️ PORTRAIT - Showing prompt');
-    } else {
-      if (prompt) prompt.classList.remove('show');
-      if (canvas) {
-        canvas.style.display = 'block';
-        canvas.style.width = '100%';
-        canvas.style.height = '100%';
+      // 📱 Mobile Portrait = Show prompt
+      if (prompt) {
+        prompt.classList.add('show');
+        console.log('[ORIENT] ⚠️ SHOWING rotation prompt');
       }
-      console.log('[ORIENT] ✅ LANDSCAPE - OK');
+      // Canvas stays visible but covered by prompt overlay
+      
+    } else {
+      // 🖼️ Landscape or Desktop = Hide prompt
+      if (prompt) {
+        prompt.classList.remove('show');
+        console.log('[ORIENT] ✅ HIDING rotation prompt');
+      }
+      // Canvas always visible
+    }
+    
+    // Ensure canvas is always block
+    if (canvas) {
+      canvas.style.display = 'block';
+      canvas.style.width = '100%';
+      canvas.style.height = '100%';
+    }
+    
+    // Update debug info
+    updateDebugInfo({
+      mobile: mobile,
+      portrait: portrait,
+      promptVisible: mobile && portrait
+    });
+    
+    // Save state
+    lastState = { mobile: mobile, portrait: portrait };
+    
+    // ===== CONTINUOUS RECHECK (for stubborn devices) =====
+    if (mobile && portrait) {
+      // Keep rechecking every 2s while in portrait
+      clearTimeout(recheckTimer);
+      recheckTimer = setTimeout(checkOrientation, CONFIG.RECHECK_INTERVAL);
     }
   }
 
-  // ✅ Event listeners
+  // ===== DEBOUNCED CHECK =====
+  function debouncedCheck() {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(checkOrientation, CONFIG.DEBOUNCE_DELAY);
+  }
+
+  // ===== EVENT LISTENERS =====
+  
+  // Page load
   window.addEventListener('load', function() {
     console.log('[ORIENT] Page loaded');
-    setTimeout(checkOrientation, 100);
+    setTimeout(checkOrientation, 200);
   });
 
-  let resizeTimer;
+  // Window resize
   window.addEventListener('resize', function() {
-    console.log('[ORIENT] Window resized');
-    clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(checkOrientation, 200);
+    console.log('[ORIENT] Window resized:', window.innerWidth, 'x', window.innerHeight);
+    debouncedCheck();
   });
 
+  // Orientation change
   window.addEventListener('orientationchange', function() {
-    console.log('[ORIENT] Orientation changed');
-    setTimeout(checkOrientation, 300);
+    console.log('[ORIENT] Orientation change event fired');
+    setTimeout(checkOrientation, 500);
   });
 
-  console.log('[ORIENT] ✅ System ready');
+  // Screen orientation API change
+  if (window.screen && window.screen.orientation) {
+    window.screen.orientation.addEventListener('change', function() {
+      console.log('[ORIENT] screen.orientation.change:', window.screen.orientation.type);
+      setTimeout(checkOrientation, 300);
+    });
+  }
+
+  // Visibility change (tab focus)
+  document.addEventListener('visibilitychange', function() {
+    if (!document.hidden) {
+      console.log('[ORIENT] Page visible - rechecking');
+      setTimeout(checkOrientation, 200);
+    }
+  });
+
+  // ===== EXPOSE HIDE/SHOW FUNCTIONS FOR UNITY =====
+  window.HideRotationPrompt = function() {
+    const prompt = document.getElementById('rotation-prompt');
+    if (prompt) {
+      prompt.classList.remove('show');
+      console.log('[ORIENT] 🎮 Unity requested: HIDE prompt');
+    }
+  };
+
+  window.ShowRotationPrompt = function() {
+    const prompt = document.getElementById('rotation-prompt');
+    if (prompt && window.IsMobileBrowser() && window.IsPortraitMode()) {
+      prompt.classList.add('show');
+      console.log('[ORIENT] 🎮 Unity requested: SHOW prompt');
+    }
+  };
+
+  // ===== MANUAL TRIGGER (for console testing) =====
+  window.forceCheckOrientation = checkOrientation;
+
+  console.log('%c[ORIENT] ✅ System initialized v3.0', 'color: #0f0; font-weight: bold');
+  
+  // Initial check after 100ms
+  setTimeout(checkOrientation, 100);
+  
 })();
 </script>
 
+
   <!-- Kulino Bridge -->
   <script>
-  (function(){
-    const LOG = (...a) => console.log('[KULINO-BRIDGE]', ...a);
+    (function () {
+      const LOG = (...a) => console.log('[KULINO-BRIDGE]', ...a);
 
-    const queue = [];
-    let unityReady = false;
+      const queue = [];
+      let unityReady = false;
 
-    window.__kulino_unity_ready = function(){
-      LOG('✅ Unity ready. Queue:', queue.length);
-      unityReady = true;
-      
-      while(queue.length){
-        const item = queue.shift();
-        _sendToUnity(item.method, item.payload);
+      window.__kulino_unity_ready = function () {
+        LOG('✅ Unity ready. Queue:', queue.length);
+        unityReady = true;
+
+        while (queue.length) {
+          const item = queue.shift();
+          _sendToUnity(item.method, item.payload);
+        }
+
+        checkWallet();
+      };
+
+      function _sendToUnity(method, payload) {
+        try {
+          if (window.unityInstance && typeof window.unityInstance.SendMessage === 'function') {
+            LOG('📤', method);
+            window.unityInstance.SendMessage('GameManager', method, payload);
+          } else {
+            queue.push({ method, payload });
+          }
+        } catch (e) {
+          console.error('[KULINO-BRIDGE] Send error', e);
+        }
       }
-      
-      checkWallet();
-    };
 
-    function _sendToUnity(method, payload){
-      try {
-        if (window.unityInstance && typeof window.unityInstance.SendMessage === 'function') {
-          LOG('📤', method);
-          window.unityInstance.SendMessage('GameManager', method, payload);
+      function sendResult(obj) {
+        const json = JSON.stringify(obj);
+        if (!unityReady) {
+          queue.push({ method: 'OnClaimResult', payload: json });
         } else {
-          queue.push({ method, payload });
+          _sendToUnity('OnClaimResult', json);
         }
-      } catch(e){ 
-        console.error('[KULINO-BRIDGE] Send error', e); 
       }
-    }
 
-    function sendResult(obj){
-      const json = JSON.stringify(obj);
-      if (!unityReady) { 
-        queue.push({ method: 'OnClaimResult', payload: json }); 
-      } else {
-        _sendToUnity('OnClaimResult', json);
-      }
-    }
+      function checkWallet() {
+        const params = new URLSearchParams(window.location.search);
+        const wallet = params.get('wallet');
 
-    function checkWallet() {
-      const params = new URLSearchParams(window.location.search);
-      const wallet = params.get('wallet');
-      
-      if (wallet) {
-        LOG('✅ Wallet found:', wallet.substring(0, 8) + '...');
-        notifyWallet(wallet);
-      }
-    }
-
-    function notifyWallet(address, retry = 0) {
-      if (!window.unityInstance || typeof window.unityInstance.SendMessage !== 'function') {
-        if (retry < 10) {
-          setTimeout(() => notifyWallet(address, retry + 1), 500);
+        if (wallet) {
+          LOG('✅ Wallet found:', wallet.substring(0, 8) + '...');
+          notifyWallet(wallet);
         }
-        return;
       }
-      
-      try {
-        window.unityInstance.SendMessage('GameManager', 'OnWalletConnected', address);
-        LOG('✅ Wallet sent to GameManager');
-      } catch(e) {
-        console.error('[KULINO-BRIDGE] Notify failed', e);
-      }
-    }
 
-    window.requestClaimFromUnity = async function(messageJson) {
-      LOG('💰 Claim requested');
-      try {
-        const provider = (window.solana && window.solana.isPhantom) ? window.solana :
-                         (window.phantom && window.phantom.solana) ? window.phantom.solana : null;
-        if (!provider) {
-          sendResult({ success:false, error:'phantom_not_installed' });
+      function notifyWallet(address, retry = 0) {
+        if (!window.unityInstance || typeof window.unityInstance.SendMessage !== 'function') {
+          if (retry < 10) {
+            setTimeout(() => notifyWallet(address, retry + 1), 500);
+          }
           return;
         }
 
-        let payload = (typeof messageJson === 'string') ? JSON.parse(messageJson) : messageJson;
-
-        if (!provider.isConnected) {
-          await provider.connect();
+        try {
+          window.unityInstance.SendMessage('GameManager', 'OnWalletConnected', address);
+          LOG('✅ Wallet sent to GameManager');
+        } catch (e) {
+          console.error('[KULINO-BRIDGE] Notify failed', e);
         }
-
-        payload.address = provider.publicKey.toString();
-        const canonical = {
-          address: payload.address,
-          gameId: payload.gameId,
-          amount: payload.amount,
-          nonce: payload.nonce,
-          ts: payload.ts
-        };
-        const messageStr = JSON.stringify(canonical);
-
-        const encoded = new TextEncoder().encode(messageStr);
-        const signed = await provider.signMessage(encoded, 'utf8');
-        const sig = bs58.encode(signed.signature);
-
-        const resp = await fetch('http://localhost:3000/api/claim', {
-          method: 'POST',
-          headers: {'Content-Type':'application/json'},
-          body: JSON.stringify({ 
-            message: messageStr, 
-            signature: sig, 
-            publicKey: provider.publicKey.toString() 
-          })
-        });
-
-        let data = await resp.json();
-        sendResult(data);
-
-      } catch(err) {
-        console.error('[KULINO-BRIDGE] Error:', err);
-        sendResult({ success:false, error: err.message || String(err) });
       }
-    };
 
-    LOG('✅ Bridge loaded');
-  })();
+      window.requestClaimFromUnity = async function (messageJson) {
+        LOG('💰 Claim requested');
+        try {
+          const provider = (window.solana && window.solana.isPhantom) ? window.solana :
+            (window.phantom && window.phantom.solana) ? window.phantom.solana : null;
+          if (!provider) {
+            sendResult({ success: false, error: 'phantom_not_installed' });
+            return;
+          }
+
+          let payload = (typeof messageJson === 'string') ? JSON.parse(messageJson) : messageJson;
+
+          if (!provider.isConnected) {
+            await provider.connect();
+          }
+
+          payload.address = provider.publicKey.toString();
+          const canonical = {
+            address: payload.address,
+            gameId: payload.gameId,
+            amount: payload.amount,
+            nonce: payload.nonce,
+            ts: payload.ts
+          };
+          const messageStr = JSON.stringify(canonical);
+
+          const encoded = new TextEncoder().encode(messageStr);
+          const signed = await provider.signMessage(encoded, 'utf8');
+          const sig = bs58.encode(signed.signature);
+
+          const resp = await fetch('http://localhost:3000/api/claim', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              message: messageStr,
+              signature: sig,
+              publicKey: provider.publicKey.toString()
+            })
+          });
+
+          let data = await resp.json();
+          sendResult(data);
+
+        } catch (err) {
+          console.error('[KULINO-BRIDGE] Error:', err);
+          sendResult({ success: false, error: err.message || String(err) });
+        }
+      };
+
+      LOG('✅ Bridge loaded');
+    })();
   </script>
 
   <!-- Unity Loader -->
   <script>
     var canvas = document.querySelector("#unity-canvas");
-    
-    canvas.addEventListener('webglcontextlost', function(e) {
+
+    canvas.addEventListener('webglcontextlost', function (e) {
       console.error('[CANVAS] WebGL context lost');
       e.preventDefault();
     }, false);
-    
-    canvas.addEventListener('webglcontextrestored', function() {
+
+    canvas.addEventListener('webglcontextrestored', function () {
       console.log('[CANVAS] WebGL context restored');
     }, false);
-    
+
     var buildUrl = "Build";
     var loaderUrl = buildUrl + "/{{{ LOADER_FILENAME }}}";
     var config = {
@@ -431,8 +656,8 @@
       productName: "{{{ PRODUCT_NAME }}}",
       productVersion: "{{{ PRODUCT_VERSION }}}",
       showBanner: unityShowBanner,
-      matchWebGLToCanvasSize: true,
-      devicePixelRatio: window.devicePixelRatio || 1,
+      matchWebGLToCanvasSize: true, // ✅ CRITICAL for mobile
+      devicePixelRatio: 1, // ✅ CHANGED: Use 1 for better mobile performance
       webglContextAttributes: {
         preserveDrawingBuffer: false,
         powerPreference: "high-performance"
@@ -449,41 +674,51 @@
       }).then((unityInstance) => {
         document.querySelector("#unity-loading-bar").style.display = "none";
         window.unityInstance = unityInstance;
-        
-        window.addEventListener('error', function(e) {
+
+        window.addEventListener('error', function (e) {
           console.error('[UNITY-ERROR]', e.message);
-          if (e.message.includes('Module_main') || 
-              e.message.includes('callMain') ||
-              e.message.includes('doRun')) {
+          if (e.message.includes('Module_main') ||
+            e.message.includes('callMain') ||
+            e.message.includes('doRun')) {
             console.warn('[UNITY-ERROR] Suppressed Unity initialization error');
             e.preventDefault();
             return false;
           }
         });
-        
-        window.addEventListener('unhandledrejection', function(e) {
+
+        window.addEventListener('unhandledrejection', function (e) {
           console.error('[UNITY-PROMISE]', e.reason);
           if (e.reason && e.reason.toString().includes('WebGL')) {
             console.warn('[UNITY-PROMISE] Suppressed WebGL error');
             e.preventDefault();
           }
         });
-        
+
+        // ✅ Kulino Bridge ready
         if (typeof window.__kulino_unity_ready === 'function') {
           window.__kulino_unity_ready();
         }
-        
-        console.log('✅ Unity loaded');
+
+        // ✅ NEW: Orientation system ready
+        if (typeof window.__kulino_orientation_ready === 'function') {
+          console.log('[UNITY] 📱 Calling orientation ready callback...');
+          setTimeout(() => {
+            window.__kulino_orientation_ready();
+          }, 500);
+        }
+
+        console.log('✅ Unity loaded and fully initialized');
+
       }).catch((message) => {
         console.error('❌ Unity load failed', message);
-        
+
         var errorMsg = 'Failed to load game';
         if (message.includes('memory')) {
           errorMsg += ': Not enough memory';
         } else if (message.includes('WebGL')) {
           errorMsg += ': WebGL not supported';
         }
-        
+
         alert(errorMsg + '. Please refresh the page.');
       });
     };
@@ -494,4 +729,5 @@
     document.body.appendChild(script);
   </script>
 </body>
+
 </html>

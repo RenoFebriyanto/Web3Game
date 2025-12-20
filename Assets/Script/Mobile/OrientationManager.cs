@@ -6,16 +6,15 @@ using System.Runtime.InteropServices;
 #endif
 
 /// <summary>
-/// ✅ FIXED: OrientationManager - Detection Only (no JS notification)
+/// ✅ FINAL v3.0: Simplified OrientationManager
+/// - Minimal Unity intervention
+/// - Let HTML handle most of the work
+/// - Only provide query functions
 /// </summary>
 [DefaultExecutionOrder(-800)]
 public class OrientationManager : MonoBehaviour
 {
     public static OrientationManager Instance { get; private set; }
-
-    [Header("⚙️ Settings")]
-    public float checkInterval = 0.3f;
-    public float minLandscapeAspect = 1.2f;
 
     [Header("📊 Status (Read Only)")]
     [SerializeField] private bool isMobileDevice = false;
@@ -25,8 +24,9 @@ public class OrientationManager : MonoBehaviour
     [SerializeField] private float aspectRatio = 1.0f;
 
     [Header("🐛 Debug")]
-    public bool enableDebugLogs = false;
+    public bool enableDebugLogs = true;
 
+    private float checkInterval = 1f; // Check every 1 second
     private float lastCheckTime = 0f;
     
 #if UNITY_WEBGL && !UNITY_EDITOR
@@ -48,8 +48,7 @@ public class OrientationManager : MonoBehaviour
         gameObject.name = "[OrientationManager]";
 
         DetectPlatform();
-        SetupOrientation();
-        Log("✅ Init");
+        Log("✅ Initialized v3.0");
     }
 
     void Start()
@@ -75,25 +74,16 @@ public class OrientationManager : MonoBehaviour
         }
         catch
         {
-            isMobileDevice = Application.isMobilePlatform || Screen.width < 768;
+            // Fallback
+            isMobileDevice = Application.isMobilePlatform || Screen.width < 900;
         }
 #elif UNITY_ANDROID || UNITY_IOS
         isMobileDevice = true;
 #else
-        isMobileDevice = Screen.width < 768;
+        isMobileDevice = Screen.width < 900;
 #endif
+        
         Log($"Platform: {(isMobileDevice ? "MOBILE" : "DESKTOP")}");
-    }
-
-    void SetupOrientation()
-    {
-#if UNITY_ANDROID || UNITY_IOS
-        Screen.orientation = ScreenOrientation.Landscape;
-        Screen.autorotateToLandscapeLeft = true;
-        Screen.autorotateToLandscapeRight = true;
-        Screen.autorotateToPortrait = false;
-        Screen.autorotateToPortraitUpsideDown = false;
-#endif
     }
 
     void CheckOrientation()
@@ -101,8 +91,6 @@ public class OrientationManager : MonoBehaviour
         screenWidth = Screen.width;
         screenHeight = Screen.height;
         aspectRatio = (float)screenWidth / screenHeight;
-
-        bool wasLandscape = isLandscape;
 
 #if UNITY_WEBGL && !UNITY_EDITOR
         if (isMobileDevice)
@@ -114,7 +102,7 @@ public class OrientationManager : MonoBehaviour
             }
             catch
             {
-                isLandscape = aspectRatio >= minLandscapeAspect;
+                isLandscape = aspectRatio >= 1.15f;
             }
         }
         else
@@ -122,36 +110,36 @@ public class OrientationManager : MonoBehaviour
             isLandscape = true;
         }
 #else
-        isLandscape = aspectRatio >= minLandscapeAspect;
+        isLandscape = aspectRatio >= 1.15f;
 #endif
 
-        if (!isMobileDevice) return;
-
-        if (!isLandscape && wasLandscape != isLandscape)
+        // Only log on state change
+        if (lastCheckTime > 0) // Skip first check
         {
-            Log($"⚠️ PORTRAIT {screenWidth}x{screenHeight}");
-        }
-        else if (isLandscape && wasLandscape != isLandscape)
-        {
-            Log($"✓ LANDSCAPE {screenWidth}x{screenHeight}");
+            Log($"{(isLandscape ? "LANDSCAPE" : "PORTRAIT")} | {screenWidth}x{screenHeight}");
         }
     }
 
+    // ===== PUBLIC API =====
     public bool IsMobile() => isMobileDevice;
     public bool IsLandscapeMode() => isLandscape;
     public Vector2Int GetScreenSize() => new Vector2Int(screenWidth, screenHeight);
     public float GetAspectRatio() => aspectRatio;
 
-    void Log(string m) { if (enableDebugLogs) Debug.Log($"[Orient] {m}"); }
+    void Log(string m) 
+    { 
+        if (enableDebugLogs) 
+            Debug.Log($"[Orient] {m}"); 
+    }
 
-    [ContextMenu("Status")]
+    [ContextMenu("📊 Print Status")]
     void PrintStatus()
     {
-        Debug.Log("=== ORIENTATION ===");
+        Debug.Log("=== ORIENTATION STATUS ===");
         Debug.Log($"Platform: {(isMobileDevice ? "MOBILE" : "DESKTOP")}");
         Debug.Log($"Mode: {(isLandscape ? "LANDSCAPE" : "PORTRAIT")}");
         Debug.Log($"Screen: {screenWidth}x{screenHeight}");
         Debug.Log($"Aspect: {aspectRatio:F2}");
-        Debug.Log("===================");
+        Debug.Log("=========================");
     }
 }

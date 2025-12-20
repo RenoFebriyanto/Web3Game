@@ -1,18 +1,7 @@
 using UnityEngine;
 
 /// <summary>
-/// 📱 MOBILE OPTIMIZER - Optimize Performance untuk Mobile Web
-/// 
-/// FITUR:
-/// ✅ Auto-detect mobile & adjust quality
-/// ✅ Lower target framerate untuk save battery
-/// ✅ Disable unnecessary features
-/// ✅ Optimize physics & rendering
-/// 
-/// SETUP:
-/// 1. Attach ke GameObject di scene pertama
-/// 2. Configure settings di Inspector
-/// 3. Will auto-apply optimizations on mobile
+/// 📱 MOBILE OPTIMIZER - FIXED v2.0 with Screen Resize Handler
 /// </summary>
 [DefaultExecutionOrder(-900)]
 public class MobileOptimizer : MonoBehaviour
@@ -33,11 +22,11 @@ public class MobileOptimizer : MonoBehaviour
     [Header("🎨 Quality Settings")]
     [Tooltip("Quality level untuk mobile (0-5, 0=Very Low)")]
     [Range(0, 5)]
-    public int mobileQualityLevel = 2; // Medium
+    public int mobileQualityLevel = 2;
 
     [Tooltip("Quality level untuk desktop")]
     [Range(0, 5)]
-    public int desktopQualityLevel = 5; // Very High
+    public int desktopQualityLevel = 5;
 
     [Header("⚡ Optimization Toggles")]
     [Tooltip("Enable VSync? (disable untuk better performance)")]
@@ -54,6 +43,8 @@ public class MobileOptimizer : MonoBehaviour
     [SerializeField] private int currentQuality = 5;
     [SerializeField] private int currentFPS = 60;
     [SerializeField] private float avgFrameTime = 0f;
+    [SerializeField] private int lastScreenWidth = 0;
+    [SerializeField] private int lastScreenHeight = 0;
 
     [Header("🐛 Debug")]
     public bool enableDebugLogs = true;
@@ -66,7 +57,6 @@ public class MobileOptimizer : MonoBehaviour
 
     void Awake()
     {
-        // Singleton
         if (Instance != null && Instance != this)
         {
             Destroy(gameObject);
@@ -76,11 +66,11 @@ public class MobileOptimizer : MonoBehaviour
         Instance = this;
         DontDestroyOnLoad(gameObject);
 
-        // Detect platform
         DetectPlatform();
-
-        // Apply optimizations
         ApplyOptimizations();
+
+        lastScreenWidth = Screen.width;
+        lastScreenHeight = Screen.height;
 
         Log("✅ MobileOptimizer initialized");
     }
@@ -97,13 +87,18 @@ public class MobileOptimizer : MonoBehaviour
             currentFPS = Mathf.RoundToInt(1.0f / deltaTime);
             fpsTimer = 0f;
         }
+
+        // ✅ NEW: Check for screen size change
+        if (Screen.width != lastScreenWidth || Screen.height != lastScreenHeight)
+        {
+            OnScreenSizeChanged();
+        }
     }
 
     void OnGUI()
     {
         if (!showFPSCounter) return;
 
-        // FPS counter
         int w = Screen.width;
         int h = Screen.height;
 
@@ -113,13 +108,9 @@ public class MobileOptimizer : MonoBehaviour
         style.normal.textColor = Color.yellow;
 
         Rect rect = new Rect(10, 10, w, h * 2 / 100);
-        string text = $"FPS: {currentFPS} ({avgFrameTime:0.0} ms)";
+        string text = $"FPS: {currentFPS} ({avgFrameTime:0.0} ms) | {w}x{h}";
         GUI.Label(rect, text, style);
     }
-
-    // ========================================
-    // PLATFORM DETECTION
-    // ========================================
 
     void DetectPlatform()
     {
@@ -133,7 +124,6 @@ public class MobileOptimizer : MonoBehaviour
 #if UNITY_ANDROID || UNITY_IOS
         isMobileDevice = true;
 #elif UNITY_WEBGL
-        // WebGL: Check via Application.isMobilePlatform
         isMobileDevice = Application.isMobilePlatform;
 #else
         isMobileDevice = false;
@@ -142,30 +132,19 @@ public class MobileOptimizer : MonoBehaviour
         Log($"Platform detected: {(isMobileDevice ? "MOBILE" : "DESKTOP")}");
     }
 
-    // ========================================
-    // APPLY OPTIMIZATIONS
-    // ========================================
-
     void ApplyOptimizations()
     {
         Log("Applying optimizations...");
 
-        // 1. Set target FPS
         SetTargetFramerate();
-
-        // 2. Set quality level
         SetQualityLevel();
-
-        // 3. Configure VSync
         ConfigureVSync();
 
-        // 4. Optimize physics (if mobile)
         if (isMobileDevice && optimizePhysics)
         {
             OptimizePhysics();
         }
 
-        // 5. Mobile-specific settings
         if (isMobileDevice)
         {
             ApplyMobileSettings();
@@ -174,99 +153,101 @@ public class MobileOptimizer : MonoBehaviour
         Log("✅ Optimizations applied");
     }
 
-    // ========================================
-    // FRAMERATE
-    // ========================================
-
     void SetTargetFramerate()
     {
         int targetFPS = isMobileDevice ? mobileTargetFPS : desktopTargetFPS;
-
         Application.targetFrameRate = targetFPS;
         currentFPS = targetFPS;
-
         Log($"✓ Target FPS: {targetFPS}");
     }
-
-    // ========================================
-    // QUALITY SETTINGS
-    // ========================================
 
     void SetQualityLevel()
     {
         int quality = isMobileDevice ? mobileQualityLevel : desktopQualityLevel;
-
         QualitySettings.SetQualityLevel(quality, true);
         currentQuality = quality;
-
         Log($"✓ Quality level: {quality} ({QualitySettings.names[quality]})");
     }
 
-    // ========================================
-    // VSYNC
-    // ========================================
-
     void ConfigureVSync()
     {
-        // VSync: 0 = off, 1 = on, 2 = every second frame
         QualitySettings.vSyncCount = enableVSync ? 1 : 0;
-
         Log($"✓ VSync: {(enableVSync ? "ENABLED" : "DISABLED")}");
     }
 
-    // ========================================
-    // PHYSICS OPTIMIZATION
-    // ========================================
-
     void OptimizePhysics()
     {
-        // Lower physics timestep untuk better performance
-        Time.fixedDeltaTime = 0.02f; // 50 physics updates per second (default: 0.02)
-
-        // Reduce physics iterations
-        Physics2D.velocityIterations = 4; // Default: 8
-        Physics2D.positionIterations = 2; // Default: 3
-
+        Time.fixedDeltaTime = 0.02f;
+        Physics2D.velocityIterations = 4;
+        Physics2D.positionIterations = 2;
         Log("✓ Physics optimized for mobile");
     }
 
-    // ========================================
-    // MOBILE-SPECIFIC SETTINGS
-    // ========================================
-
     void ApplyMobileSettings()
     {
-        // Disable HDR (High Dynamic Range)
-        Camera.main.allowHDR = false;
+        if (Camera.main != null)
+        {
+            Camera.main.allowHDR = false;
+        }
 
-        // Disable MSAA (Multi-Sample Anti-Aliasing)
         QualitySettings.antiAliasing = 0;
-
-        // Reduce shadow quality
         QualitySettings.shadows = ShadowQuality.Disable;
         QualitySettings.shadowResolution = ShadowResolution.Low;
 
-        // Reduce particle quality
         if (reduceParticles)
         {
-            QualitySettings.particleRaycastBudget = 32; // Default: 256
+            QualitySettings.particleRaycastBudget = 32;
         }
 
-        // Disable realtime reflections
         QualitySettings.realtimeReflectionProbes = false;
-
-        // Lower LOD bias (reduce draw distance)
-        QualitySettings.lodBias = 0.7f; // Default: 2.0
+        QualitySettings.lodBias = 0.7f;
 
         Log("✓ Mobile-specific settings applied");
     }
 
-    // ========================================
-    // PUBLIC API
-    // ========================================
+    // ✅ NEW: Handle screen resize (called from JavaScript)
+    public void OnScreenResize(string unused = "")
+    {
+        OnScreenSizeChanged();
+    }
+
+    // ✅ NEW: Internal screen size change handler
+    void OnScreenSizeChanged()
+    {
+        int newWidth = Screen.width;
+        int newHeight = Screen.height;
+
+        Log($"📐 Screen resized: {lastScreenWidth}x{lastScreenHeight} → {newWidth}x{newHeight}");
+
+        lastScreenWidth = newWidth;
+        lastScreenHeight = newHeight;
+
+        // ✅ Force canvas update
+#if UNITY_WEBGL && !UNITY_EDITOR
+        Application.ExternalEval(@"
+            if (typeof window.unityInstance !== 'undefined') {
+                try {
+                    var canvas = document.getElementById('unity-canvas');
+                    if (canvas) {
+                        canvas.style.width = '100%';
+                        canvas.style.height = '100%';
+                        console.log('[Unity] Canvas resized to:', canvas.clientWidth, 'x', canvas.clientHeight);
+                    }
+                } catch(e) {
+                    console.error('[Unity] Canvas resize failed:', e);
+                }
+            }
+        ");
+#endif
+
+        // ✅ Notify OrientationManager if exists
+        if (OrientationManager.Instance != null)
+        {
+            Log("✓ Notifying OrientationManager of resize");
+        }
+    }
 
     public bool IsMobile() => isMobileDevice;
-
     public int GetCurrentFPS() => currentFPS;
 
     public void SetQuality(int level)
@@ -283,19 +264,11 @@ public class MobileOptimizer : MonoBehaviour
         Log($"FPS counter: {(showFPSCounter ? "SHOWN" : "HIDDEN")}");
     }
 
-    // ========================================
-    // LOGGING
-    // ========================================
-
     void Log(string message)
     {
         if (enableDebugLogs)
             Debug.Log($"[MobileOptimizer] {message}");
     }
-
-    // ========================================
-    // CONTEXT MENU
-    // ========================================
 
     [ContextMenu("📊 Print Optimization Status")]
     void Context_PrintStatus()
@@ -306,13 +279,14 @@ public class MobileOptimizer : MonoBehaviour
         Debug.Log($"Target FPS: {Application.targetFrameRate}");
         Debug.Log($"Current FPS: {currentFPS}");
         Debug.Log($"Frame Time: {avgFrameTime:F1} ms");
+        Debug.Log($"Screen Size: {Screen.width}x{Screen.height}");
         Debug.Log($"VSync: {(QualitySettings.vSyncCount > 0 ? "ENABLED" : "DISABLED")}");
         Debug.Log($"MSAA: {QualitySettings.antiAliasing}x");
         Debug.Log($"Shadows: {QualitySettings.shadows}");
         Debug.Log("==============================");
     }
 
-    [ContextMenu("🎮 Toggle FPS Counter")]
+    [ContextMenu("🔄 Toggle FPS Counter")]
     void Context_ToggleFPS()
     {
         ToggleFPSCounter();

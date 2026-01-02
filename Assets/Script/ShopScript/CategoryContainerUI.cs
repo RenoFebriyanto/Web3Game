@@ -5,9 +5,9 @@ using System.Collections;
 using System.Collections.Generic;
 
 /// <summary>
-/// CategoryContainerUI - FIXED v4.0
-/// ✅ Fixed coroutine error saat GameObject inactive
-/// ✅ Auto refresh layout setelah items added
+/// CategoryContainerUI - FIXED v5.0
+/// ✅ Better layout refresh timing
+/// ✅ No coroutine errors when inactive
 /// </summary>
 public class CategoryContainerUI : MonoBehaviour
 {
@@ -19,6 +19,7 @@ public class CategoryContainerUI : MonoBehaviour
     private List<GameObject> spawnedItems = new List<GameObject>();
     private GridLayoutGroup gridLayout;
     private bool needsRefresh = false;
+    private int refreshFrameCount = 0; // ✅ NEW: Track frames
 
     void Awake()
     {
@@ -35,11 +36,21 @@ public class CategoryContainerUI : MonoBehaviour
 
     void LateUpdate()
     {
-        // ✅ Refresh layout di LateUpdate jika perlu
+        // ✅ IMPROVED: Multi-frame refresh untuk ensure layout settled
         if (needsRefresh)
         {
-            needsRefresh = false;
-            RefreshLayout();
+            refreshFrameCount++;
+            
+            // Refresh di frame 1, 2, dan 3
+            if (refreshFrameCount <= 3)
+            {
+                RefreshLayout();
+            }
+            else
+            {
+                needsRefresh = false;
+                refreshFrameCount = 0;
+            }
         }
     }
 
@@ -94,8 +105,9 @@ public class CategoryContainerUI : MonoBehaviour
             ui.Setup(data, manager);
             spawnedItems.Add(itemObj);
             
-            // ✅ Mark untuk refresh di LateUpdate
+            // ✅ Mark untuk refresh
             needsRefresh = true;
+            refreshFrameCount = 0;
         }
         else
         {
@@ -105,7 +117,7 @@ public class CategoryContainerUI : MonoBehaviour
     }
 
     /// <summary>
-    /// ✅ Refresh layout setelah items added
+    /// ✅ IMPROVED: Robust layout refresh
     /// </summary>
     public void RefreshLayout()
     {
@@ -124,32 +136,19 @@ public class CategoryContainerUI : MonoBehaviour
         {
             LayoutRebuilder.ForceRebuildLayoutImmediate(containerRect);
         }
+        
+        Canvas.ForceUpdateCanvases();
     }
 
     /// <summary>
-    /// ✅ FIXED: Call setelah semua items added - check GameObject active sebelum StartCoroutine
+    /// ✅ SIMPLIFIED: No coroutine, just mark for refresh
     /// </summary>
     public void OnAllItemsAdded()
     {
-        // ✅ FIX: Jangan start coroutine jika GameObject inactive
-        if (gameObject.activeInHierarchy)
-        {
-            StartCoroutine(RefreshLayoutDelayed());
-        }
-        else
-        {
-            // Jika inactive, langsung mark untuk refresh di LateUpdate saat active
-            needsRefresh = true;
-        }
-    }
-
-    IEnumerator RefreshLayoutDelayed()
-    {
-        // Wait 2 frames untuk Canvas selesai layout
-        yield return null;
-        yield return null;
+        needsRefresh = true;
+        refreshFrameCount = 0;
         
-        RefreshLayout();
+        Debug.Log($"[CategoryContainer] OnAllItemsAdded - marked for refresh");
     }
 
     public void ClearItems()
@@ -174,10 +173,11 @@ public class CategoryContainerUI : MonoBehaviour
     {
         gameObject.SetActive(active);
         
-        // ✅ Refresh layout saat diaktifkan
-        if (active && needsRefresh)
+        // ✅ Force refresh saat diaktifkan
+        if (active)
         {
-            RefreshLayout();
+            needsRefresh = true;
+            refreshFrameCount = 0;
         }
     }
 }

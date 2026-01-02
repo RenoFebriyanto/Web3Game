@@ -105,44 +105,80 @@ public class ShopManager : MonoBehaviour
     }
     else
     {
-        StartCoroutine(RefreshLayoutSequence());
+        // ✅ CRITICAL: Force refresh saat panel reopened
+        StartCoroutine(ForceRefreshOnEnable());
     }
 }
 
-    /// <summary>
-    /// ✅ Multi-frame initialization sequence
-    /// </summary>
-    IEnumerator InitializeShopSequence()
+/// <summary>
+/// ✅ NEW: Aggressive refresh saat panel dibuka kembali
+/// </summary>
+IEnumerator ForceRefreshOnEnable()
+{
+    Debug.Log("[ShopManager] === Force refresh on enable ===");
+    
+    // Wait 2 frames
+    yield return null;
+    yield return null;
+    
+    // Force rebuild ALL
+    ForceRebuildAllLayouts();
+    
+    yield return null;
+    ForceRebuildAllLayouts();
+    
+    // Reset scroll
+    if (scrollRect != null)
     {
-        Debug.Log("[ShopManager] === Starting initialization sequence ===");
-        
-        yield return null;
-        
-        Debug.Log("[ShopManager] Frame 2: Populating shop...");
-        PopulateShopInternal();
-        
-        yield return null;
-        
-        Debug.Log("[ShopManager] Frame 4: First layout pass...");
-        Canvas.ForceUpdateCanvases();
-        
-        yield return null;
-        Debug.Log("[ShopManager] Frame 5: Second layout pass...");
-        ForceRebuildAllLayouts();
-        
-        yield return null;
-        Debug.Log("[ShopManager] Frame 6: Final refresh...");
-        ForceRebuildAllLayouts();
-        
-        yield return null;
-        if (scrollRect != null)
-        {
-            scrollRect.verticalNormalizedPosition = 1f;
-        }
-        
-        isInitialized = true;
-        Debug.Log("[ShopManager] ✅ Initialization complete!");
+        scrollRect.verticalNormalizedPosition = 1f;
     }
+    
+    Debug.Log("[ShopManager] ✅ Refresh complete");
+}
+
+    /// <summary>
+/// ✅ FIXED: Extended initialization sequence with proper timing
+/// </summary>
+IEnumerator InitializeShopSequence()
+{
+    Debug.Log("[ShopManager] === Starting initialization sequence ===");
+    
+    // Frame 1: Wait untuk Canvas ready
+    yield return null;
+    
+    Debug.Log("[ShopManager] Frame 2: Populating shop...");
+    PopulateShopInternal();
+    
+    // Frame 2-3: Wait untuk items spawned
+    yield return null;
+    yield return null;
+    
+    Debug.Log("[ShopManager] Frame 4: First layout pass...");
+    Canvas.ForceUpdateCanvases();
+    ForceRebuildAllLayouts();
+    
+    // ✅ CRITICAL: Extra frames untuk layout settle
+    yield return null;
+    yield return null;
+    
+    Debug.Log("[ShopManager] Frame 6: Second layout pass...");
+    ForceRebuildAllLayouts();
+    
+    // ✅ One more frame untuk ensure semua settled
+    yield return null;
+    
+    Debug.Log("[ShopManager] Frame 7: Final pass...");
+    ForceRebuildAllLayouts();
+    
+    // Reset scroll position
+    if (scrollRect != null)
+    {
+        scrollRect.verticalNormalizedPosition = 1f;
+    }
+    
+    isInitialized = true;
+    Debug.Log("[ShopManager] ✅ Initialization complete!");
+}
 
     /// <summary>
     /// ✅ Refresh layout saat panel reopened
@@ -344,7 +380,7 @@ double GetShardIDRPrice(int shardAmount)
         PopulateShopInternal();
     }
 
-    void PopulateShopInternal()
+        void PopulateShopInternal()
     {
         ClearAllContainers();
 
@@ -353,6 +389,9 @@ double GetShardIDRPrice(int shardAmount)
             Debug.LogError("[ShopManager] Missing prefab references!");
             return;
         }
+
+        // ✅ CRITICAL: Force categories to initialize BEFORE spawning items
+        EnsureCategoriesInitialized();
 
         List<ShopItemData> source = database?.items ?? shopItems;
         
@@ -384,6 +423,32 @@ double GetShardIDRPrice(int shardAmount)
         Debug.Log($"[ShopManager] ✓ Created {categoryContainers.Count} categories");
     }
 
+    /// <summary>
+/// ✅ NEW: Force initialize all category containers BEFORE spawning items
+/// </summary>
+void EnsureCategoriesInitialized()
+{
+    Debug.Log("[ShopManager] 🔧 Force initializing categories...");
+    
+    if (itemsParent == null) return;
+    
+    // Get all CategoryContainerUI in children (termasuk yang inactive)
+    var containers = itemsParent.GetComponentsInChildren<CategoryContainerUI>(true);
+    
+    foreach (var container in containers)
+    {
+        // Force call Awake equivalent
+        if (container != null && !container.gameObject.activeSelf)
+        {
+            container.gameObject.SetActive(true);
+        }
+    }
+    
+    Canvas.ForceUpdateCanvases();
+    
+    Debug.Log($"[ShopManager] ✓ Initialized {containers.Length} containers");
+}
+
     void CreateAllCategories(List<ShopItemData> source)
     {
         foreach (var rewardType in categoryOrder)
@@ -405,41 +470,47 @@ double GetShardIDRPrice(int shardAmount)
     }
 
     void CreateCategoryContainer(ShopRewardType rewardType, List<ShopItemData> source)
+{
+    List<ShopItemData> filtered = FilterByRewardType(source, rewardType);
+    
+    if (filtered.Count == 0)
     {
-        List<ShopItemData> filtered = FilterByRewardType(source, rewardType);
-        
-        if (filtered.Count == 0)
-        {
-            Debug.Log($"[ShopManager] No items for: {rewardType}");
-            return;
-        }
-
-        GameObject containerObj = Instantiate(categoryContainerPrefab, itemsParent);
-        containerObj.name = $"CategoryContainer_{rewardType}";
-
-        var container = containerObj.GetComponent<CategoryContainerUI>();
-        
-        if (container == null)
-        {
-            Debug.LogError($"[ShopManager] CategoryContainerUI not found!");
-            Destroy(containerObj);
-            return;
-        }
-
-        container.SetHeaderText(GetCategoryDisplayName(rewardType));
-        container.ClearDummyItems();
-
-        foreach (var data in filtered)
-        {
-            container.AddItem(itemUIPrefab, data, this);
-        }
-
-        container.OnAllItemsAdded();
-
-        categoryContainers[rewardType] = container;
-
-        Debug.Log($"[ShopManager] ✓ '{rewardType}' with {filtered.Count} items");
+        Debug.Log($"[ShopManager] No items for: {rewardType}");
+        return;
     }
+
+    GameObject containerObj = Instantiate(categoryContainerPrefab, itemsParent);
+    containerObj.name = $"CategoryContainer_{rewardType}";
+    
+    // ✅ CRITICAL: Ensure active immediately
+    containerObj.SetActive(true);
+
+    var container = containerObj.GetComponent<CategoryContainerUI>();
+    
+    if (container == null)
+    {
+        Debug.LogError($"[ShopManager] CategoryContainerUI not found!");
+        Destroy(containerObj);
+        return;
+    }
+
+    // ✅ Force Canvas update BEFORE adding items
+    Canvas.ForceUpdateCanvases();
+
+    container.SetHeaderText(GetCategoryDisplayName(rewardType));
+    container.ClearDummyItems();
+
+    foreach (var data in filtered)
+    {
+        container.AddItem(itemUIPrefab, data, this);
+    }
+
+    container.OnAllItemsAdded();
+
+    categoryContainers[rewardType] = container;
+
+    Debug.Log($"[ShopManager] ✓ '{rewardType}' with {filtered.Count} items");
+}
 
     List<ShopItemData> FilterByRewardType(List<ShopItemData> source, ShopRewardType rewardType)
     {

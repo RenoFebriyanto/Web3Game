@@ -75,14 +75,18 @@ public class QuestResetManager : MonoBehaviour
     }
 
     void OnDestroy()
+{
+    if (Instance == this)
     {
-        // ✅ Clear instance reference jika ini adalah instance aktif
-        if (Instance == this)
+        // ✅ Silent cleanup on quit
+        if (!Application.isQuitting)
         {
             Log("⚠️ QuestResetManager destroyed - clearing instance reference");
-            Instance = null;
         }
+        
+        Instance = null;
     }
+}
 
     /// <summary>
     /// ✅ NEW: Validate setup untuk prevent common mistakes

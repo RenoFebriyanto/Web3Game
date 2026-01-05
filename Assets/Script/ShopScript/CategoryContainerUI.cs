@@ -5,9 +5,9 @@ using System.Collections;
 using System.Collections.Generic;
 
 /// <summary>
-/// CategoryContainerUI - FIXED v5.0
-/// ✅ Better layout refresh timing
-/// ✅ No coroutine errors when inactive
+/// CategoryContainerUI - FIXED v4.1
+/// ✅ CRITICAL FIX: Never start coroutine on inactive GameObject
+/// ✅ Use needsRefresh flag for LateUpdate instead
 /// </summary>
 public class CategoryContainerUI : MonoBehaviour
 {
@@ -19,7 +19,6 @@ public class CategoryContainerUI : MonoBehaviour
     private List<GameObject> spawnedItems = new List<GameObject>();
     private GridLayoutGroup gridLayout;
     private bool needsRefresh = false;
-    private int refreshFrameCount = 0; // ✅ NEW: Track frames
 
     void Awake()
     {
@@ -36,21 +35,20 @@ public class CategoryContainerUI : MonoBehaviour
 
     void LateUpdate()
     {
-        // ✅ IMPROVED: Multi-frame refresh untuk ensure layout settled
+        // ✅ Refresh layout di LateUpdate jika perlu
         if (needsRefresh)
         {
-            refreshFrameCount++;
-            
-            // Refresh di frame 1, 2, dan 3
-            if (refreshFrameCount <= 3)
-            {
-                RefreshLayout();
-            }
-            else
-            {
-                needsRefresh = false;
-                refreshFrameCount = 0;
-            }
+            needsRefresh = false;
+            RefreshLayout();
+        }
+    }
+
+    void OnEnable()
+    {
+        // ✅ Refresh saat GameObject diaktifkan
+        if (needsRefresh)
+        {
+            RefreshLayout();
         }
     }
 
@@ -105,9 +103,8 @@ public class CategoryContainerUI : MonoBehaviour
             ui.Setup(data, manager);
             spawnedItems.Add(itemObj);
             
-            // ✅ Mark untuk refresh
+            // ✅ Mark untuk refresh di LateUpdate
             needsRefresh = true;
-            refreshFrameCount = 0;
         }
         else
         {
@@ -117,7 +114,7 @@ public class CategoryContainerUI : MonoBehaviour
     }
 
     /// <summary>
-    /// ✅ IMPROVED: Robust layout refresh
+    /// ✅ Refresh layout setelah items added
     /// </summary>
     public void RefreshLayout()
     {
@@ -136,19 +133,18 @@ public class CategoryContainerUI : MonoBehaviour
         {
             LayoutRebuilder.ForceRebuildLayoutImmediate(containerRect);
         }
-        
-        Canvas.ForceUpdateCanvases();
     }
 
     /// <summary>
-    /// ✅ SIMPLIFIED: No coroutine, just mark for refresh
+    /// ✅ CRITICAL FIX: NEVER start coroutine on inactive GameObject
+    /// Always use needsRefresh flag instead
     /// </summary>
     public void OnAllItemsAdded()
     {
+        // ✅ ALWAYS use flag, never start coroutine directly
         needsRefresh = true;
-        refreshFrameCount = 0;
         
-        Debug.Log($"[CategoryContainer] OnAllItemsAdded - marked for refresh");
+        Debug.Log($"[CategoryContainer] Items added, marked for refresh (active={gameObject.activeInHierarchy})");
     }
 
     public void ClearItems()
@@ -173,11 +169,10 @@ public class CategoryContainerUI : MonoBehaviour
     {
         gameObject.SetActive(active);
         
-        // ✅ Force refresh saat diaktifkan
-        if (active)
+        // ✅ Refresh layout saat diaktifkan
+        if (active && needsRefresh)
         {
-            needsRefresh = true;
-            refreshFrameCount = 0;
+            RefreshLayout();
         }
     }
 }

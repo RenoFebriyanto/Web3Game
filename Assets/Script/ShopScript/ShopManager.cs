@@ -137,7 +137,7 @@ IEnumerator ForceRefreshOnEnable()
 }
 
     /// <summary>
-/// ✅ FIXED: Extended initialization sequence with proper timing
+/// ✅ IMPROVED: Extended initialization dengan more aggressive refresh
 /// </summary>
 IEnumerator InitializeShopSequence()
 {
@@ -149,28 +149,38 @@ IEnumerator InitializeShopSequence()
     Debug.Log("[ShopManager] Frame 2: Populating shop...");
     PopulateShopInternal();
     
-    // Frame 2-3: Wait untuk items spawned
+    // ✅ CRITICAL: Wait 2 frames untuk items spawned
     yield return null;
     yield return null;
     
-    Debug.Log("[ShopManager] Frame 4: First layout pass...");
+    Debug.Log("[ShopManager] Frame 4: First aggressive pass...");
+    
+    // ✅ Force semua categories refresh
+    foreach (var kvp in categoryContainers)
+    {
+        if (kvp.Value != null && kvp.Value.gameObject.activeSelf)
+        {
+            kvp.Value.ForceRefreshNow();
+        }
+    }
+    
     Canvas.ForceUpdateCanvases();
     ForceRebuildAllLayouts();
     
-    // ✅ CRITICAL: Extra frames untuk layout settle
+    // ✅ Wait 3 frames untuk layout settle
+    yield return null;
     yield return null;
     yield return null;
     
-    Debug.Log("[ShopManager] Frame 6: Second layout pass...");
+    Debug.Log("[ShopManager] Frame 7: Second pass...");
     ForceRebuildAllLayouts();
     
-    // ✅ One more frame untuk ensure semua settled
     yield return null;
     
-    Debug.Log("[ShopManager] Frame 7: Final pass...");
+    Debug.Log("[ShopManager] Frame 8: Final pass...");
     ForceRebuildAllLayouts();
     
-    // Reset scroll position
+    // ✅ Reset scroll position
     if (scrollRect != null)
     {
         scrollRect.verticalNormalizedPosition = 1f;
@@ -494,17 +504,22 @@ void EnsureCategoriesInitialized()
         return;
     }
 
-    // ✅ Force Canvas update BEFORE adding items
-    Canvas.ForceUpdateCanvases();
-
+    // ✅ Set header first
     container.SetHeaderText(GetCategoryDisplayName(rewardType));
+    
+    // ✅ Clear dummy items
     container.ClearDummyItems();
 
+    // ✅ CRITICAL: Force Canvas update AFTER header set, BEFORE adding items
+    Canvas.ForceUpdateCanvases();
+
+    // ✅ Add all items
     foreach (var data in filtered)
     {
         container.AddItem(itemUIPrefab, data, this);
     }
 
+    // ✅ CRITICAL: Call refresh AFTER all items added
     container.OnAllItemsAdded();
 
     categoryContainers[rewardType] = container;

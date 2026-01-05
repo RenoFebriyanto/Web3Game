@@ -93,15 +93,20 @@ public class DailyRewardSystem : MonoBehaviour
     }
 
     void OnDestroy()
+{
+    UnsubscribeFromQuestEvents();
+
+    if (Instance == this)
     {
-        // ✅ WARNING if destroyed
-        if (Instance == this)
+        // ✅ Only log warning if NOT quitting
+        if (!Application.isQuitting)
         {
             LogWarning("⚠️⚠️⚠️ BEING DESTROYED - This should NEVER happen!");
-            Instance = null;
         }
-        UnsubscribeFromQuestEvents();
+        
+        Instance = null;
     }
+}
 
     // ✅ Prevent scene cleanup from destroying this object
     void OnApplicationQuit()

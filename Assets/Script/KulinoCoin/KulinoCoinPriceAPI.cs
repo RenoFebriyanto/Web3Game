@@ -143,104 +143,165 @@ public class KulinoCoinPriceAPI : MonoBehaviour
         isFetching = false;
     }
 
-    IEnumerator TryCoinGeckoAPI(Action<bool> onComplete)
+    IEnumerator TryCoinGeckoAPI()
+{
+    // ✅ FIXED: Better URL construction
+    string contractLower = kulinoCoinContractAddress.ToLower();
+    
+    // Remove any whitespace
+    contractLower = contractLower.Trim();
+    
+    string url = $"https://api.coingecko.com/api/v3/simple/token_price/solana" +
+                 $"?contract_addresses={contractLower}" +
+                 $"&vs_currencies=idr";
+    
+    Log($"API URL: {url}");
+
+    using (UnityWebRequest req = UnityWebRequest.Get(url))
     {
-        string apiUrl = $"https://api.coingecko.com/api/v3/simple/token_price/solana?contract_addresses={kulinoContractAddress}&vs_currencies=idr";
+        // ✅ Add headers to avoid rate limiting
+        req.SetRequestHeader("Accept", "application/json");
         
-        Log($"API URL: {apiUrl}");
+        yield return req.SendWebRequest();
 
-        using (UnityWebRequest request = UnityWebRequest.Get(apiUrl))
+        if (req.result == UnityWebRequest.Result.Success)
         {
-            request.timeout = 10;
-            
-            yield return request.SendWebRequest();
+            string json = req.downloadHandler.text;
+            Log($"API Response: {json}");
 
-            if (request.result != UnityWebRequest.Result.Success)
+            // ✅ Check for rate limit response
+            if (json.Contains("rate limit") || json.Contains("429") || json.Contains("Too Many Requests"))
             {
-                LogWarning($"CoinGecko API failed: {request.error}");
-                onComplete?.Invoke(false);
+                LogWarning("⚠️ CoinGecko API rate limited!");
+                yield break;
+            }
+
+            // ✅ Check for empty response
+            string trimmed = json.Trim();
+            if (trimmed == "{}" || trimmed == "[]" || string.IsNullOrWhiteSpace(trimmed))
+            {
+                LogWarning("⚠️ CoinGecko returned empty response - possible issues:");
+                LogWarning("  1. Contract address not found in CoinGecko");
+                LogWarning("  2. API rate limit");
+                LogWarning("  3. Network/DNS issue");
+                LogWarning($"  Contract used: {contractLower}");
+                yield break;
+            }
+
+            double price = ParseCoinGeckoResponse(json);
+            
+            if (price > 0)
+            {
+                currentPrice = price;
+                lastSuccessfulFetch = System.DateTime.UtcNow;
+                Log($"✅ CoinGecko API success: Rp {price:N2}");
+                yield break; // Success!
             }
             else
             {
-                try
-                {
-                    string response = request.downloadHandler.text;
-                    Log($"API Response: {response}");
-
-                    double price = ParseCoinGeckoResponse(response);
-                    
-                    if (price > 0)
-                    {
-                        kulinoCoinPriceIDR = price;
-                        cachedPrice = price;
-                        lastFetchTime = Time.time;
-                        
-                        OnPriceUpdated?.Invoke(price);
-                        Log($"✅ Price updated: 1 KC = Rp {price:N2}");
-                        
-                        onComplete?.Invoke(true);
-                    }
-                    else
-                    {
-                        LogWarning("Invalid price from CoinGecko - will use fallback");
-                        onComplete?.Invoke(false);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    LogWarning($"Parse error: {ex.Message}");
-                    onComplete?.Invoke(false);
-                }
+                LogWarning("Invalid price from CoinGecko - will use fallback");
+            }
+        }
+        else
+        {
+            // ✅ Better error logging
+            string error = req.error;
+            long responseCode = req.responseCode;
+            
+            LogWarning($"CoinGecko API failed: {error} (Code: {responseCode})");
+            
+            if (responseCode == 429)
+            {
+                LogWarning("⚠️ Rate limited by CoinGecko - using fallback price");
+            }
+            else if (responseCode == 404)
+            {
+                LogWarning("⚠️ Contract not found on CoinGecko - check contract address");
             }
         }
     }
+}
 
-    double ParseCoinGeckoResponse(string json)
+    // ✅ FIXED: Better handling untuk empty/invalid response (NO external dependencies)
+double ParseCoinGeckoResponse(string json)
+{
+    if (string.IsNullOrWhiteSpace(json))
     {
-        try
+        LogWarning("Empty response from CoinGecko");
+        return 0;
+    }
+
+    // ✅ Check if response is empty JSON
+    string trimmed = json.Trim();
+    if (trimmed == "{}" || trimmed == "[]")
+    {
+        LogWarning("CoinGecko returned empty JSON - likely rate limited or invalid contract");
+        return 0;
+    }
+
+    try
+    {
+        // Expected format: {"e5chnti...": {"idr": 1.5}}
+        
+        // ✅ Simple string parsing (no external dependencies)
+        // Find "idr": value
+        int idrIndex = json.IndexOf("\"idr\"");
+        if (idrIndex < 0)
         {
-            // ✅ FIX: Handle empty response
-            if (string.IsNullOrWhiteSpace(json) || json.Trim() == "{}" || json.Trim() == "[]")
-            {
-                LogWarning("Empty or invalid JSON response from CoinGecko");
-                return 0;
-            }
-
-            string addressLower = kulinoContractAddress.ToLower();
-            
-            if (!json.Contains(addressLower))
-            {
-                LogWarning($"Contract address {addressLower} not found in response - using fallback price");
-                return 0;
-            }
-
-            int idrIndex = json.IndexOf("\"idr\":");
-            if (idrIndex < 0)
-            {
-                LogWarning("IDR price not found in response");
-                return 0;
-            }
-
-            int valueStart = idrIndex + 6;
-            int valueEnd = json.IndexOfAny(new char[] { ',', '}', ' ' }, valueStart);
-            
-            if (valueEnd < 0) valueEnd = json.Length;
-
-            string priceStr = json.Substring(valueStart, valueEnd - valueStart).Trim();
-            
-            if (double.TryParse(priceStr, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double price))
-            {
-                return price;
-            }
-
+            LogWarning("No 'idr' field in CoinGecko response");
             return 0;
         }
-        catch (Exception ex)
+
+        // Find the : after "idr"
+        int colonIndex = json.IndexOf(":", idrIndex);
+        if (colonIndex < 0)
         {
-            LogWarning($"Parse exception: {ex.Message}");
+            LogWarning("Invalid format - no colon after 'idr'");
+            return 0;
+        }
+
+        // Find next comma or closing brace
+        int endIndex = json.IndexOf(",", colonIndex);
+        if (endIndex < 0)
+        {
+            endIndex = json.IndexOf("}", colonIndex);
+        }
+        
+        if (endIndex < 0)
+        {
+            LogWarning("Invalid format - cannot find end of value");
+            return 0;
+        }
+
+        // Extract value string
+        string valueStr = json.Substring(colonIndex + 1, endIndex - colonIndex - 1).Trim();
+        
+        // Try parse to double
+        if (double.TryParse(valueStr, System.Globalization.NumberStyles.Any, 
+            System.Globalization.CultureInfo.InvariantCulture, out double price))
+        {
+            if (price <= 0)
+            {
+                LogWarning($"Invalid price from CoinGecko: {price}");
+                return 0;
+            }
+
+            Log($"✅ Parsed CoinGecko price: Rp {price:N2}");
+            return price;
+        }
+        else
+        {
+            LogWarning($"Failed to parse price value: {valueStr}");
             return 0;
         }
     }
+    catch (System.Exception ex)
+    {
+        LogError($"Failed to parse CoinGecko response: {ex.Message}");
+        LogError($"Response was: {json}");
+        return 0;
+    }
+}
 
     IEnumerator TryFallbackAPI(Action<bool> onComplete)
     {

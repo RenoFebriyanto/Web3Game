@@ -43,6 +43,10 @@ public class ShopManager : MonoBehaviour
     [Range(0.1f, 1f)]
     public float scrollSpeed = 0.3f;
 
+    // ✅ TAMBAH INI
+    [Header("🐛 Debug")]
+    public bool enableDebugLogs = true; // ✅ TAMBAH VARIABLE INI
+
     public enum ShopFilter { All, Shard, Items, Bundle }
 
     private ShopItemData _pendingPurchaseData;
@@ -278,7 +282,7 @@ IEnumerator ForceRefreshOnEnable()
     /// <summary>
     /// ✅ Force rebuild SEMUA layouts
     /// </summary>
-    void ForceRebuildAllLayouts()
+    public void ForceRebuildAllLayouts()
     {
         if (itemsParent != null)
         {

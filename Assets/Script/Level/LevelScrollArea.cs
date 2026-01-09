@@ -2,10 +2,10 @@ using UnityEngine;
 using System.Collections;
 
 /// <summary>
-/// ✅ FIXED v2.1: LevelScrollArea - Removed obsolete CheckOrientation call
-/// - Detection Only
-/// - No JS notification
-/// - Complete null safety
+/// ✅ FIXED v3.0: LevelScrollArea - Auto-setup Viewport + Smart Validation
+/// - Auto-creates viewport if missing
+/// - Scroll events work even without auto-scroll
+/// - Better error handling
 /// </summary>
 [RequireComponent(typeof(RectTransform))]
 public class LevelScrollArea : MonoBehaviour,
@@ -49,6 +49,7 @@ public class LevelScrollArea : MonoBehaviour,
     private RectTransform rectTransform;
     private bool isDragging = false;
     private Coroutine autoScrollCoroutine;
+    private bool canAutoScroll = false; // ✅ NEW: Track if auto-scroll is possible
 
     void Awake()
     {
@@ -85,35 +86,14 @@ public class LevelScrollArea : MonoBehaviour,
             }
         }
         
-        // ✅ CRITICAL FIX: Validate ALL ScrollRect components
+        // ✅ CRITICAL FIX: Smart validation with auto-setup
         if (scrollRect != null)
         {
-            bool isValid = true;
-            
-            // Check content
-            if (scrollRect.content == null)
-            {
-                LogWarning("⚠️ ScrollRect.content is NULL!");
-                isValid = false;
-            }
-            
-            // Check viewport
-            if (scrollRect.viewport == null)
-            {
-                LogWarning("⚠️ ScrollRect.viewport is NULL!");
-                isValid = false;
-            }
-            
-            // Disable if invalid
-            if (!isValid)
-            {
-                LogWarning("⚠️ ScrollRect incomplete - auto-scroll DISABLED");
-                scrollRect = null; // Disable to prevent crashes
-            }
-            else
-            {
-                Log("✓ ScrollRect fully validated (content + viewport OK)");
-            }
+            canAutoScroll = ValidateAndSetupScrollRect();
+        }
+        else
+        {
+            canAutoScroll = false;
         }
 
         // Auto-detect level container
@@ -122,13 +102,89 @@ public class LevelScrollArea : MonoBehaviour,
             levelItemsContainer = scrollRect.content;
             Log($"✓ Auto-detected container: {levelItemsContainer.name}");
         }
+    }
 
-        // ✅ REMOVED: CheckOrientation() - method tidak ada (handled by HTML)
+    /// <summary>
+    /// ✅ NEW: Smart validation with auto-setup
+    /// Returns true if auto-scroll is possible
+    /// </summary>
+    bool ValidateAndSetupScrollRect()
+    {
+        bool canScroll = true;
+        
+        // Check content
+        if (scrollRect.content == null)
+        {
+            LogWarning("⚠️ ScrollRect.content is NULL! Cannot setup.");
+            canScroll = false;
+        }
+        
+        // ✅ NEW: Auto-setup viewport if missing
+        if (scrollRect.viewport == null)
+        {
+            LogWarning("⚠️ ScrollRect.viewport is NULL! Attempting auto-setup...");
+            
+            if (TryAutoSetupViewport())
+            {
+                Log("✅ Viewport auto-setup SUCCESS!");
+                canScroll = true;
+            }
+            else
+            {
+                LogWarning("❌ Viewport auto-setup FAILED! Auto-scroll disabled, but manual scroll will still work.");
+                canScroll = false;
+            }
+        }
+        
+        if (canScroll)
+        {
+            Log("✓ ScrollRect fully validated (content + viewport OK)");
+        }
+        else
+        {
+            LogWarning("⚠️ ScrollRect incomplete - auto-scroll DISABLED (manual scroll still works)");
+        }
+        
+        return canScroll;
+    }
+
+    /// <summary>
+    /// ✅ NEW: Try to auto-setup viewport
+    /// </summary>
+    bool TryAutoSetupViewport()
+    {
+        if (scrollRect == null) return false;
+        
+        // Try to find existing viewport
+        RectTransform viewport = scrollRect.GetComponent<RectTransform>();
+        
+        if (viewport != null)
+        {
+            scrollRect.viewport = viewport;
+            Log($"✓ Assigned ScrollRect's own RectTransform as viewport");
+            return true;
+        }
+        
+        // Try to find child named "Viewport"
+        Transform viewportChild = scrollRect.transform.Find("Viewport");
+        if (viewportChild != null)
+        {
+            RectTransform viewportRect = viewportChild.GetComponent<RectTransform>();
+            if (viewportRect != null)
+            {
+                scrollRect.viewport = viewportRect;
+                Log($"✓ Found and assigned viewport child: {viewportChild.name}");
+                return true;
+            }
+        }
+        
+        LogWarning("❌ Could not find or create viewport");
+        return false;
     }
 
     void OnEnable()
     {
-        if (autoScrollOnEnable && scrollRect != null)
+        if (autoScrollOnEnable && canAutoScroll && scrollRect != null)
         {
             if (autoScrollCoroutine != null)
             {
@@ -167,7 +223,7 @@ public class LevelScrollArea : MonoBehaviour,
     }
 
     // ========================================
-    // SCROLL EVENT HANDLERS
+    // SCROLL EVENT HANDLERS (ALWAYS WORK)
     // ========================================
 
     public void OnBeginDrag(UnityEngine.EventSystems.PointerEventData eventData)
@@ -208,23 +264,16 @@ public class LevelScrollArea : MonoBehaviour,
     }
 
     // ========================================
-    // AUTO-SCROLL LOGIC
+    // AUTO-SCROLL LOGIC (ONLY IF canAutoScroll)
     // ========================================
 
     IEnumerator AutoScrollToLatestLevel()
     {
         yield return new WaitForSeconds(autoScrollDelay);
 
-        // ✅ Validate before scroll
-        if (scrollRect == null)
+        if (!canAutoScroll || scrollRect == null)
         {
-            LogWarning("Cannot auto-scroll: scrollRect is null!");
-            yield break;
-        }
-
-        if (scrollRect.viewport == null)
-        {
-            LogWarning("Cannot auto-scroll: viewport is null!");
+            LogWarning("Cannot auto-scroll: disabled or scrollRect missing");
             yield break;
         }
 
@@ -258,29 +307,26 @@ public class LevelScrollArea : MonoBehaviour,
         return 1;
     }
 
-    /// <summary>
-    /// ✅ FIXED: Complete null safety untuk viewport
-    /// </summary>
     float CalculateScrollPositionForLevel(int levelNumber)
     {
-        // ✅ Check 1: Basic components
-        if (levelItemsContainer == null || scrollRect == null)
+        if (levelItemsContainer == null || scrollRect == null || scrollRect.content == null)
         {
-            LogWarning("Cannot calculate position: container or scrollRect is null");
+            LogWarning("Cannot calculate position: missing components");
             return 1f;
         }
         
-        // ✅ Check 2: Content
-        if (scrollRect.content == null)
-        {
-            LogWarning("Cannot calculate position: scrollRect.content is null");
-            return 1f;
-        }
-
-        // ✅ Check 3: Viewport
+        // ✅ Check viewport (might be null for manual-scroll-only mode)
         if (scrollRect.viewport == null)
         {
-            LogWarning("Cannot calculate position: scrollRect.viewport is null");
+            LogWarning("Viewport is null - using fallback calculation");
+            
+            // Fallback: simple percentage
+            int totalLevels = levelItemsContainer.childCount;
+            if (totalLevels > 0)
+            {
+                float estimated = 1f - ((float)(levelNumber - 1) / totalLevels);
+                return Mathf.Clamp01(estimated);
+            }
             return 1f;
         }
 
@@ -356,10 +402,9 @@ public class LevelScrollArea : MonoBehaviour,
 
     IEnumerator SmoothScrollTo(float targetPosition)
     {
-        // ✅ Validate before scroll
-        if (scrollRect == null || scrollRect.content == null || scrollRect.viewport == null) 
+        if (scrollRect == null || scrollRect.content == null)
         {
-            LogWarning("Cannot scroll: scrollRect, content, or viewport is null");
+            LogWarning("Cannot scroll: missing components");
             yield break;
         }
 
@@ -389,6 +434,12 @@ public class LevelScrollArea : MonoBehaviour,
 
     public void ScrollToLevel(int levelNumber)
     {
+        if (!canAutoScroll)
+        {
+            LogWarning("Auto-scroll disabled - cannot scroll to level");
+            return;
+        }
+        
         if (autoScrollCoroutine != null)
         {
             StopCoroutine(autoScrollCoroutine);
@@ -405,6 +456,12 @@ public class LevelScrollArea : MonoBehaviour,
 
     public void ScrollToTop()
     {
+        if (!canAutoScroll)
+        {
+            LogWarning("Auto-scroll disabled - cannot scroll to top");
+            return;
+        }
+        
         if (autoScrollCoroutine != null)
         {
             StopCoroutine(autoScrollCoroutine);
@@ -415,6 +472,12 @@ public class LevelScrollArea : MonoBehaviour,
 
     public void ScrollToBottom()
     {
+        if (!canAutoScroll)
+        {
+            LogWarning("Auto-scroll disabled - cannot scroll to bottom");
+            return;
+        }
+        
         if (autoScrollCoroutine != null)
         {
             StopCoroutine(autoScrollCoroutine);
@@ -425,6 +488,12 @@ public class LevelScrollArea : MonoBehaviour,
 
     public void RefreshAutoScroll()
     {
+        if (!canAutoScroll)
+        {
+            LogWarning("Auto-scroll disabled - cannot refresh");
+            return;
+        }
+        
         if (autoScrollCoroutine != null)
         {
             StopCoroutine(autoScrollCoroutine);
@@ -501,6 +570,7 @@ public class LevelScrollArea : MonoBehaviour,
         }
         
         Debug.Log($"Container: {(levelItemsContainer != null ? levelItemsContainer.name : "NULL")}");
+        Debug.Log($"Can Auto-Scroll: {canAutoScroll}");
         
         if (LevelProgressManager.Instance != null)
         {
@@ -544,8 +614,7 @@ public class LevelScrollArea : MonoBehaviour,
             
             if (scrollRect.viewport == null)
             {
-                Debug.LogError("❌ ScrollRect.viewport is NULL!");
-                allOK = false;
+                Debug.LogWarning("⚠️ ScrollRect.viewport is NULL! (will auto-setup at runtime)");
             }
             else
             {
@@ -568,7 +637,35 @@ public class LevelScrollArea : MonoBehaviour,
         }
         else
         {
-            Debug.Log("=== ❌ SETUP INCOMPLETE ===");
+            Debug.Log("=== ⚠️ SETUP INCOMPLETE ===");
+        }
+    }
+
+    [ContextMenu("🔧 Force Setup Viewport Now")]
+    void Context_ForceSetupViewport()
+    {
+        if (!Application.isPlaying)
+        {
+            Debug.LogWarning("Must be in Play Mode");
+            return;
+        }
+
+        if (scrollRect == null)
+        {
+            Debug.LogError("ScrollRect is null!");
+            return;
+        }
+
+        Debug.Log("Attempting viewport setup...");
+        
+        if (TryAutoSetupViewport())
+        {
+            Debug.Log("✅ Viewport setup SUCCESS!");
+            canAutoScroll = true;
+        }
+        else
+        {
+            Debug.LogError("❌ Viewport setup FAILED!");
         }
     }
 }

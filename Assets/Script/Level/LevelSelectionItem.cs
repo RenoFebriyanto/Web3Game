@@ -86,7 +86,7 @@ public class LevelSelectionItem : MonoBehaviour
 
         RefreshStars();
 
-        Debug.Log($"[LevelSelectionItem] ✓ {levelConfig.id} refreshed (unlocked: {unlocked}, newest: {isNewestUnlock})");
+        // Debug.Log($"[LevelSelectionItem] ✓ {levelConfig.id} refreshed (unlocked: {unlocked}, newest: {isNewestUnlock})");
     }
 
     void UpdateParticleEffect(bool unlocked, bool isNewestUnlock)

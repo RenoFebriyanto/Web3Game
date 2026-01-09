@@ -98,13 +98,8 @@ public class DailyRewardSystem : MonoBehaviour
 
     if (Instance == this)
     {
-        // ✅ Only log warning if NOT quitting
-        if (!Application.isQuitting)
-        {
-            LogWarning("⚠️⚠️⚠️ BEING DESTROYED - This should NEVER happen!");
-        }
-        
         Instance = null;
+        Log("DailyRewardSystem destroyed");
     }
 }
 

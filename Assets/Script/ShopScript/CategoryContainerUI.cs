@@ -5,9 +5,8 @@ using System.Collections;
 using System.Collections.Generic;
 
 /// <summary>
-/// CategoryContainerUI - FIXED v4.1
-/// ✅ CRITICAL FIX: Never start coroutine on inactive GameObject
-/// ✅ Use needsRefresh flag for LateUpdate instead
+/// CategoryContainerUI - FIXED v4.2
+/// ✅ Added ForceRefreshNow() method
 /// </summary>
 public class CategoryContainerUI : MonoBehaviour
 {
@@ -35,7 +34,6 @@ public class CategoryContainerUI : MonoBehaviour
 
     void LateUpdate()
     {
-        // ✅ Refresh layout di LateUpdate jika perlu
         if (needsRefresh)
         {
             needsRefresh = false;
@@ -45,7 +43,6 @@ public class CategoryContainerUI : MonoBehaviour
 
     void OnEnable()
     {
-        // ✅ Refresh saat GameObject diaktifkan
         if (needsRefresh)
         {
             RefreshLayout();
@@ -102,8 +99,6 @@ public class CategoryContainerUI : MonoBehaviour
         {
             ui.Setup(data, manager);
             spawnedItems.Add(itemObj);
-            
-            // ✅ Mark untuk refresh di LateUpdate
             needsRefresh = true;
         }
         else
@@ -113,21 +108,16 @@ public class CategoryContainerUI : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// ✅ Refresh layout setelah items added
-    /// </summary>
     public void RefreshLayout()
     {
         if (itemsGrid == null) return;
 
-        // Force rebuild grid layout
         var gridRect = itemsGrid.GetComponent<RectTransform>();
         if (gridRect != null)
         {
             LayoutRebuilder.ForceRebuildLayoutImmediate(gridRect);
         }
 
-        // Force rebuild container
         var containerRect = GetComponent<RectTransform>();
         if (containerRect != null)
         {
@@ -135,15 +125,40 @@ public class CategoryContainerUI : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// ✅ CRITICAL FIX: NEVER start coroutine on inactive GameObject
-    /// Always use needsRefresh flag instead
-    /// </summary>
+    
+public void ForceRefreshNow()
+{
+    if (!gameObject.activeInHierarchy)
+    {
+        Debug.LogWarning("[CategoryContainer] Cannot ForceRefreshNow - GameObject inactive");
+        return;
+    }
+
+    // Force rebuild semua layout
+    if (itemsGrid != null)
+    {
+        var gridRect = itemsGrid.GetComponent<RectTransform>();
+        if (gridRect != null)
+        {
+            LayoutRebuilder.ForceRebuildLayoutImmediate(gridRect);
+        }
+    }
+
+    var containerRect = GetComponent<RectTransform>();
+    if (containerRect != null)
+    {
+        LayoutRebuilder.ForceRebuildLayoutImmediate(containerRect);
+    }
+
+    // Force canvas update
+    Canvas.ForceUpdateCanvases();
+
+    Debug.Log($"[CategoryContainer] ✓ Force refresh NOW complete (active={gameObject.activeSelf})");
+}
+
     public void OnAllItemsAdded()
     {
-        // ✅ ALWAYS use flag, never start coroutine directly
         needsRefresh = true;
-        
         Debug.Log($"[CategoryContainer] Items added, marked for refresh (active={gameObject.activeInHierarchy})");
     }
 
@@ -169,7 +184,6 @@ public class CategoryContainerUI : MonoBehaviour
     {
         gameObject.SetActive(active);
         
-        // ✅ Refresh layout saat diaktifkan
         if (active && needsRefresh)
         {
             RefreshLayout();

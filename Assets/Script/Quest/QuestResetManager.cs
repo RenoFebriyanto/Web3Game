@@ -78,13 +78,8 @@ public class QuestResetManager : MonoBehaviour
 {
     if (Instance == this)
     {
-        // ✅ Silent cleanup on quit
-        if (!Application.isQuitting)
-        {
-            Log("⚠️ QuestResetManager destroyed - clearing instance reference");
-        }
-        
         Instance = null;
+        Log("QuestResetManager destroyed");
     }
 }
 

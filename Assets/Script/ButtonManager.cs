@@ -404,22 +404,45 @@ public class ButtonManager : MonoBehaviour
     }
 
     public void ShowShop()
+{
+    if (!ValidateReferences())
     {
-        if (!ValidateReferences())
-        {
-            LogWarning("References invalid - attempting reassign...");
-            ReassignPanels();
-            return;
-        }
-
-        if (Shop != null && Shop.activeSelf) return;
-
-        SetActiveSafe(Level, false);
-        SetActiveSafe(Quest, false);
-        SetActiveSafe(Shop, true);
-
-        Log("Switched to Shop panel");
+        LogWarning("References invalid - attempting reassign...");
+        ReassignPanels();
+        return;
     }
+
+    if (Shop != null && Shop.activeSelf) 
+    {
+        Log("Shop already active");
+        return;
+    }
+
+    Log("=== Opening Shop Panel ===");
+
+    SetActiveSafe(Level, false);
+    SetActiveSafe(Quest, false);
+    SetActiveSafe(Shop, true);
+
+    // ✅ Wait untuk panel ready
+    StartCoroutine(WaitForShopReady());
+
+    Log("Shop panel activated");
+}
+
+        // ✅ TAMBAH METHOD BARU INI
+        IEnumerator WaitForShopReady()
+        {
+            yield return null;
+            yield return null;
+
+            Log("Shop panel ready, triggering layout refresh");
+
+            if (ShopManager.Instance != null)
+            {
+                ShopManager.Instance.ForceRebuildAllLayouts();
+            }
+        }
 
     bool ValidateReferences()
     {

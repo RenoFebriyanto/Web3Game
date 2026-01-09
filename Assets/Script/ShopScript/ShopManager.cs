@@ -34,6 +34,8 @@ public class ShopManager : MonoBehaviour
     [Header("🏢 Company Wallet (for Rupiah transactions)")]
     [Tooltip("Wallet perusahaan Kulino untuk menerima pembayaran Shard")]
     public string companyWalletAddress = "9QM8aSCHFp76RacWXgXFQQxUKXt5Vf2zLzSkdMdQuByk";
+    // Cari bagian private variables, tambahkan:
+    private bool isPopulating = false; // ✅ TAMBAH INI
 
     [Header("🔄 Scroll Settings")]
     public ScrollRect scrollRect;
@@ -93,20 +95,54 @@ public class ShopManager : MonoBehaviour
 
     void OnEnable()
 {
-    // ✅ Update prices setiap kali shop dibuka
+    Log("=== ShopManager OnEnable ===");
+    Log($"  gameObject.activeInHierarchy: {gameObject.activeInHierarchy}");
+    Log($"  isInitialized: {isInitialized}");
+    Log($"  isPopulating: {isPopulating}");
+
     if (KulinoCoinPriceAPI.Instance != null)
     {
         UpdateShardPrices();
     }
-    
+
+    // ✅ CRITICAL: Wait untuk panel benar-benar active
+    StartCoroutine(InitializeWhenReady());
+}
+
+// ✅ TAMBAH METHOD BARU INI
+IEnumerator InitializeWhenReady()
+{
+    // Wait sampai gameObject active
+    int maxWait = 30;
+    int waited = 0;
+
+    while (!gameObject.activeInHierarchy && waited < maxWait)
+    {
+        waited++;
+        Log($"Waiting for panel to be active... ({waited}/{maxWait})");
+        yield return null;
+    }
+
+    if (!gameObject.activeInHierarchy)
+    {
+        LogError("Panel never became active!");
+        yield break;
+    }
+
+    Log($"✓ Panel is active after {waited} frames");
+
+    // Wait 2 frames lagi
+    yield return null;
+    yield return null;
+
+    // Now initialize
     if (!isInitialized)
     {
-        StartCoroutine(InitializeShopSequence());
+        yield return StartCoroutine(InitializeShopSequence());
     }
     else
     {
-        // ✅ CRITICAL: Force refresh saat panel reopened
-        StartCoroutine(ForceRefreshOnEnable());
+        yield return StartCoroutine(ForceRefreshOnEnable());
     }
 }
 
@@ -136,69 +172,91 @@ IEnumerator ForceRefreshOnEnable()
     Debug.Log("[ShopManager] ✅ Refresh complete");
 }
 
-    // ShopManager.cs - Replace InitializeShopSequence()
-
-IEnumerator InitializeShopSequence()
+    IEnumerator InitializeShopSequence()
 {
-    Debug.Log("[ShopManager] === Starting initialization sequence ===");
-    
-    // ✅ CRITICAL FIX: Pastikan shop panel ACTIVE
-    if (!gameObject.activeInHierarchy)
+    if (isPopulating)
     {
-        Debug.LogWarning("[ShopManager] Shop panel INACTIVE - cannot initialize!");
+        Log("Already populating - skipping");
         yield break;
     }
 
-    // ✅ Frame 1: Pastikan itemsParent active
+    isPopulating = true;
+
+    Log("=== Starting initialization sequence ===");
+    
+    if (!gameObject.activeInHierarchy)
+    {
+        LogError("Shop panel INACTIVE - cannot initialize!");
+        isPopulating = false;
+        yield break;
+    }
+
     if (itemsParent != null)
     {
         itemsParent.gameObject.SetActive(true);
-        Debug.Log("[ShopManager] ✓ itemsParent activated");
-    }
-    
-    yield return null;
-    
-    Debug.Log("[ShopManager] Frame 2: Populating shop...");
-    PopulateShopInternal();
-    
-    // ✅ CRITICAL: Wait 2 frames untuk spawn selesai
-    yield return null;
-    yield return null;
-    
-    Debug.Log("[ShopManager] Frame 4: First refresh pass...");
-    
-    // ✅ Refresh semua categories yang sudah spawned
-    foreach (var kvp in categoryContainers)
-    {
-        if (kvp.Value != null && kvp.Value.gameObject.activeSelf)
-        {
-            kvp.Value.ForceRefreshNow();
-        }
+        Log("✓ itemsParent activated");
     }
     
     Canvas.ForceUpdateCanvases();
-    ForceRebuildAllLayouts();
+    yield return null;
     
-    // ✅ Wait 2 frames lagi
+    Log("Frame 2: Populating shop...");
+    PopulateShopInternal();
+    
     yield return null;
     yield return null;
     
-    Debug.Log("[ShopManager] Frame 6: Second pass...");
+    Log("Frame 4: First refresh pass...");
+    
+    int refreshedCount = 0;
+    foreach (var kvp in categoryContainers)
+    {
+        if (kvp.Value != null)
+        {
+            if (!kvp.Value.gameObject.activeSelf)
+            {
+                Log($"  Activating {kvp.Key} container");
+                kvp.Value.gameObject.SetActive(true);
+                Canvas.ForceUpdateCanvases();
+            }
+
+            kvp.Value.ForceRefreshNow();
+            refreshedCount++;
+            Log($"  ✓ Refreshed {kvp.Key}");
+        }
+    }
+    
+    Log($"Refreshed {refreshedCount} categories");
+
+    Canvas.ForceUpdateCanvases();
+    ForceRebuildAllLayouts();
+    
+    yield return null;
+    yield return null;
+    
+    Log("Frame 6: Second pass...");
     ForceRebuildAllLayouts();
     
     yield return null;
     
-    Debug.Log("[ShopManager] Frame 7: Final pass...");
+    Log("Frame 7: Third pass...");
+    ForceRebuildAllLayouts();
+
+    yield return null;
+
+    Log("Frame 8: Final pass...");
     ForceRebuildAllLayouts();
     
-    // ✅ Reset scroll
     if (scrollRect != null)
     {
         scrollRect.verticalNormalizedPosition = 1f;
     }
     
     isInitialized = true;
-    Debug.Log("[ShopManager] ✅ Initialization complete!");
+    isPopulating = false;
+    
+    Log("✅ Initialization complete!");
+    LogCategoryStates();
 }
 
     /// <summary>
@@ -489,10 +547,6 @@ void EnsureCategoriesInitialized()
     {
         CreateCategoryContainer(rewardType, source);
     }
-
-    // ShopManager.cs - FIXED v10.0
-// ✅ FIX: Category position issue saat first load
-
 void CreateCategoryContainer(ShopRewardType rewardType, List<ShopItemData> source)
 {
     List<ShopItemData> filtered = FilterByRewardType(source, rewardType);
@@ -503,20 +557,22 @@ void CreateCategoryContainer(ShopRewardType rewardType, List<ShopItemData> sourc
         return;
     }
 
-    // ✅ CRITICAL FIX: Pastikan parent ACTIVE dulu
-    if (itemsParent != null && !itemsParent.gameObject.activeInHierarchy)
+    // ✅ TAMBAH CHECK INI
+    Log($"Creating category: {rewardType} ({filtered.Count} items)");
+
+    if (itemsParent == null || !itemsParent.gameObject.activeInHierarchy)
     {
-        Debug.LogWarning("[ShopManager] itemsParent is INACTIVE! Activating...");
-        itemsParent.gameObject.SetActive(true);
+        LogError($"itemsParent not active! Cannot create {rewardType}");
+        return;
     }
 
     GameObject containerObj = Instantiate(categoryContainerPrefab, itemsParent);
     containerObj.name = $"CategoryContainer_{rewardType}";
     
-    // ✅ CRITICAL FIX: Force active IMMEDIATELY
+    // ✅ CRITICAL: Force active IMMEDIATELY
     containerObj.SetActive(true);
-    
-    // ✅ Wait 1 frame untuk Awake() selesai
+    Log($"  Spawned {containerObj.name} (active={containerObj.activeSelf})");
+
     Canvas.ForceUpdateCanvases();
 
     var container = containerObj.GetComponent<CategoryContainerUI>();
@@ -528,32 +584,30 @@ void CreateCategoryContainer(ShopRewardType rewardType, List<ShopItemData> sourc
         return;
     }
 
-    // Set header
     container.SetHeaderText(GetCategoryDisplayName(rewardType));
-    
-    // Clear dummy items
     container.ClearDummyItems();
-
-    // ✅ CRITICAL: Force another canvas update
     Canvas.ForceUpdateCanvases();
 
-    // Add items
+    Log($"  Adding {filtered.Count} items...");
     foreach (var data in filtered)
     {
         container.AddItem(itemUIPrefab, data, this);
     }
 
-    // ✅ CRITICAL: Refresh layout BEFORE marking as done
-    container.ForceRefreshNow();
+    Log($"  Items added, forcing refresh...");
     
-    // Call refresh after items added
+    // ✅ CRITICAL: Force refresh NOW
+    container.ForceRefreshNow();
     container.OnAllItemsAdded();
 
-    // ✅ Store reference
     categoryContainers[rewardType] = container;
 
-    Debug.Log($"[ShopManager] ✓ '{rewardType}' with {filtered.Count} items (active={containerObj.activeSelf})");
+    // ✅ Log final state
+    var rect = containerObj.GetComponent<RectTransform>();
+    Log($"  ✓ Created '{rewardType}': active={containerObj.activeSelf}, pos={rect.anchoredPosition}");
 }
+
+
 
     List<ShopItemData> FilterByRewardType(List<ShopItemData> source, ShopRewardType rewardType)
     {
@@ -1312,6 +1366,35 @@ void CreateCategoryContainer(ShopRewardType rewardType, List<ShopItemData> sourc
             ? $"x{data.rewardAmount}" 
             : data.rewardAmount.ToString("N0");
     }
+
+    // ✅ TAMBAH METHOD BARU INI
+void LogCategoryStates()
+{
+    Log("=== CATEGORY STATES ===");
+    foreach (var kvp in categoryContainers)
+    {
+        if (kvp.Value != null)
+        {
+            var rect = kvp.Value.GetComponent<RectTransform>();
+            Log($"  {kvp.Key}: active={kvp.Value.gameObject.activeSelf}, " +
+                $"pos={rect.anchoredPosition}, " +
+                $"items={kvp.Value.GetItemCount()}");
+        }
+    }
+    Log("======================");
+}
+
+// ✅ TAMBAH jika belum ada:
+void Log(string message)
+{
+    if (enableDebugLogs)
+        Debug.Log($"[ShopManager] {message}");
+}
+
+void LogError(string message)
+{
+    Debug.LogError($"[ShopManager] ❌ {message}");
+}
 
     [ContextMenu("🔄 Refresh Shop")]
     void Context_Refresh() 

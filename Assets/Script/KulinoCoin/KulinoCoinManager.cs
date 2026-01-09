@@ -5,17 +5,17 @@ using UnityEngine.Networking;
 using UnityEngine.SceneManagement;
 
 /// <summary>
-/// ✅ FIXED v9.0: KulinoCoinManager - RPC Reliability Fix
-/// - Updated RPC endpoints dengan yang lebih reliable
-/// - Increased timeout untuk WebGL (60s)
-/// - Better error logging dengan detail
-/// - Tambah Helius & QuickNode fallback
+/// ✅ FIXED v8.1: KulinoCoinManager - Scene Detection Fix
+/// - Added scene load detection untuk auto-refresh
+/// - Force refresh saat kembali ke MainMenu
+/// - Better WebGL initialization handling
 /// </summary>
 public class KulinoCoinManager : MonoBehaviour
 {
     public static KulinoCoinManager Instance { get; private set; }
 
     [Header("🧪 Testing (Editor Only)")]
+    [Tooltip("Paste wallet address (KC holder)")]
     public string testWalletAddress = "";
     public double mockBalance = 95.0;
     public bool useMockData = false;
@@ -23,38 +23,32 @@ public class KulinoCoinManager : MonoBehaviour
     [Header("⚙️ Kulino Coin Settings")]
     public string kulinoCoinMintAddress = "E5chNtjGFvCMVYoTwcP9DtrdMdctRCGdGahAAhnHbHc1";
     
-    [Header("🌐 RPC Endpoints - UPDATED & OPTIMIZED")]
+    [Header("🌐 RPC Endpoints - OPTIMIZED ORDER")]
     public string[] solanaRpcUrls = new string[]
     {
-        // ✅ Tier 1: Public endpoints dengan rate limit bagus
+        "https://solana-mainnet.g.alchemy.com/v2/demo",
         "https://api.mainnet-beta.solana.com",
         "https://solana-api.projectserum.com",
-        
-        // ✅ Tier 2: CDN-based endpoints
-        "https://rpc.ankr.com/solana",
-        "https://solana-mainnet.rpc.extrnode.com",
-        
-        // ✅ Tier 3: Backup endpoints
-        "https://solana.public-rpc.com",
-        "https://api.devnet.solana.com" // Last resort untuk testing
+        "https://rpc.ankr.com/solana"
     };
 
     [Header("💰 Current Balance")]
     public double kulinoCoinBalance = 0;
 
-    [Header("🔄 Settings - UPDATED")]
+    [Header("🔄 Settings")]
     public float autoRefreshInterval = 30f;
     public int maxInitRetries = 10;
     public float retryDelay = 2f;
-    public int maxRpcRetries = 3; // Retry per RPC
-    public int requestTimeout = 60; // ✅ INCREASED for WebGL
+    public int maxRpcRetries = 3;
+    public int requestTimeout = 30;
 
     [Header("🎬 Scene Settings")]
+    [Tooltip("Auto refresh saat load scene ini")]
     public string[] refreshOnScenes = new string[] { "MainMenu", "Menu", "Lobby" };
 
     [Header("🔍 Debug")]
     public bool enableDebugLogs = true;
-    public bool enableVerboseLogs = false; // ✅ Disable by default untuk reduce noise
+    public bool enableVerboseLogs = true;
 
     public event Action<double> OnBalanceUpdated;
     public event Action<string> OnWalletInitialized;
@@ -64,7 +58,6 @@ public class KulinoCoinManager : MonoBehaviour
     private bool isFetching = false;
     private int initRetryCount = 0;
     private string lastSceneName = "";
-    private int consecutiveFailures = 0; // ✅ Track failures
 
     void Awake()
     {
@@ -84,9 +77,10 @@ public class KulinoCoinManager : MonoBehaviour
         DontDestroyOnLoad(gameObject);
         gameObject.name = "[KulinoCoinManager - PERSISTENT]";
         
+        // ✅ NEW: Subscribe to scene loaded
         SceneManager.sceneLoaded += OnSceneLoaded;
         
-        Log("✅ KulinoCoinManager v9.0 initialized");
+        Log("✅ KulinoCoinManager initialized");
     }
 
     void OnDestroy()
@@ -94,12 +88,20 @@ public class KulinoCoinManager : MonoBehaviour
         SceneManager.sceneLoaded -= OnSceneLoaded;
     }
 
+    // ✅ NEW: Handle scene transitions
     void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
-        if (lastSceneName == scene.name) return;
+        Log($"🎬 Scene loaded: {scene.name}");
+        
+        // Skip jika scene sama
+        if (lastSceneName == scene.name)
+        {
+            return;
+        }
         
         lastSceneName = scene.name;
         
+        // Check if scene needs refresh
         bool needsRefresh = false;
         foreach (string sceneName in refreshOnScenes)
         {
@@ -112,17 +114,19 @@ public class KulinoCoinManager : MonoBehaviour
         
         if (needsRefresh && isInitialized)
         {
-            Log($"🔄 Scene '{scene.name}' requires refresh");
+            Log($"🔄 Scene '{scene.name}' requires refresh - triggering fetch");
             StartCoroutine(DelayedSceneRefresh());
         }
     }
 
+    // ✅ NEW: Delayed refresh saat scene loaded
     IEnumerator DelayedSceneRefresh()
     {
         yield return new WaitForSeconds(1f);
         
         if (isInitialized && !isFetching)
         {
+            Log("🔄 Executing scene refresh");
             FetchKulinoCoinBalance();
         }
     }
@@ -130,18 +134,33 @@ public class KulinoCoinManager : MonoBehaviour
     void Start()
     {
         #if UNITY_WEBGL && !UNITY_EDITOR
+            Log("🌐 WebGL - Waiting for wallet");
+            // ✅ CRITICAL: Start checking immediately in WebGL
             StartCoroutine(WaitForWalletWithRetry());
         #else
+            Log("🖥️ Editor - Starting detection");
             StartCoroutine(WaitForWalletWithRetry());
         #endif
     }
 
+    void OnEnable()
+    {
+        if (GameManager.Instance != null)
+        {
+            CheckGameManagerWallet();
+        }
+    }
+
     IEnumerator WaitForWalletWithRetry()
     {
+        Log("🔄 Wallet detection started...");
+        
         while (initRetryCount < maxInitRetries && !isInitialized)
         {
             initRetryCount++;
+            Log($"⏳ Attempt {initRetryCount}/{maxInitRetries}");
             
+            // CHECK 1: Test wallet (Editor)
             #if UNITY_EDITOR
             if (!string.IsNullOrEmpty(testWalletAddress))
             {
@@ -151,35 +170,66 @@ public class KulinoCoinManager : MonoBehaviour
             }
             #endif
             
+            // CHECK 2: GameManager
             if (GameManager.Instance != null)
             {
                 string addr = GameManager.Instance.GetWalletAddress();
                 if (!string.IsNullOrEmpty(addr))
                 {
+                    Log($"✅ Found from GameManager: {ShortenAddress(addr)}");
                     Initialize(addr);
                     yield break;
                 }
             }
             
+            // CHECK 3: PlayerPrefs
             string savedAddr = PlayerPrefs.GetString("WalletAddress", "");
             if (!string.IsNullOrEmpty(savedAddr))
             {
+                Log($"✅ Found saved: {ShortenAddress(savedAddr)}");
                 Initialize(savedAddr);
                 yield break;
             }
             
             yield return new WaitForSeconds(retryDelay);
         }
+        
+        if (!isInitialized)
+        {
+            LogWarning($"⚠️ No wallet after {maxInitRetries} attempts");
+        }
+    }
+
+    void CheckGameManagerWallet()
+    {
+        if (isInitialized) return;
+        
+        if (GameManager.Instance != null)
+        {
+            string addr = GameManager.Instance.GetWalletAddress();
+            if (!string.IsNullOrEmpty(addr))
+            {
+                Log($"✓ Wallet from GameManager: {ShortenAddress(addr)}");
+                Initialize(addr);
+            }
+        }
     }
 
     public void Initialize(string walletAddr)
     {
-        if (string.IsNullOrEmpty(walletAddr)) return;
+        if (string.IsNullOrEmpty(walletAddr))
+        {
+            LogError("❌ Empty wallet!");
+            return;
+        }
 
         if (isInitialized && walletAddress == walletAddr)
         {
+            Log($"ℹ️ Already initialized: {ShortenAddress(walletAddr)}");
+            // ✅ IMPORTANT: Still trigger fetch untuk refresh balance
             if (!isFetching)
             {
+                Log("🔄 Triggering refresh for existing wallet");
                 FetchKulinoCoinBalance();
             }
             return;
@@ -189,17 +239,23 @@ public class KulinoCoinManager : MonoBehaviour
         isInitialized = true;
 
         Log($"✅ INITIALIZED: {ShortenAddress(walletAddress)}");
+        Log($"🔗 Mint: {ShortenAddress(kulinoCoinMintAddress)}");
+
         OnWalletInitialized?.Invoke(walletAddress);
 
+        // ✅ CRITICAL: Force immediate fetch
+        Log("🔄 Starting IMMEDIATE balance fetch...");
         StartCoroutine(ForceImmediateFetch());
 
         if (autoRefreshInterval > 0)
         {
             CancelInvoke(nameof(AutoRefreshBalance));
             InvokeRepeating(nameof(AutoRefreshBalance), autoRefreshInterval, autoRefreshInterval);
+            Log($"✓ Auto-refresh: {autoRefreshInterval}s");
         }
     }
 
+    // ✅ Force immediate fetch on init
     IEnumerator ForceImmediateFetch()
     {
         yield return new WaitForSeconds(0.5f);
@@ -208,7 +264,18 @@ public class KulinoCoinManager : MonoBehaviour
 
     public void FetchKulinoCoinBalance()
     {
-        if (!isInitialized || isFetching) return;
+        if (!isInitialized)
+        {
+            LogWarning("⚠️ Not initialized");
+            return;
+        }
+
+        if (isFetching)
+        {
+            Log("⏳ Already fetching...");
+            return;
+        }
+
         StartCoroutine(FetchBalanceWithRetry());
     }
 
@@ -218,6 +285,8 @@ public class KulinoCoinManager : MonoBehaviour
         Log("═══════════════════════════════════");
         Log("🔄 FETCHING KULINO COIN BALANCE");
         Log($"   Wallet: {ShortenAddress(walletAddress)}");
+        Log($"   Mint: {ShortenAddress(kulinoCoinMintAddress)}");
+        Log($"   Scene: {SceneManager.GetActiveScene().name}");
         Log("═══════════════════════════════════");
 
         #if UNITY_EDITOR
@@ -234,6 +303,7 @@ public class KulinoCoinManager : MonoBehaviour
         bool success = false;
         int totalAttempts = 0;
 
+        // ✅ Try each RPC
         for (int rpcIndex = 0; rpcIndex < solanaRpcUrls.Length && !success; rpcIndex++)
         {
             string rpcUrl = solanaRpcUrls[rpcIndex];
@@ -246,6 +316,7 @@ public class KulinoCoinManager : MonoBehaviour
                 
                 if (retry > 0)
                 {
+                    Log($"   🔄 Retry {retry}/{maxRpcRetries}");
                     yield return new WaitForSeconds(1f);
                 }
 
@@ -255,7 +326,6 @@ public class KulinoCoinManager : MonoBehaviour
 
                 if (success)
                 {
-                    consecutiveFailures = 0; // ✅ Reset failure counter
                     Log($"✅ SUCCESS from {GetDomainFromUrl(rpcUrl)}");
                     break;
                 }
@@ -264,21 +334,11 @@ public class KulinoCoinManager : MonoBehaviour
 
         if (!success)
         {
-            consecutiveFailures++;
             LogError($"❌ ALL RPCs FAILED ({totalAttempts} attempts)");
             LogError("💡 Troubleshooting:");
-            LogError($"   1. Check wallet: {walletAddress}");
-            LogError($"   2. Verify mint: {kulinoCoinMintAddress}");
-            LogError($"   3. Ensure wallet has KC token account");
-            LogError($"   4. Check network connection");
-            LogError($"   5. Consecutive failures: {consecutiveFailures}");
-            
-            // ✅ Show user-friendly message
-            if (consecutiveFailures >= 3)
-            {
-                LogError("⚠️ Multiple fetch failures detected!");
-                LogError("   Consider checking your internet connection");
-            }
+            LogError($"   Wallet: {walletAddress}");
+            LogError($"   Mint: {kulinoCoinMintAddress}");
+            LogError("   Check wallet has token account");
             
             SetBalance(0);
         }
@@ -289,6 +349,12 @@ public class KulinoCoinManager : MonoBehaviour
     IEnumerator FetchFromRpc(string rpcUrl, Action<bool> onComplete)
     {
         string jsonBody = BuildTokenBalanceRequest();
+
+        if (enableVerboseLogs)
+        {
+            Log($"📤 Request Body:");
+            Log(jsonBody);
+        }
 
         using (UnityWebRequest request = new UnityWebRequest(rpcUrl, "POST"))
         {
@@ -304,51 +370,23 @@ public class KulinoCoinManager : MonoBehaviour
 
             if (request.result != UnityWebRequest.Result.Success)
             {
-                // ✅ Better error categorization
-                string errorCategory = GetErrorCategory(request);
-                LogWarning($"   ❌ {GetDomainFromUrl(rpcUrl)}: {errorCategory} ({elapsed:F1}s)");
-                
-                if (enableVerboseLogs)
-                {
-                    LogWarning($"   Detail: {request.error}");
-                }
-                
+                LogWarning($"   ❌ {GetDomainFromUrl(rpcUrl)}: {request.error} ({elapsed:F1}s)");
                 onComplete?.Invoke(false);
                 yield break;
             }
 
             string responseText = request.downloadHandler.text;
             
+            Log($"📥 Response ({responseText.Length} chars, {elapsed:F1}s)");
+            
             if (enableVerboseLogs)
             {
-                Log($"📥 Response ({responseText.Length} chars, {elapsed:F1}s)");
                 Log($"Response: {responseText}");
-            }
-            else
-            {
-                Log($"📥 Response: {responseText.Length} chars in {elapsed:F1}s");
             }
 
             bool parseSuccess = ParseBalanceResponse(responseText);
             onComplete?.Invoke(parseSuccess);
         }
-    }
-
-    // ✅ NEW: Categorize errors for better debugging
-    string GetErrorCategory(UnityWebRequest request)
-    {
-        if (request.error.Contains("timeout") || request.error.Contains("timed out"))
-            return "TIMEOUT";
-        if (request.error.Contains("Cannot resolve"))
-            return "DNS_ERROR";
-        if (request.error.Contains("502") || request.error.Contains("503"))
-            return "SERVER_DOWN";
-        if (request.error.Contains("429"))
-            return "RATE_LIMITED";
-        if (request.error.Contains("CORS") || request.error.Contains("cors"))
-            return "CORS_BLOCKED";
-        
-        return request.error;
     }
 
     string BuildTokenBalanceRequest()
@@ -384,6 +422,7 @@ public class KulinoCoinManager : MonoBehaviour
             if (response.result.value == null || response.result.value.Length == 0)
             {
                 Log("ℹ️ No token account → Balance: 0 KC");
+                Log("💡 Wallet hasn't received Kulino Coin yet");
                 SetBalance(0);
                 return true;
             }
@@ -399,6 +438,12 @@ public class KulinoCoinManager : MonoBehaviour
             string amountStr = tokenAccount.account.data.parsed.info.tokenAmount.amount;
             int decimals = tokenAccount.account.data.parsed.info.tokenAmount.decimals;
 
+            if (string.IsNullOrEmpty(amountStr))
+            {
+                LogError("❌ Empty amount");
+                return false;
+            }
+
             if (!double.TryParse(amountStr, System.Globalization.NumberStyles.Float, 
                 System.Globalization.CultureInfo.InvariantCulture, out double rawAmount))
             {
@@ -408,7 +453,12 @@ public class KulinoCoinManager : MonoBehaviour
 
             double balance = rawAmount / Math.Pow(10, decimals);
 
-            Log($"✅ BALANCE: {balance:F6} KC (raw: {rawAmount}, decimals: {decimals})");
+            Log("═══════════════════════════════════");
+            Log($"✅ BALANCE FOUND: {balance:F6} KC");
+            Log($"   📊 Raw: {rawAmount}");
+            Log($"   📊 Decimals: {decimals}");
+            Log($"   📊 Formula: {rawAmount} / 10^{decimals}");
+            Log("═══════════════════════════════════");
             
             SetBalance(balance);
             return true;
@@ -419,6 +469,7 @@ public class KulinoCoinManager : MonoBehaviour
             
             if (enableVerboseLogs)
             {
+                LogError($"Stack: {ex.StackTrace}");
                 LogError($"Response: {responseText}");
             }
             
@@ -428,7 +479,13 @@ public class KulinoCoinManager : MonoBehaviour
 
     void SetBalance(double balance)
     {
+        double oldBalance = kulinoCoinBalance;
         kulinoCoinBalance = balance;
+
+        Log($"💰 Balance: {oldBalance:F6} → {balance:F6} KC");
+        
+        // ✅ CRITICAL: Always invoke event, even if balance sama
+        // Ini penting untuk UI refresh
         OnBalanceUpdated?.Invoke(balance);
     }
 
@@ -436,36 +493,77 @@ public class KulinoCoinManager : MonoBehaviour
     {
         if (isInitialized && !isFetching)
         {
+            Log("🔄 Auto-refresh triggered");
             FetchKulinoCoinBalance();
         }
     }
 
-    public void RefreshBalance() => FetchKulinoCoinBalance();
-    public bool HasEnoughBalance(double amount) => kulinoCoinBalance >= amount;
-    public double GetBalance() => kulinoCoinBalance;
-    public bool IsInitialized() => isInitialized;
-    public string GetWalletAddress() => walletAddress;
+    public void RefreshBalance()
+    {
+        Log("🔄 Manual refresh requested");
+        FetchKulinoCoinBalance();
+    }
+
+    public bool HasEnoughBalance(double amount)
+    {
+        return kulinoCoinBalance >= amount;
+    }
+
+    public double GetBalance()
+    {
+        return kulinoCoinBalance;
+    }
+
+    public bool IsInitialized()
+    {
+        return isInitialized;
+    }
+
+    public string GetWalletAddress()
+    {
+        return walletAddress;
+    }
 
     string ShortenAddress(string addr)
     {
-        if (string.IsNullOrEmpty(addr) || addr.Length < 10) return addr;
+        if (string.IsNullOrEmpty(addr) || addr.Length < 10)
+            return addr;
         return $"{addr.Substring(0, 4)}...{addr.Substring(addr.Length - 4)}";
     }
 
     string GetDomainFromUrl(string url)
     {
-        try { return new Uri(url).Host; }
-        catch { return url; }
+        try
+        {
+            var uri = new Uri(url);
+            return uri.Host;
+        }
+        catch
+        {
+            return url;
+        }
     }
 
-    void Log(string m) { if (enableDebugLogs) Debug.Log($"[KulinoCoin] {m}"); }
-    void LogWarning(string m) { Debug.LogWarning($"[KulinoCoin] {m}"); }
-    void LogError(string m) { Debug.LogError($"[KulinoCoin] {m}"); }
+    void Log(string msg)
+    {
+        if (enableDebugLogs)
+            Debug.Log($"[KulinoCoin] {msg}");
+    }
+
+    void LogWarning(string msg)
+    {
+        Debug.LogWarning($"[KulinoCoin] {msg}");
+    }
+
+    void LogError(string msg)
+    {
+        Debug.LogError($"[KulinoCoin] {msg}");
+    }
 
     [ContextMenu("🔄 Force Refresh NOW")]
     void Context_ForceRefresh()
     {
-        consecutiveFailures = 0;
+        Log("🔥 FORCE REFRESH TRIGGERED");
         StartCoroutine(ForceImmediateFetch());
     }
 
@@ -479,8 +577,27 @@ public class KulinoCoinManager : MonoBehaviour
         Debug.Log($"Wallet: {(isInitialized ? walletAddress : "NOT SET")}");
         Debug.Log($"Balance: {kulinoCoinBalance:F6} KC");
         Debug.Log($"Fetching: {isFetching}");
-        Debug.Log($"Scene: {SceneManager.GetActiveScene().name}");
-        Debug.Log($"Consecutive Failures: {consecutiveFailures}");
+        Debug.Log($"Current Scene: {SceneManager.GetActiveScene().name}");
+        Debug.Log($"Mock Mode: {useMockData}");
         Debug.Log("═══════════════════════════════════");
+    }
+
+    [ContextMenu("🧪 Test Wallet Detection")]
+    void Context_TestWallet()
+    {
+        if (string.IsNullOrEmpty(testWalletAddress))
+        {
+            Debug.LogError("❌ Set testWalletAddress first!");
+            return;
+        }
+
+        Debug.Log($"🧪 Testing wallet: {ShortenAddress(testWalletAddress)}");
+        
+        // Reset state
+        isInitialized = false;
+        kulinoCoinBalance = 0;
+        
+        // Initialize with test wallet
+        Initialize(testWalletAddress);
     }
 }

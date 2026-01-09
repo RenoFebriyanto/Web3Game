@@ -1,12 +1,10 @@
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
-using System.Collections;
 using System.Collections.Generic;
 
 /// <summary>
-/// CategoryContainerUI - FIXED v4.2
-/// ✅ Added ForceRefreshNow() method
+/// CategoryContainerUI - FIXED v5.0
 /// </summary>
 public class CategoryContainerUI : MonoBehaviour
 {
@@ -15,21 +13,39 @@ public class CategoryContainerUI : MonoBehaviour
     public Transform itemsGrid;
     public TMP_Text headerText;
 
+    [Header("Debug")]
+    public bool enableDebugLogs = true;
+
     private List<GameObject> spawnedItems = new List<GameObject>();
     private GridLayoutGroup gridLayout;
     private bool needsRefresh = false;
 
     void Awake()
     {
+        Log($"Awake: {gameObject.name}");
+
         if (itemsGrid != null)
         {
             gridLayout = itemsGrid.GetComponent<GridLayoutGroup>();
             
             if (gridLayout != null)
             {
-                Debug.Log($"[CategoryContainer] ✓ GridLayout found");
+                Log("✓ GridLayout found");
+            }
+            else
+            {
+                LogWarning("✗ GridLayout NOT found!");
             }
         }
+        else
+        {
+            LogWarning("✗ itemsGrid is NULL!");
+        }
+    }
+
+    void Start()
+    {
+        Log($"Start: {gameObject.name} (active={gameObject.activeSelf})");
     }
 
     void LateUpdate()
@@ -43,6 +59,8 @@ public class CategoryContainerUI : MonoBehaviour
 
     void OnEnable()
     {
+        Log($"OnEnable: {gameObject.name}");
+
         if (needsRefresh)
         {
             RefreshLayout();
@@ -60,6 +78,8 @@ public class CategoryContainerUI : MonoBehaviour
         {
             headerObject.SetActive(!string.IsNullOrEmpty(text));
         }
+
+        Log($"Header set: '{text}'");
     }
 
     public void ClearDummyItems()
@@ -80,14 +100,14 @@ public class CategoryContainerUI : MonoBehaviour
             }
         }
 
-        Debug.Log($"[CategoryContainer] Cleared {childCount} dummy items");
+        Log($"Cleared {childCount} dummy items");
     }
 
     public void AddItem(GameObject itemPrefab, ShopItemData data, ShopManager manager)
     {
         if (itemsGrid == null || itemPrefab == null)
         {
-            Debug.LogError("[CategoryContainer] Cannot add item - missing references!");
+            LogWarning("Cannot add item - missing references!");
             return;
         }
 
@@ -103,14 +123,20 @@ public class CategoryContainerUI : MonoBehaviour
         }
         else
         {
-            Debug.LogWarning($"[CategoryContainer] ShopItemUI not found on {itemObj.name}!");
+            LogWarning($"ShopItemUI not found on {itemObj.name}!");
             Destroy(itemObj);
         }
     }
 
     public void RefreshLayout()
     {
-        if (itemsGrid == null) return;
+        if (itemsGrid == null)
+        {
+            LogWarning("Cannot refresh - itemsGrid is null!");
+            return;
+        }
+
+        Log("RefreshLayout called");
 
         var gridRect = itemsGrid.GetComponent<RectTransform>();
         if (gridRect != null)
@@ -123,43 +149,68 @@ public class CategoryContainerUI : MonoBehaviour
         {
             LayoutRebuilder.ForceRebuildLayoutImmediate(containerRect);
         }
+
+        Log($"Layout refreshed (pos={containerRect?.anchoredPosition})");
     }
 
-    
-public void ForceRefreshNow()
-{
-    if (!gameObject.activeInHierarchy)
+    public void ForceRefreshNow()
     {
-        Debug.LogWarning("[CategoryContainer] Cannot ForceRefreshNow - GameObject inactive");
-        return;
-    }
+        Log($"=== ForceRefreshNow START ===");
+        Log($"  Active: {gameObject.activeInHierarchy}");
+        Log($"  Items: {spawnedItems.Count}");
 
-    // Force rebuild semua layout
-    if (itemsGrid != null)
-    {
-        var gridRect = itemsGrid.GetComponent<RectTransform>();
-        if (gridRect != null)
+        if (!gameObject.activeInHierarchy)
         {
-            LayoutRebuilder.ForceRebuildLayoutImmediate(gridRect);
+            LogWarning("Cannot ForceRefreshNow - GameObject inactive!");
+            return;
         }
+
+        // Step 1: Force itemsGrid layout
+        if (itemsGrid != null)
+        {
+            var gridRect = itemsGrid.GetComponent<RectTransform>();
+            if (gridRect != null)
+            {
+                Log("  Rebuilding itemsGrid layout...");
+                LayoutRebuilder.ForceRebuildLayoutImmediate(gridRect);
+                Log($"    Grid pos: {gridRect.anchoredPosition}");
+            }
+        }
+
+        // Step 2: Force container layout
+        var containerRect = GetComponent<RectTransform>();
+        if (containerRect != null)
+        {
+            Log("  Rebuilding container layout...");
+            LayoutRebuilder.ForceRebuildLayoutImmediate(containerRect);
+            Log($"    Container pos: {containerRect.anchoredPosition}");
+        }
+
+        // Step 3: Force canvas update
+        Canvas.ForceUpdateCanvases();
+
+        // Step 4: Check positions
+        if (containerRect != null)
+        {
+            Log($"  Final container pos: {containerRect.anchoredPosition}");
+            
+            // If position is crazy, reset it
+            if (Mathf.Abs(containerRect.anchoredPosition.y) > 10000)
+            {
+                LogWarning($"  ⚠️ Detected invalid position! Resetting...");
+                containerRect.anchoredPosition = Vector2.zero;
+                Canvas.ForceUpdateCanvases();
+                LayoutRebuilder.ForceRebuildLayoutImmediate(containerRect);
+            }
+        }
+
+        Log("=== ForceRefreshNow COMPLETE ===");
     }
-
-    var containerRect = GetComponent<RectTransform>();
-    if (containerRect != null)
-    {
-        LayoutRebuilder.ForceRebuildLayoutImmediate(containerRect);
-    }
-
-    // Force canvas update
-    Canvas.ForceUpdateCanvases();
-
-    Debug.Log($"[CategoryContainer] ✓ Force refresh NOW complete (active={gameObject.activeSelf})");
-}
 
     public void OnAllItemsAdded()
     {
         needsRefresh = true;
-        Debug.Log($"[CategoryContainer] Items added, marked for refresh (active={gameObject.activeInHierarchy})");
+        Log($"Items added, marked for refresh (active={gameObject.activeInHierarchy})");
     }
 
     public void ClearItems()
@@ -188,5 +239,16 @@ public void ForceRefreshNow()
         {
             RefreshLayout();
         }
+    }
+
+    void Log(string message)
+    {
+        if (enableDebugLogs)
+            Debug.Log($"[CategoryContainer:{gameObject.name}] {message}");
+    }
+
+    void LogWarning(string message)
+    {
+        Debug.LogWarning($"[CategoryContainer:{gameObject.name}] {message}");
     }
 }

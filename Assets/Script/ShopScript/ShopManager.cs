@@ -6,6 +6,11 @@ using UnityEngine.UI;
 
 public enum Currency { Coins, Shards, KulinoCoin, Rupiah }
 
+/// <summary>
+/// ✅ FIXED: ShopManager - Initialization Issue
+/// - Fixed: itemsParent not active issue on first load
+/// - Categories now populate correctly on initial open
+/// </summary>
 public class ShopManager : MonoBehaviour
 {
     public static ShopManager Instance { get; private set; }
@@ -80,13 +85,12 @@ public class ShopManager : MonoBehaviour
             buyPreviewUI.Initialize(this);
         }
 
-        // ✅ CRITICAL: Update prices but DON'T populate yet
         UpdateShardPrices();
 
         Debug.Log("[ShopManager] ✓ Start complete - waiting for panel to open");
     }
 
-    // ✅ NEW: OnEnable hanya update prices, TIDAK populate
+    // ✅ FIXED: OnEnable - Better initialization check
     void OnEnable()
     {
         Debug.Log($"[ShopManager] OnEnable - active={gameObject.activeInHierarchy}, initialized={isInitialized}");
@@ -97,19 +101,35 @@ public class ShopManager : MonoBehaviour
             UpdateShardPrices();
         }
 
-        // ✅ ONLY populate if panel is actually active
+        // ✅ FIX: Force enable itemsParent jika belum active
+        if (itemsParent != null && !itemsParent.gameObject.activeInHierarchy)
+        {
+            Debug.Log("[ShopManager] ⚠️ itemsParent not active - force enabling");
+            itemsParent.gameObject.SetActive(true);
+        }
+
+        // ✅ FIX: Wait lebih lama untuk ensure hierarchy ready
         if (gameObject.activeInHierarchy)
         {
             StartCoroutine(InitializeWhenPanelActive());
         }
     }
 
-    // ✅ NEW: Wait sampai panel BENAR-BENAR active
+    // ✅ FIXED: Better waiting mechanism
     IEnumerator InitializeWhenPanelActive()
     {
-        // Wait 2 frames
+        // ✅ FIX: Wait 3 frames instead of 2
         yield return null;
         yield return null;
+        yield return null;
+
+        // ✅ FIX: Force enable itemsParent if still inactive
+        if (itemsParent != null && !itemsParent.gameObject.activeInHierarchy)
+        {
+            Debug.Log("[ShopManager] 🔧 Force enabling itemsParent...");
+            itemsParent.gameObject.SetActive(true);
+            yield return null; // Wait 1 more frame after enabling
+        }
 
         // Check jika panel masih active
         if (!gameObject.activeInHierarchy)
@@ -118,10 +138,16 @@ public class ShopManager : MonoBehaviour
             yield break;
         }
 
-        // Check itemsParent
-        if (itemsParent == null || !itemsParent.gameObject.activeInHierarchy)
+        // ✅ FIX: Better validation check
+        if (itemsParent == null)
         {
-            Debug.LogError("[ShopManager] itemsParent not active!");
+            Debug.LogError("[ShopManager] ❌ itemsParent is NULL!");
+            yield break;
+        }
+
+        if (!itemsParent.gameObject.activeInHierarchy)
+        {
+            Debug.LogError("[ShopManager] ❌ itemsParent still not active after force enable!");
             yield break;
         }
 
@@ -149,10 +175,14 @@ public class ShopManager : MonoBehaviour
         isPopulating = true;
         Debug.Log("[ShopManager] === Starting initialization ===");
 
-        // Ensure itemsParent active
+        // ✅ FIX: Ensure itemsParent active
         if (itemsParent != null)
         {
-            itemsParent.gameObject.SetActive(true);
+            if (!itemsParent.gameObject.activeInHierarchy)
+            {
+                itemsParent.gameObject.SetActive(true);
+                yield return null;
+            }
         }
 
         Canvas.ForceUpdateCanvases();
@@ -349,11 +379,11 @@ public class ShopManager : MonoBehaviour
             return;
         }
 
-        // ✅ CRITICAL: Check itemsParent ACTIVE
+        // ✅ FIX: Better validation
         if (!itemsParent.gameObject.activeInHierarchy)
         {
-            Debug.LogError("[ShopManager] ❌ itemsParent INACTIVE! Cannot populate.");
-            return;
+            Debug.LogError("[ShopManager] ❌ itemsParent INACTIVE! Force enabling...");
+            itemsParent.gameObject.SetActive(true);
         }
 
         List<ShopItemData> source = database?.items ?? shopItems;
@@ -414,7 +444,6 @@ public class ShopManager : MonoBehaviour
 
         Debug.Log($"[ShopManager] Creating {rewardType}: {filtered.Count} items");
 
-        // ✅ CHECK: itemsParent MUST be active
         if (itemsParent == null || !itemsParent.gameObject.activeInHierarchy)
         {
             Debug.LogError($"[ShopManager] ❌ itemsParent INACTIVE! Cannot create {rewardType}");
@@ -571,7 +600,6 @@ public class ShopManager : MonoBehaviour
                 break;
 
             case Currency.Rupiah:
-                // ✅ FIXED: Check balance first before handling payment
                 if (!data.UseRupiahPricing)
                 {
                     Debug.LogError("[ShopManager] Item doesn't support Rupiah pricing!");
@@ -579,7 +607,6 @@ public class ShopManager : MonoBehaviour
                     return false;
                 }
 
-                // Check KC price API
                 if (KulinoCoinPriceAPI.Instance == null)
                 {
                     Debug.LogError("[ShopManager] KulinoCoinPriceAPI not found!");
@@ -587,7 +614,6 @@ public class ShopManager : MonoBehaviour
                     return false;
                 }
 
-                // Get current KC price
                 double kcPriceIDR = KulinoCoinPriceAPI.Instance.GetCurrentPrice();
                 if (kcPriceIDR <= 0)
                 {
@@ -596,11 +622,9 @@ public class ShopManager : MonoBehaviour
                     return false;
                 }
 
-                // Calculate required KC
                 double rupiahAmount = data.rupiahPrice;
                 double requiredKC = rupiahAmount / kcPriceIDR;
 
-                // ✅ CRITICAL: Check balance
                 if (KulinoCoinManager.Instance == null)
                 {
                     Debug.LogError("[ShopManager] KulinoCoinManager not found!");
@@ -612,13 +636,11 @@ public class ShopManager : MonoBehaviour
 
                 if (playerBalance < requiredKC)
                 {
-                    // ✅ INSUFFICIENT KC - Show popup
                     Debug.LogWarning($"[ShopManager] Insufficient KC! Need {requiredKC:F6}, have {playerBalance:F6}");
                     ShowInsufficientFundsAlert(data, Currency.Rupiah);
                     return false;
                 }
 
-                // ✅ Enough balance - proceed with payment
                 return HandleRupiahPayment(data);
 
             case Currency.KulinoCoin:
@@ -637,7 +659,6 @@ public class ShopManager : MonoBehaviour
 
                 price = data.kulinoCoinPrice;
 
-                // Refresh balance
                 KulinoCoinManager.Instance.RefreshBalance();
                 System.Threading.Thread.Sleep(500);
 
@@ -646,7 +667,6 @@ public class ShopManager : MonoBehaviour
 
                 if (!canAfford)
                 {
-                    // ✅ INSUFFICIENT KC - Show popup
                     Debug.LogWarning($"[ShopManager] Insufficient KC! Need {price:F6}, have {currentBalance:F6}");
                     ShowInsufficientFundsAlert(data, Currency.KulinoCoin);
                     return false;
@@ -654,7 +674,6 @@ public class ShopManager : MonoBehaviour
                 break;
         }
 
-        // ✅ Can afford - close preview and proceed
         buyPreviewUI?.Close();
         ShowPurchasePopup(data, currency);
         return true;
@@ -683,98 +702,48 @@ public class ShopManager : MonoBehaviour
         switch (currency)
         {
             case Currency.Coins:
-                Debug.Log("[ShopManager] Showing popup for insufficient Coins");
-
                 OpenPhantomBuyCoinPopup.Instance.Show(
                     "Not Enough Coins",
                     "You don't have enough Coins. Go to shop to buy more?",
-                    () => {
-                        Debug.Log("[ShopManager] 🔄 Continue clicked - Opening Shop filter Items");
-                        OpenShopFilterItems();
-                    }
+                    () => OpenShopFilterItems()
                 );
                 break;
 
             case Currency.Shards:
-                Debug.Log("[ShopManager] Showing popup for insufficient Shards");
-
                 OpenPhantomBuyCoinPopup.Instance.Show(
                     "Not Enough Shards",
                     "You don't have enough Shards. Go to shop to buy more?",
-                    () => {
-                        Debug.Log("[ShopManager] 🔄 Continue clicked - Opening Shop filter Shard");
-                        OpenShopFilterShard();
-                    }
+                    () => OpenShopFilterShard()
                 );
                 break;
 
             case Currency.KulinoCoin:
             case Currency.Rupiah:
-                Debug.Log("[ShopManager] Showing popup for insufficient KC");
-
                 OpenPhantomBuyCoinPopup.Instance.Show(
                     "Not Enough Kulino Coin",
                     "You don't have enough Kulino Coin. Buy some in Phantom Wallet?",
-                    null  // ✅ FIXED: Pass null to use default Jupiter swap URL
+                    null
                 );
                 break;
         }
     }
+
     void OpenShopFilterItems()
     {
-        Debug.Log("[ShopManager] Opening Shop → Filter: Items");
-
-        // Open shop panel
         if (ButtonManager.Instance != null)
         {
             ButtonManager.Instance.ShowShop();
         }
-
-        // Wait for panel to open, then set filter
         StartCoroutine(ShowItemsAfterDelay());
     }
 
-    /// <summary>
-    /// ✅ Helper: Open shop with Shard filter
-    /// </summary>
     void OpenShopFilterShard()
     {
-        Debug.Log("[ShopManager] Opening Shop → Filter: Shard");
-
-        // Open shop panel
         if (ButtonManager.Instance != null)
         {
             ButtonManager.Instance.ShowShop();
         }
-
-        // Wait for panel to open, then set filter
         StartCoroutine(ShowShardsAfterDelay());
-    }
-
-    /// <summary>
-    /// ✅ Helper: Open Phantom Wallet
-    /// </summary>
-    void OpenPhantomWallet()
-    {
-        Debug.Log("[ShopManager] Opening Phantom Wallet");
-
-#if UNITY_WEBGL && !UNITY_EDITOR
-    try
-    {
-        string phantomURL = "https://phantom.app/";
-        string jsCode = $"window.open('{phantomURL}', '_blank');";
-        Application.ExternalEval(jsCode);
-        Debug.Log("[ShopManager] ✓ Phantom Wallet opened");
-    }
-    catch (System.Exception ex)
-    {
-        Debug.LogError($"[ShopManager] Failed to open Phantom: {ex.Message}");
-        Application.OpenURL("https://phantom.app/");
-    }
-#else
-        Application.OpenURL("https://phantom.app/");
-        Debug.Log("[ShopManager] 🧪 EDITOR: Phantom URL opened");
-#endif
     }
 
     IEnumerator ShowItemsAfterDelay()
@@ -791,7 +760,6 @@ public class ShopManager : MonoBehaviour
         ScrollToTop();
     }
 
-    // ✅ NEW: Handle pembayaran Rupiah
     bool HandleRupiahPayment(ShopItemData data)
     {
         if (!data.UseRupiahPricing)
@@ -801,7 +769,6 @@ public class ShopManager : MonoBehaviour
             return false;
         }
 
-        // Check KC price API
         if (KulinoCoinPriceAPI.Instance == null)
         {
             Debug.LogError("[ShopManager] KulinoCoinPriceAPI not found!");
@@ -809,9 +776,8 @@ public class ShopManager : MonoBehaviour
             return false;
         }
 
-        // Get current KC price in Rupiah
         double kcPriceIDR = KulinoCoinPriceAPI.Instance.GetCurrentPrice();
-        
+
         if (kcPriceIDR <= 0)
         {
             Debug.LogError("[ShopManager] Invalid KC price!");
@@ -819,20 +785,9 @@ public class ShopManager : MonoBehaviour
             return false;
         }
 
-        // Calculate required KC amount
         double rupiahAmount = data.rupiahPrice;
         double requiredKC = rupiahAmount / kcPriceIDR;
 
-        Debug.Log("═══════════════════════════════════");
-        Debug.Log("[ShopManager] 💰 RUPIAH PAYMENT");
-        Debug.Log($"  Item: {data.displayName}");
-        Debug.Log($"  Rupiah Price: Rp {rupiahAmount:N0}");
-        Debug.Log($"  KC Price: Rp {kcPriceIDR:N2} per KC");
-        Debug.Log($"  Required KC: {requiredKC:F6} KC");
-        Debug.Log($"  Destination: {ShortenAddress(companyWalletAddress)}");
-        Debug.Log("═══════════════════════════════════");
-
-        // Check player balance
         if (KulinoCoinManager.Instance == null)
         {
             Debug.LogError("[ShopManager] KulinoCoinManager not found!");
@@ -841,7 +796,7 @@ public class ShopManager : MonoBehaviour
         }
 
         double playerBalance = KulinoCoinManager.Instance.GetBalance();
-        
+
         if (playerBalance < requiredKC)
         {
             Debug.LogWarning($"[ShopManager] Insufficient KC! Need {requiredKC:F6}, have {playerBalance:F6}");
@@ -849,20 +804,16 @@ public class ShopManager : MonoBehaviour
             return false;
         }
 
-        // Close preview and initiate payment
         buyPreviewUI?.Close();
-        
+
         _pendingPurchaseData = data;
         StartCoroutine(InitiateRupiahPayment(data, requiredKC, rupiahAmount));
-        
+
         return true;
     }
 
-    // ✅ NEW: Initiate Rupiah payment via Phantom
     IEnumerator InitiateRupiahPayment(ShopItemData data, double kcAmount, double rupiahAmount)
     {
-        Debug.Log($"[ShopManager] 🔄 Initiating Rupiah payment...");
-        
         var payload = new RupiahPaymentPayload
         {
             destinationWallet = companyWalletAddress,
@@ -874,21 +825,14 @@ public class ShopManager : MonoBehaviour
             nonce = System.Guid.NewGuid().ToString(),
             timestamp = System.DateTimeOffset.UtcNow.ToUnixTimeSeconds()
         };
-        
+
         string json = JsonUtility.ToJson(payload);
-        
-        Debug.Log($"[ShopManager] 📤 Payment payload:");
-        Debug.Log($"  Destination: {ShortenAddress(companyWalletAddress)}");
-        Debug.Log($"  Amount: {kcAmount:F6} KC (= Rp {rupiahAmount:N0})");
-        
+
 #if UNITY_WEBGL && !UNITY_EDITOR
         try
         {
-            // ✅ Call JavaScript function untuk payment
             string jsCode = $"if(typeof requestRupiahPayment === 'function') {{ requestRupiahPayment('{json}'); }}";
             Application.ExternalEval(jsCode);
-            
-            Debug.Log("[ShopManager] ✓ Payment request sent to JavaScript");
         }
         catch (System.Exception ex)
         {
@@ -897,33 +841,24 @@ public class ShopManager : MonoBehaviour
             _pendingPurchaseData = null;
         }
 #else
-        // ✅ EDITOR MODE: Simulate success
         yield return new WaitForSeconds(2f);
-        
-        Debug.Log("[ShopManager] 🧪 EDITOR MODE: Simulating payment success");
-        
+
         string mockResponse = $"{{\"success\":true,\"txHash\":\"MOCK_RUPIAH_TX_{System.DateTime.Now.Ticks}\",\"kcAmount\":{kcAmount},\"rupiahAmount\":{rupiahAmount}}}";
-        
+
         OnRupiahPaymentResult(mockResponse);
 #endif
-        
+
         yield return null;
     }
 
-    // ✅ NEW: Callback dari JavaScript saat payment selesai
     public void OnRupiahPaymentResult(string resultJson)
     {
-        Debug.Log($"[ShopManager] 📥 Rupiah payment result: {resultJson}");
-
         try
         {
             var result = JsonUtility.FromJson<PaymentResult>(resultJson);
 
             if (result.success)
             {
-                Debug.Log($"[ShopManager] ✅ RUPIAH PAYMENT SUCCESS!");
-                Debug.Log($"  TX Hash: {result.txHash}");
-                
                 if (_pendingPurchaseData != null)
                 {
                     GrantReward(_pendingPurchaseData);
@@ -931,7 +866,6 @@ public class ShopManager : MonoBehaviour
                     SoundManager.Instance?.PlayPurchaseSuccess();
                 }
 
-                // Refresh KC balance
                 StartCoroutine(RefreshKCBalanceDelayed(2f));
             }
             else
@@ -952,10 +886,9 @@ public class ShopManager : MonoBehaviour
     IEnumerator RefreshKCBalanceDelayed(float delay)
     {
         yield return new WaitForSeconds(delay);
-        
+
         if (KulinoCoinManager.Instance != null)
         {
-            Debug.Log("[ShopManager] 🔄 Refreshing KC balance after payment...");
             KulinoCoinManager.Instance.RefreshBalance();
         }
     }
@@ -965,6 +898,8 @@ public class ShopManager : MonoBehaviour
         if (string.IsNullOrEmpty(addr) || addr.Length < 10) return addr;
         return $"{addr.Substring(0, 6)}...{addr.Substring(addr.Length - 4)}";
     }
+
+    // ======================================== NEED TO TEST THIS PART
 
     void ShowPurchasePopup(ShopItemData data, Currency currency)
     {

@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using System.Collections; // ✅ TAMBAHKAN INI
 #if UNITY_WEBGL
 using System.Runtime.InteropServices;
 #endif

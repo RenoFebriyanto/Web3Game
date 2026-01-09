@@ -375,6 +375,7 @@
     }, false);
   </script>
 
+<<<<<<< HEAD
 
     <script>
       (function () {
@@ -568,13 +569,21 @@
             setTimeout(checkOrientation, CONFIG.CHECK_INTERVAL);
           });
 
+=======
+>>>>>>> parent of d8aafea (New)
   <!-- ✅ FINAL WORKING VERSION: Orientation Detection -->
 <script>
 (function() {
   'use strict';
+<<<<<<< HEAD
 
   console.log('%c[ORIENT] Starting v3.0 (TESTED)', 'color: #0f0; font-weight: bold');
 
+=======
+  
+  console.log('%c[ORIENT] Starting v3.0 (TESTED)', 'color: #0f0; font-weight: bold');
+
+>>>>>>> parent of d8aafea (New)
   // ===== CONFIGURATION =====
   const CONFIG = {
     MOBILE_MAX_WIDTH: 900,        // Increased to catch more phones
@@ -611,6 +620,7 @@
     const ua = navigator.userAgent || navigator.vendor || window.opera;
     const width = window.innerWidth;
     const height = window.innerHeight;
+<<<<<<< HEAD
 
     // Check for mobile user agents (phones only, not tablets)
     const mobilePattern = /Android.*Mobile|iPhone|iPod|BlackBerry|IEMobile|Opera Mini/i;
@@ -625,6 +635,22 @@
     // Final decision: must have mobile UA + small screen + touch
     const isMobile = isMobileUA && isSmallScreen && hasTouch;
 
+=======
+    
+    // Check for mobile user agents (phones only, not tablets)
+    const mobilePattern = /Android.*Mobile|iPhone|iPod|BlackBerry|IEMobile|Opera Mini/i;
+    const isMobileUA = mobilePattern.test(ua);
+    
+    // Check screen size (phones are usually < 768px)
+    const isSmallScreen = width < CONFIG.MOBILE_MAX_WIDTH;
+    
+    // Check touch support
+    const hasTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+    
+    // Final decision: must have mobile UA + small screen + touch
+    const isMobile = isMobileUA && isSmallScreen && hasTouch;
+    
+>>>>>>> parent of d8aafea (New)
     console.log('[ORIENT] Mobile check:', {
       ua: isMobileUA,
       width: width,
@@ -633,7 +659,11 @@
       touch: hasTouch,
       result: isMobile ? '📱 MOBILE' : '🖥️ DESKTOP'
     });
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> parent of d8aafea (New)
     return isMobile;
   };
 
@@ -642,7 +672,11 @@
     const w = window.innerWidth;
     const h = window.innerHeight;
     const ratio = h / w;
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> parent of d8aafea (New)
     // Method 1: Screen Orientation API (most reliable)
     if (window.screen && window.screen.orientation) {
       const type = window.screen.orientation.type;
@@ -650,7 +684,11 @@
       console.log('[ORIENT] screen.orientation:', type, '→', isPortrait ? '📱 PORTRAIT' : '🖼️ LANDSCAPE');
       return isPortrait;
     }
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> parent of d8aafea (New)
     // Method 2: window.orientation (iOS Safari)
     if (typeof window.orientation !== 'undefined') {
       // 0 or 180 = portrait, 90 or -90 = landscape
@@ -658,7 +696,11 @@
       console.log('[ORIENT] window.orientation:', window.orientation, '→', isPortrait ? '📱 PORTRAIT' : '🖼️ LANDSCAPE');
       return isPortrait;
     }
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> parent of d8aafea (New)
     // Method 3: Dimension ratio (fallback)
     const isPortrait = ratio > CONFIG.PORTRAIT_MIN_RATIO;
     console.log('[ORIENT] Dimension check:', w, 'x', h, 'ratio:', ratio.toFixed(2), '→', isPortrait ? '📱 PORTRAIT' : '🖼️ LANDSCAPE');
@@ -668,18 +710,30 @@
   // ===== MAIN CHECK FUNCTION =====
   function checkOrientation() {
     checkCount++;
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> parent of d8aafea (New)
     const mobile = window.IsMobileBrowser();
     const portrait = window.IsPortraitMode();
     const prompt = document.getElementById('rotation-prompt');
     const canvas = document.getElementById('unity-canvas');
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> parent of d8aafea (New)
     console.log(`%c[ORIENT] Check #${checkCount}`, 'color: #ff0; font-weight: bold', {
       mobile: mobile,
       portrait: portrait,
       dimensions: window.innerWidth + 'x' + window.innerHeight
     });
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> parent of d8aafea (New)
     // ===== DECISION LOGIC =====
     if (mobile && portrait) {
       // 📱 Mobile Portrait = Show prompt
@@ -688,7 +742,11 @@
         console.log('[ORIENT] ⚠️ SHOWING rotation prompt');
       }
       // Canvas stays visible but covered by prompt overlay
+<<<<<<< HEAD
 
+=======
+      
+>>>>>>> parent of d8aafea (New)
     } else {
       // 🖼️ Landscape or Desktop = Hide prompt
       if (prompt) {
@@ -697,24 +755,39 @@
       }
       // Canvas always visible
     }
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> parent of d8aafea (New)
     // Ensure canvas is always block
     if (canvas) {
       canvas.style.display = 'block';
       canvas.style.width = '100%';
       canvas.style.height = '100%';
     }
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> parent of d8aafea (New)
     // Update debug info
     updateDebugInfo({
       mobile: mobile,
       portrait: portrait,
       promptVisible: mobile && portrait
     });
+<<<<<<< HEAD
 
     // Save state
     lastState = { mobile: mobile, portrait: portrait };
 
+=======
+    
+    // Save state
+    lastState = { mobile: mobile, portrait: portrait };
+    
+>>>>>>> parent of d8aafea (New)
     // ===== CONTINUOUS RECHECK (for stubborn devices) =====
     if (mobile && portrait) {
       // Keep rechecking every 2s while in portrait
@@ -730,7 +803,11 @@
   }
 
   // ===== EVENT LISTENERS =====
+<<<<<<< HEAD
 
+=======
+  
+>>>>>>> parent of d8aafea (New)
   // Page load
   window.addEventListener('load', function() {
     console.log('[ORIENT] Page loaded');
@@ -762,6 +839,7 @@
     if (!document.hidden) {
       console.log('[ORIENT] Page visible - rechecking');
       setTimeout(checkOrientation, 200);
+<<<<<<< HEAD
 
         }
 
@@ -783,12 +861,18 @@
             landscapeMQL.addListener(mqHandler);
           }
 
+=======
+    }
+  });
+
+>>>>>>> parent of d8aafea (New)
   // ===== EXPOSE HIDE/SHOW FUNCTIONS FOR UNITY =====
   window.HideRotationPrompt = function() {
     const prompt = document.getElementById('rotation-prompt');
     if (prompt) {
       prompt.classList.remove('show');
       console.log('[ORIENT] 🎮 Unity requested: HIDE prompt');
+<<<<<<< HEAD
 
         }
 
@@ -826,6 +910,10 @@
         setTimeout(checkOrientation, 100);
 
       })();
+=======
+    }
+  };
+>>>>>>> parent of d8aafea (New)
 
   window.ShowRotationPrompt = function() {
     const prompt = document.getElementById('rotation-prompt');
@@ -839,7 +927,11 @@
   window.forceCheckOrientation = checkOrientation;
 
   console.log('%c[ORIENT] ✅ System initialized v3.0', 'color: #0f0; font-weight: bold');
+<<<<<<< HEAD
 
+=======
+  
+>>>>>>> parent of d8aafea (New)
   // Initial check after 100ms
   setTimeout(checkOrientation, 100);
 

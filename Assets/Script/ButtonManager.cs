@@ -425,8 +425,11 @@ public class ButtonManager : MonoBehaviour
     SetActiveSafe(Quest, false);
     SetActiveSafe(Shop, true);
 
-    // ✅ Wait untuk panel ready
-    StartCoroutine(WaitForShopReady());
+    // ✅ NEW: Direct trigger jika sudah initialized
+    if (ShopManager.Instance != null && ShopManager.Instance.isInitialized)
+    {
+        ShopManager.Instance.ForceRebuildAllLayouts();
+    }
 
     Log("Shop panel activated");
 }

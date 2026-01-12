@@ -38,13 +38,17 @@ public class ShopManager : MonoBehaviour
     [Range(0.1f, 1f)]
     public float scrollSpeed = 0.3f;
 
+
+    
     public enum ShopFilter { All, Shard, Items, Bundle }
 
     private ShopItemData _pendingPurchaseData;
     private Dictionary<ShopRewardType, CategoryContainerUI> categoryContainers = new Dictionary<ShopRewardType, CategoryContainerUI>();
     private ShopFilter currentFilter = ShopFilter.All;
     private Coroutine scrollCoroutine;
-    private bool isInitialized = false;
+    // ✅ ADD: Public getter untuk initialized state
+public bool isInitialized => _isInitialized; // Ganti `isInitialized` jadi `_isInitialized` (private)
+private bool _isInitialized = false;
     private bool isPopulating = false;
 
     private readonly ShopRewardType[] categoryOrder = new ShopRewardType[]
@@ -90,79 +94,71 @@ public class ShopManager : MonoBehaviour
         Debug.Log("[ShopManager] ✓ Start complete - waiting for panel to open");
     }
 
-    // ✅ FIXED: OnEnable - Better initialization check
     void OnEnable()
+{
+    Debug.Log($"[ShopManager] OnEnable - active={gameObject.activeInHierarchy}, initialized={isInitialized}");
+
+    // Update prices
+    if (KulinoCoinPriceAPI.Instance != null)
     {
-        Debug.Log($"[ShopManager] OnEnable - active={gameObject.activeInHierarchy}, initialized={isInitialized}");
-
-        // Update prices
-        if (KulinoCoinPriceAPI.Instance != null)
-        {
-            UpdateShardPrices();
-        }
-
-        // ✅ FIX: Force enable itemsParent jika belum active
-        if (itemsParent != null && !itemsParent.gameObject.activeInHierarchy)
-        {
-            Debug.Log("[ShopManager] ⚠️ itemsParent not active - force enabling");
-            itemsParent.gameObject.SetActive(true);
-        }
-
-        // ✅ FIX: Wait lebih lama untuk ensure hierarchy ready
-        if (gameObject.activeInHierarchy)
-        {
-            StartCoroutine(InitializeWhenPanelActive());
-        }
+        UpdateShardPrices();
     }
 
-    // ✅ FIXED: Better waiting mechanism
-    IEnumerator InitializeWhenPanelActive()
+    // ✅ NEW: Simple approach - just ensure initialization
+    if (gameObject.activeInHierarchy)
     {
-        // ✅ FIX: Wait 3 frames instead of 2
-        yield return null;
-        yield return null;
-        yield return null;
-
-        // ✅ FIX: Force enable itemsParent if still inactive
-        if (itemsParent != null && !itemsParent.gameObject.activeInHierarchy)
-        {
-            Debug.Log("[ShopManager] 🔧 Force enabling itemsParent...");
-            itemsParent.gameObject.SetActive(true);
-            yield return null; // Wait 1 more frame after enabling
-        }
-
-        // Check jika panel masih active
-        if (!gameObject.activeInHierarchy)
-        {
-            Debug.Log("[ShopManager] Panel became inactive - skipping init");
-            yield break;
-        }
-
-        // ✅ FIX: Better validation check
-        if (itemsParent == null)
-        {
-            Debug.LogError("[ShopManager] ❌ itemsParent is NULL!");
-            yield break;
-        }
-
-        if (!itemsParent.gameObject.activeInHierarchy)
-        {
-            Debug.LogError("[ShopManager] ❌ itemsParent still not active after force enable!");
-            yield break;
-        }
-
-        Debug.Log("[ShopManager] ✓ Panel confirmed active - starting initialization");
-
-        // Initialize or refresh
-        if (!isInitialized)
-        {
-            yield return StartCoroutine(InitializeShopSequence());
-        }
-        else
-        {
-            yield return StartCoroutine(RefreshLayoutSequence());
-        }
+        StartCoroutine(EnsureInitialization());
     }
+}
+
+// ✅ NEW: Simplified initialization dengan proper timing
+IEnumerator EnsureInitialization()
+{
+    // Wait untuk Canvas.ForceUpdateCanvases() + layout system
+    yield return null;
+    yield return null;
+    yield return new WaitForEndOfFrame(); // ✅ Tunggu frame selesai render
+    
+    // Validate itemsParent
+    if (itemsParent == null)
+    {
+        Debug.LogError("[ShopManager] ❌ itemsParent is NULL! Assign di Inspector.");
+        yield break;
+    }
+
+    // ✅ Force activate entire hierarchy
+    Transform current = itemsParent;
+    while (current != null)
+    {
+        if (!current.gameObject.activeSelf)
+        {
+            Debug.Log($"[ShopManager] Activating: {current.name}");
+            current.gameObject.SetActive(true);
+        }
+        current = current.parent;
+    }
+
+    yield return null; // Wait 1 frame setelah activate
+
+    // ✅ Double-check itemsParent sudah aktif
+    if (!itemsParent.gameObject.activeInHierarchy)
+    {
+        Debug.LogError("[ShopManager] ❌ itemsParent masih tidak aktif! Check hierarchy.");
+        yield break;
+    }
+
+    Debug.Log("[ShopManager] ✓ itemsParent confirmed active - starting initialization");
+
+    // Initialize or refresh
+    if (!isInitialized)
+    {
+        yield return StartCoroutine(InitializeShopSequence());
+    }
+    else
+    {
+        yield return StartCoroutine(RefreshLayoutSequence());
+    }
+}
 
     IEnumerator InitializeShopSequence()
     {
@@ -221,7 +217,7 @@ public class ShopManager : MonoBehaviour
             scrollRect.verticalNormalizedPosition = 1f;
         }
 
-        isInitialized = true;
+        _isInitialized = true;
         isPopulating = false;
 
         Debug.Log("[ShopManager] ✅ Initialization complete!");

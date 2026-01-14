@@ -122,45 +122,48 @@ public class ButtonManager : MonoBehaviour
     }
 
     void ReassignPanels()
+{
+    Log("🔄 Re-assigning panel references...");
+
+    bool levelValid = Level != null;
+    bool questValid = Quest != null;
+    bool shopValid = Shop != null;
+
+    Log($"Current state: Level={levelValid}, Quest={questValid}, Shop={shopValid}");
+
+    if (!levelValid)
     {
-        Log("🔄 Re-assigning panel references...");
-
-        bool levelValid = Level != null;
-        bool questValid = Quest != null;
-        bool shopValid = Shop != null;
-
-        Log($"Current state: Level={levelValid}, Quest={questValid}, Shop={shopValid}");
-
-        if (!levelValid)
-        {
-            Level = FindPanelByName(levelPanelName);
-            Log($"Level panel: {(Level != null ? "✓ FOUND" : "❌ NOT FOUND")}");
-        }
-
-        if (!questValid)
-        {
-            Quest = FindPanelByName(questPanelName);
-            Log($"Quest panel: {(Quest != null ? "✓ FOUND" : "❌ NOT FOUND")}");
-        }
-
-        if (!shopValid)
-        {
-            Shop = FindPanelByName(shopPanelName);
-            Log($"Shop panel: {(Shop != null ? "✓ FOUND" : "❌ NOT FOUND")}");
-        }
-
-        if (Level != null && Quest != null && Shop != null)
-        {
-            SetActiveSafe(Level, true);
-            SetActiveSafe(Quest, false);
-            SetActiveSafe(Shop, false);
-            Log("✅ All panels reassigned and set to default state");
-        }
-        else
-        {
-            LogWarning("⚠️ Some panels still missing after reassign!");
-        }
+        Level = FindPanelByName(levelPanelName);
+        Log($"Level panel: {(Level != null ? "✓ FOUND" : "❌ NOT FOUND")}");
     }
+
+    if (!questValid)
+    {
+        Quest = FindPanelByName(questPanelName);
+        Log($"Quest panel: {(Quest != null ? "✓ FOUND" : "❌ NOT FOUND")}");
+    }
+
+    if (!shopValid)
+    {
+        Shop = FindPanelByName(shopPanelName);
+        Log($"Shop panel: {(Shop != null ? "✓ FOUND" : "❌ NOT FOUND")}");
+    }
+
+    // ✅ FIX: Set default state TANPA mengaktifkan semua panel dulu
+    if (Level != null && Quest != null && Shop != null)
+    {
+        // ✅ Langsung set state yang benar
+        Level.SetActive(true);
+        Quest.SetActive(false);
+        Shop.SetActive(false);
+        
+        Log("✅ Default state set: Level=ON, Quest=OFF, Shop=OFF");
+    }
+    else
+    {
+        LogWarning("⚠️ Some panels still missing after reassign!");
+    }
+}
 
     /// <summary>
     /// ✅ NEW: Re-assign button references
@@ -425,10 +428,18 @@ public class ButtonManager : MonoBehaviour
     SetActiveSafe(Quest, false);
     SetActiveSafe(Shop, true);
 
-    // ✅ NEW: Direct trigger jika sudah initialized
-    if (ShopManager.Instance != null && ShopManager.Instance.isInitialized)
+    // ✅ TRIGGER initialization SETELAH panel aktif
+    if (ShopManager.Instance != null)
     {
-        ShopManager.Instance.ForceRebuildAllLayouts();
+        // Trigger initialization jika belum
+        if (!ShopManager.Instance.isInitialized)
+        {
+            StartCoroutine(ShopManager.Instance.EnsureInitialization());
+        }
+        else
+        {
+            ShopManager.Instance.ForceRebuildAllLayouts();
+        }
     }
 
     Log("Shop panel activated");

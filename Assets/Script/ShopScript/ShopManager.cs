@@ -104,15 +104,40 @@ private bool _isInitialized = false;
         UpdateShardPrices();
     }
 
-    // ✅ NEW: Simple approach - just ensure initialization
-    if (gameObject.activeInHierarchy)
+    // ✅ FIX: HANYA initialize jika shop panel BENAR-BENAR AKTIF
+    // Cek jika parent shop panel aktif
+    if (gameObject.activeInHierarchy && IsShopPanelActive())
     {
         StartCoroutine(EnsureInitialization());
     }
+    else
+    {
+        Debug.Log("[ShopManager] Shop panel not active - skipping initialization");
+    }
+}
+
+// ✅ NEW: Helper method untuk cek apakah shop panel benar-benar aktif
+bool IsShopPanelActive()
+{
+    // Cek apakah ada parent GameObject bernama "ContentShop" yang aktif
+    Transform current = transform;
+    while (current != null)
+    {
+        if (current.name == "ContentShop" || current.name == "Shop" || current.name == "ShopP")
+        {
+            bool isActive = current.gameObject.activeInHierarchy;
+            Debug.Log($"[ShopManager] Found shop parent '{current.name}': active={isActive}");
+            return isActive;
+        }
+        current = current.parent;
+    }
+    
+    Debug.LogWarning("[ShopManager] Shop parent panel not found!");
+    return false;
 }
 
 // ✅ NEW: Simplified initialization dengan proper timing
-IEnumerator EnsureInitialization()
+public IEnumerator EnsureInitialization()
 {
     // Wait untuk Canvas.ForceUpdateCanvases() + layout system
     yield return null;

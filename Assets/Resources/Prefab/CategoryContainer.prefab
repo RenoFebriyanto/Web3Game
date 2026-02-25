@@ -58,7 +58,7 @@ MonoBehaviour:
     m_Top: 10
     m_Bottom: 10
   m_ChildAlignment: 1
-  m_Spacing: 150
+  m_Spacing: 130
   m_ChildForceExpandWidth: 1
   m_ChildForceExpandHeight: 0
   m_ChildControlWidth: 1
@@ -95,9 +95,7 @@ MonoBehaviour:
   headerObject: {fileID: 4630943369557068340}
   itemsGrid: {fileID: 8940551264121626916}
   headerText: {fileID: 8065116464199967249}
-  gridColumns: 3
-  cellSize: {x: 150, y: 200}
-  spacing: {x: 10, y: 10}
+  enableDebugLogs: 1
 --- !u!1 &2374736524344908795
 GameObject:
   m_ObjectHideFlags: 0
@@ -317,8 +315,8 @@ MonoBehaviour:
       m_Calls: []
   m_text: ITEMS
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 02e6ffdd9878253439593274aabb1b81, type: 2}
-  m_sharedMaterial: {fileID: 3234639887117405192, guid: 02e6ffdd9878253439593274aabb1b81, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
+  m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
@@ -353,6 +351,7 @@ MonoBehaviour:
   m_VerticalAlignment: 512
   m_textAlignment: 65535
   m_characterSpacing: 0
+  m_characterHorizontalScale: 1
   m_wordSpacing: 0
   m_lineSpacing: 0
   m_lineSpacingMax: 0
@@ -421,8 +420,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 960, y: -320}
-  m_SizeDelta: {x: 1900, y: 0}
+  m_AnchoredPosition: {x: 802, y: -300}
+  m_SizeDelta: {x: 1584, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &7586903987081850293
 MonoBehaviour:
@@ -445,7 +444,7 @@ MonoBehaviour:
   m_StartCorner: 0
   m_StartAxis: 0
   m_CellSize: {x: 100, y: 100}
-  m_Spacing: {x: 250, y: 200}
+  m_Spacing: {x: 200, y: 200}
   m_Constraint: 1
   m_ConstraintCount: 3
 --- !u!114 &4806706828261026199
@@ -550,6 +549,14 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 5614238772829047768, guid: dbd0c957a656d4647aab49a62cb769f9, type: 3}
+      propertyPath: m_fontAsset
+      value: 
+      objectReference: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
+    - target: {fileID: 5614238772829047768, guid: dbd0c957a656d4647aab49a62cb769f9, type: 3}
+      propertyPath: m_sharedMaterial
+      value: 
+      objectReference: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
     - target: {fileID: 7612720540475846766, guid: dbd0c957a656d4647aab49a62cb769f9, type: 3}
       propertyPath: m_Name
       value: ParentItemsShop

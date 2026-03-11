@@ -1,20 +1,30 @@
 using UnityEngine;
+using UnityEngine.UI;
 
+/// <summary>
+/// Scrolling background menggunakan RawImage di dalam Canvas.
+/// Otomatis responsive di semua device — tidak perlu resize manual.
+/// </summary>
 public class BGLOOP : MonoBehaviour
 {
-    [Tooltip("Kecepatan per detik. Positif = ke atas, negatif = ke bawah.")]
+    [Tooltip("Kecepatan scroll. Positif = ke atas, negatif = ke bawah.")]
     public float speed = 0.1f;
 
-    [Tooltip("Renderer yang memiliki material dengan texture yang di-set Wrap Mode = Repeat.")]
-    public Renderer BgRender;
+    [Tooltip("RawImage yang menjadi background. Assign di Inspector.")]
+    public RawImage bgRawImage;
+
+    void Awake()
+    {
+        if (bgRawImage == null)
+            bgRawImage = GetComponent<RawImage>();
+    }
 
     void Update()
     {
-        if (BgRender == null) return;
+        if (bgRawImage == null) return;
 
-        // Ambil offset sekarang, tambahkan pada sumbu Y
-        Vector2 offset = BgRender.material.mainTextureOffset;
-        offset.y = (offset.y + speed * Time.deltaTime) % 1f; // jaga agar tetap di 0..1
-        BgRender.material.mainTextureOffset = offset;
+        Rect uv = bgRawImage.uvRect;
+        uv.y += speed * Time.deltaTime;
+        bgRawImage.uvRect = uv;
     }
 }

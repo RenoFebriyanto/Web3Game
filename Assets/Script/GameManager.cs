@@ -10,421 +10,203 @@ using System.Runtime.InteropServices;
 #endif
 
 /// <summary>
-/// ✅ OPTIMIZED v8.0: GameManager - Clean Scene Management
-/// - Only persists in Gameplay scenes
-/// - Auto-destroys in MainMenu/Lobby
-/// - Proper wallet initialization
+/// ✅ FIXED v9.0: GameManager - Semua referensi KulinoCoinManager DIHAPUS
 /// </summary>
 public class GameManager : MonoBehaviour
 {
     public static GameManager Instance { get; private set; }
 
     [Header("🎮 Scene Settings")]
-    [Tooltip("Scenes where GameManager should persist")]
     public string[] persistentScenes = new string[] { "Gameplay", "Game", "Level" };
-    
-    [Tooltip("Scenes where GameManager should NOT exist")]
-    public string[] excludedScenes = new string[] { "MainMenu", "Menu", "Lobby" };
+    public string[] excludedScenes   = new string[] { "MainMenu", "Menu", "Lobby" };
 
     [Header("🔐 Wallet")]
     private string walletAddress;
     private bool walletInitialized = false;
 
     [Header("💰 Claim Settings")]
-    public string gameId = "unity-demo";
-    public int claimAmount = 1;
-    public int claimTimeoutSeconds = 60;
+    public string gameId             = "unity-demo";
+    public int claimAmount           = 1;
+    public int claimTimeoutSeconds   = 60;
 
     [Header("🎨 UI References")]
     public Button claimButton;
     public TextMeshProUGUI statusText;
 
     private bool isRequestInProgress = false;
-    private float requestStartTime = 0f;
-    private bool isPersistent = false;
+    private float requestStartTime   = 0f;
+    private bool isPersistent        = false;
 
 #if UNITY_WEBGL && !UNITY_EDITOR
-    [DllImport("__Internal")]
-    private static extern void RequestClaim(string message);
+    [DllImport("__Internal")] private static extern void RequestClaim(string message);
+    [DllImport("__Internal")] private static extern string GetCurrentURL();
 #endif
 
-    // ✅ UPDATE: Jangan destroy GameManager di MainMenu
-void Awake()
-{
-    string currentScene = SceneManager.GetActiveScene().name;
-    
-    // ✅ REMOVED: MainMenu dari excludedScenes
-    // GameManager sekarang persistent di semua scene
-    
-    if (Instance != null)
+    // ─── Lifecycle ────────────────────────────────────────────────────────
+    void Awake()
     {
-        if (Instance != this)
+        string currentScene = SceneManager.GetActiveScene().name;
+
+        if (Instance != null)
         {
-            Debug.LogWarning($"[GameManager] Duplicate detected - destroying");
-            Destroy(gameObject);
-            return;
+            if (Instance != this)
+            {
+                Debug.LogWarning("[GameManager] Duplicate detected - destroying");
+                Destroy(gameObject);
+                return;
+            }
         }
-    }
 
-    Instance = this;
+        Instance = this;
 
-    // ✅ Always persistent
-    if (transform.parent != null)
-    {
-        transform.SetParent(null);
+        if (transform.parent != null) transform.SetParent(null);
+        DontDestroyOnLoad(gameObject);
+        isPersistent = true;
+        gameObject.name = "[GameManager - PERSISTENT]";
+
+        SceneManager.sceneLoaded += OnSceneLoaded;
+
+        Debug.Log($"[GameManager] ✅ Persistent mode in scene: {currentScene}");
     }
-    
-    DontDestroyOnLoad(gameObject);
-    isPersistent = true;
-    gameObject.name = "[GameManager - PERSISTENT]";
-    
-    SceneManager.sceneLoaded += OnSceneLoaded;
-    
-    Debug.Log($"[GameManager] ✅ Persistent mode in scene: {currentScene}");
-}
 
     void OnDestroy()
     {
-        if (isPersistent)
-        {
-            SceneManager.sceneLoaded -= OnSceneLoaded;
-        }
-        
-        if (Instance == this)
-        {
-            Instance = null;
-            Debug.Log("[GameManager] Instance cleared");
-        }
+        if (isPersistent) SceneManager.sceneLoaded -= OnSceneLoaded;
+        if (Instance == this) Instance = null;
     }
 
     void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
         Debug.Log($"[GameManager] Scene loaded: {scene.name}");
-        
-        // ✅ Auto-destroy when entering excluded scenes
+
         if (IsExcludedScene(scene.name))
         {
             Debug.Log($"[GameManager] ⚠️ Entered excluded scene '{scene.name}' - self-destroying");
             Destroy(gameObject);
-            return;
         }
-
-        // ✅ Re-notify wallet if initialized
-        if (!string.IsNullOrEmpty(walletAddress) && walletInitialized)
-        {
-            StartCoroutine(RenotifyWalletDelayed());
-        }
-    }
-
-    IEnumerator RenotifyWalletDelayed()
-    {
-        yield return new WaitForSeconds(1f);
-        
-        Debug.Log($"[GameManager] 🔄 Re-notifying wallet: {ShortenAddress(walletAddress)}");
-        
-        if (KulinoCoinManager.Instance != null)
-        {
-            KulinoCoinManager.Instance.Initialize(walletAddress);
-        }
-    }
-
-    bool ShouldPersist(string sceneName)
-    {
-        foreach (string scene in persistentScenes)
-        {
-            if (sceneName.Contains(scene) || sceneName.Equals(scene, StringComparison.OrdinalIgnoreCase))
-            {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    bool IsExcludedScene(string sceneName)
-    {
-        foreach (string scene in excludedScenes)
-        {
-            if (sceneName.Contains(scene) || sceneName.Equals(scene, StringComparison.OrdinalIgnoreCase))
-            {
-                return true;
-            }
-        }
-        return false;
     }
 
     void Start()
     {
         if (claimButton != null)
-        {
             claimButton.onClick.AddListener(OnClaimButtonClick);
-        }
 
         SetStatus("Ready");
-        
-        // ✅ Start URL parsing immediately
         StartCoroutine(ParseURLAndConnect());
     }
 
     void Update()
     {
-        if (isRequestInProgress)
+        if (!isRequestInProgress) return;
+
+        float elapsed = Time.time - requestStartTime;
+        if (elapsed > claimTimeoutSeconds)
         {
-            float elapsedTime = Time.time - requestStartTime;
-            if (elapsedTime > (float)claimTimeoutSeconds)
-            {
-                Debug.LogWarning("[GameManager] ⏱️ Claim request timeout!");
-                FinishRequest(false, "timeout");
-            }
+            Debug.LogWarning("[GameManager] ⏱️ Claim request timeout!");
+            FinishRequest(false, "timeout");
         }
     }
 
-    /// <summary>
-    /// ✅ Parse URL and connect wallet
-    /// </summary>
+    // ─── Wallet ───────────────────────────────────────────────────────────
     IEnumerator ParseURLAndConnect()
     {
         Debug.Log("[GameManager] 🔍 Starting URL parse...");
-        
         yield return new WaitForSeconds(0.5f);
 
-        string url = GetCurrentURL();
-        Debug.Log($"[GameManager] 📍 Current URL: {url}");
+        string url = GetURL();
+        Debug.Log($"[GameManager] 📍 URL: {url}");
 
         if (string.IsNullOrEmpty(url))
         {
-            Debug.LogWarning("[GameManager] ⚠️ Could not get URL");
-            
-            // Fallback: Try PlayerPrefs
-            string savedWallet = PlayerPrefs.GetString("WalletAddress", "");
-            if (!string.IsNullOrEmpty(savedWallet))
-            {
-                Debug.Log($"[GameManager] 💾 Using saved wallet: {ShortenAddress(savedWallet)}");
-                OnWalletConnected(savedWallet);
-            }
+            string saved = PlayerPrefs.GetString("WalletAddress", "");
+            if (!string.IsNullOrEmpty(saved)) OnWalletConnected(saved);
             yield break;
         }
 
-        // Parse wallet parameter
         string walletParam = GetURLParameter(url, "wallet");
-        
+
         if (string.IsNullOrEmpty(walletParam))
         {
-            Debug.LogWarning("[GameManager] ⚠️ No wallet parameter in URL");
-            
-            // Fallback: Try PlayerPrefs
-            string savedWallet = PlayerPrefs.GetString("WalletAddress", "");
-            if (!string.IsNullOrEmpty(savedWallet))
-            {
-                Debug.Log($"[GameManager] 💾 Using saved wallet: {ShortenAddress(savedWallet)}");
-                OnWalletConnected(savedWallet);
-            }
+            string saved = PlayerPrefs.GetString("WalletAddress", "");
+            if (!string.IsNullOrEmpty(saved)) OnWalletConnected(saved);
             yield break;
         }
 
-        Debug.Log($"[GameManager] 🎯 Found wallet in URL: {ShortenAddress(walletParam)}");
+        Debug.Log($"[GameManager] 🎯 Wallet in URL: {ShortenAddress(walletParam)}");
         OnWalletConnected(walletParam);
-        
-        // Wait for KulinoCoinManager
-        int maxRetries = 20;
-        int retryCount = 0;
-        
-        while (retryCount < maxRetries)
-        {
-            if (KulinoCoinManager.Instance != null)
-            {
-                Debug.Log($"[GameManager] ✅ KulinoCoinManager found!");
-                
-                if (!KulinoCoinManager.Instance.IsInitialized())
-                {
-                    Debug.Log($"[GameManager] 🔄 Initializing KulinoCoinManager with wallet...");
-                    KulinoCoinManager.Instance.Initialize(walletParam);
-                }
-                
-                yield break;
-            }
-            
-            retryCount++;
-            Debug.Log($"[GameManager] ⏳ Waiting for KulinoCoinManager... ({retryCount}/{maxRetries})");
-            yield return new WaitForSeconds(0.5f);
-        }
-        
-        Debug.LogError("[GameManager] ❌ KulinoCoinManager not found after retries!");
     }
 
-    string GetCurrentURL()
+    string GetURL()
     {
 #if UNITY_WEBGL && !UNITY_EDITOR
-        try
-        {
-            string url = Application.absoluteURL;
-            Debug.Log($"[GameManager] 📍 WebGL URL: {url}");
-            return url;
-        }
-        catch (Exception e)
-        {
-            Debug.LogError($"[GameManager] Failed to get URL: {e.Message}");
-            return "";
-        }
+        try { return GetCurrentURL(); }
+        catch { return ""; }
 #else
-        string testUrl = "http://localhost/game?wallet=44kmkWSoRYPgft7hsmVRx7GTHyaQ5CesBDyFMLbBkjsP&game=fly-to-the-moon";
-        Debug.Log($"[GameManager] 🧪 Editor test URL: {testUrl}");
-        return testUrl;
+        return "";
 #endif
     }
 
-    string GetURLParameter(string url, string paramName)
+    string GetURLParameter(string url, string key)
     {
         try
         {
-            if (string.IsNullOrEmpty(url)) return "";
-            
-            int queryStart = url.IndexOf('?');
-            if (queryStart < 0) queryStart = url.IndexOf('#');
-            if (queryStart < 0) return "";
-            
-            string query = url.Substring(queryStart + 1);
-            string[] pairs = query.Split('&');
-            
-            foreach (string pair in pairs)
+            var uri   = new Uri(url);
+            string q  = uri.Query.TrimStart('?');
+            foreach (string part in q.Split('&'))
             {
-                string[] keyValue = pair.Split('=');
-                if (keyValue.Length == 2 && keyValue[0] == paramName)
-                {
-                    string value = Uri.UnescapeDataString(keyValue[1]);
-                    Debug.Log($"[GameManager] ✅ Found {paramName} = {ShortenAddress(value)}");
-                    return value;
-                }
+                string[] kv = part.Split('=');
+                if (kv.Length == 2 && kv[0] == key)
+                    return Uri.UnescapeDataString(kv[1]);
             }
         }
-        catch (Exception e)
-        {
-            Debug.LogError($"[GameManager] URL parse error: {e.Message}");
-        }
-        
+        catch { }
         return "";
     }
 
     public void OnWalletConnected(string address)
     {
-        if (string.IsNullOrEmpty(address))
-        {
-            Debug.LogError("[GameManager] ❌ Wallet address is empty!");
-            return;
-        }
+        if (string.IsNullOrEmpty(address)) { Debug.LogError("[GameManager] ❌ Empty address!"); return; }
+        if (address.Length < 32 || address.Length > 44) { Debug.LogError($"[GameManager] ❌ Invalid address: {address}"); return; }
 
-        if (address.Length < 32 || address.Length > 44)
-        {
-            Debug.LogError($"[GameManager] ❌ Invalid wallet address format: {address}");
-            return;
-        }
-
-        walletAddress = address;
+        walletAddress     = address;
         walletInitialized = true;
-        
-        Debug.Log($"[GameManager] 👛 Wallet connected: {ShortenAddress(address)}");
 
         PlayerPrefs.SetString("WalletAddress", address);
         PlayerPrefs.SetString("WalletConnectedTime", DateTime.Now.ToString());
         PlayerPrefs.Save();
-        
-        Debug.Log("[GameManager] 💾 Wallet saved to PlayerPrefs");
 
-        InitializeKulinoCoinManager(address);
+        Debug.Log($"[GameManager] 👛 Wallet connected: {ShortenAddress(address)}");
     }
 
-    void InitializeKulinoCoinManager(string address)
-    {
-        Debug.Log("[GameManager] 🔄 Initializing KulinoCoinManager...");
-        
-        if (KulinoCoinManager.Instance != null)
-        {
-            KulinoCoinManager.Instance.Initialize(address);
-            Debug.Log("[GameManager] ✓ KulinoCoinManager initialized");
-            
-            StartCoroutine(FetchBalanceDelayed(2f));
-        }
-        else
-        {
-            Debug.LogError("[GameManager] ❌ KulinoCoinManager.Instance NOT FOUND!");
-            StartCoroutine(RetryInitializeKulinoCoin(address));
-        }
-    }
-
-    IEnumerator RetryInitializeKulinoCoin(string address)
-    {
-        int maxRetries = 10;
-        int retryCount = 0;
-        
-        while (retryCount < maxRetries)
-        {
-            yield return new WaitForSeconds(1f);
-            retryCount++;
-            
-            if (KulinoCoinManager.Instance != null)
-            {
-                Debug.Log($"[GameManager] ✅ KulinoCoinManager found on retry {retryCount}");
-                KulinoCoinManager.Instance.Initialize(address);
-                StartCoroutine(FetchBalanceDelayed(1f));
-                yield break;
-            }
-            
-            Debug.Log($"[GameManager] ⏳ Retry {retryCount}/{maxRetries}");
-        }
-        
-        Debug.LogError("[GameManager] ❌ KulinoCoinManager not found after all retries!");
-    }
-
-    IEnumerator FetchBalanceDelayed(float delay)
-    {
-        yield return new WaitForSeconds(delay);
-        
-        if (KulinoCoinManager.Instance != null && KulinoCoinManager.Instance.IsInitialized())
-        {
-            Debug.Log("[GameManager] 🔄 Triggering balance fetch...");
-            KulinoCoinManager.Instance.FetchKulinoCoinBalance();
-        }
-    }
-
-    public string GetWalletAddress() => walletAddress;
+    public string GetWalletAddress()  => walletAddress;
     public bool IsWalletInitialized() => walletInitialized;
 
+    // ─── Claim ────────────────────────────────────────────────────────────
     public void OnClaimButtonClick()
     {
-        if (isRequestInProgress)
-        {
-            Debug.LogWarning("[GameManager] ⚠️ Request in progress!");
-            return;
-        }
+        if (isRequestInProgress) { Debug.LogWarning("[GameManager] ⚠️ Request in progress!"); return; }
 
         Debug.Log("[GameManager] 💰 Claim button clicked!");
-
         isRequestInProgress = true;
-        requestStartTime = Time.time;
+        requestStartTime    = Time.time;
 
         if (claimButton != null) claimButton.interactable = false;
         SetStatus("Waiting for signature...");
 
-        var payload = new ClaimPayload()
+        var payload = new ClaimPayload
         {
-            address = "",
-            gameId = gameId,
-            amount = claimAmount,
-            nonce = Guid.NewGuid().ToString(),
-            ts = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+            address = walletAddress ?? "",
+            gameId  = gameId,
+            amount  = claimAmount,
+            nonce   = Guid.NewGuid().ToString(),
+            ts      = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
         };
 
         string json = JsonUtility.ToJson(payload);
 
 #if UNITY_WEBGL && !UNITY_EDITOR
-        try
-        {
-            RequestClaim(json);
-        }
-        catch (Exception e)
-        {
-            Debug.LogError($"[GameManager] ❌ RequestClaim failed: {e}");
-            FinishRequest(false, "js_call_failed");
-        }
+        try   { RequestClaim(json); }
+        catch (Exception e) { Debug.LogError($"[GameManager] ❌ RequestClaim failed: {e}"); FinishRequest(false, "js_call_failed"); }
 #else
         Invoke(nameof(EditorSimulateResult), 1f);
 #endif
@@ -433,11 +215,9 @@ void Awake()
     public void OnClaimResult(string json)
     {
         Debug.Log($"[GameManager] 📥 OnClaimResult: {json}");
-
         try
         {
             var res = JsonUtility.FromJson<ClaimResult>(json);
-
             if (res != null && res.success)
             {
                 Debug.Log($"[GameManager] ✅ SUCCESS! TX: {res.txHash}");
@@ -445,9 +225,9 @@ void Awake()
             }
             else
             {
-                string errorMsg = res != null ? (res.error ?? "unknown") : "parse_error";
-                Debug.LogError($"[GameManager] ❌ FAILED: {errorMsg}");
-                FinishRequest(false, errorMsg);
+                string err = res != null ? (res.error ?? "unknown") : "parse_error";
+                Debug.LogError($"[GameManager] ❌ FAILED: {err}");
+                FinishRequest(false, err);
             }
         }
         catch (Exception e)
@@ -457,44 +237,17 @@ void Awake()
         }
     }
 
-    void FinishRequest(bool success, string info)
-    {
-        isRequestInProgress = false;
-        if (claimButton != null) claimButton.interactable = true;
-
-        string statusMsg = success ? $"✅ Success: {info}" : $"❌ Failed: {info}";
-        SetStatus(statusMsg);
-
-        if (success)
-        {
-            StartCoroutine(RefreshKulinoCoinBalanceDelayed(2f));
-        }
-    }
-
-    void SetStatus(string txt)
-    {
-        if (statusText != null) statusText.text = txt;
-    }
-
     public void OnPhantomPaymentResult(string resultJson)
     {
         Debug.Log($"[GameManager] 💳 Payment result: {resultJson}");
-
         try
         {
             var result = JsonUtility.FromJson<ClaimResult>(resultJson);
-
             if (result.success)
             {
-                Debug.Log($"[GameManager] ✅ PAYMENT SUCCESS!");
-                
+                Debug.Log($"[GameManager] ✅ PAYMENT SUCCESS! TX: {result.txHash}");
                 var shopManager = FindFirstObjectByType<ShopManager>();
-                if (shopManager != null)
-                {
-                    shopManager.OnPaymentConfirmed();
-                }
-
-                StartCoroutine(RefreshKulinoCoinBalanceDelayed(2f));
+                shopManager?.OnPaymentConfirmed();
             }
             else
             {
@@ -507,15 +260,21 @@ void Awake()
         }
     }
 
-    IEnumerator RefreshKulinoCoinBalanceDelayed(float delay)
+    void FinishRequest(bool success, string info)
     {
-        yield return new WaitForSeconds(delay);
+        isRequestInProgress = false;
+        if (claimButton != null) claimButton.interactable = true;
+        SetStatus(success ? $"✅ Success: {info}" : $"❌ Failed: {info}");
+    }
 
-        if (KulinoCoinManager.Instance != null)
-        {
-            Debug.Log("[GameManager] 🔄 Refreshing KC balance...");
-            KulinoCoinManager.Instance.RefreshBalance();
-        }
+    void SetStatus(string txt) { if (statusText != null) statusText.text = txt; }
+
+    // ─── Scene Helpers ────────────────────────────────────────────────────
+    bool IsExcludedScene(string sceneName)
+    {
+        foreach (string s in excludedScenes)
+            if (sceneName.Contains(s) || sceneName.Equals(s, StringComparison.OrdinalIgnoreCase)) return true;
+        return false;
     }
 
     string ShortenAddress(string addr)
@@ -526,37 +285,16 @@ void Awake()
 
     void EditorSimulateResult()
     {
-        var fake = new ClaimResult() { success = true, txHash = "EDITOR_FAKE_TX" };
-        OnClaimResult(JsonUtility.ToJson(fake));
+        OnClaimResult(JsonUtility.ToJson(new ClaimResult { success = true, txHash = "EDITOR_FAKE_TX" }));
     }
 
-    [Serializable]
-    class ClaimPayload
-    {
-        public string address;
-        public string gameId;
-        public int amount;
-        public string nonce;
-        public long ts;
-    }
+    // ─── Serializable ─────────────────────────────────────────────────────
+    [Serializable] class ClaimPayload { public string address, gameId, nonce; public int amount; public long ts; }
+    [Serializable] class ClaimResult  { public bool success; public string error, txHash; }
 
-    [Serializable]
-    class ClaimResult
-    {
-        public bool success;
-        public string error;
-        public string txHash;
-    }
-
-    [ContextMenu("📊 Debug: Print Status")]
+    [ContextMenu("📊 Print Status")]
     void Context_PrintStatus()
     {
-        Debug.Log("=== GAMEMANAGER STATUS ===");
-        Debug.Log($"Instance: {(Instance != null ? "OK" : "NULL")}");
-        Debug.Log($"Scene: {SceneManager.GetActiveScene().name}");
-        Debug.Log($"Persistent: {isPersistent}");
-        Debug.Log($"Wallet: {ShortenAddress(walletAddress)}");
-        Debug.Log($"Initialized: {walletInitialized}");
-        Debug.Log("==========================");
+        Debug.Log($"=== GAMEMANAGER ===\nWallet: {ShortenAddress(walletAddress)}\nInitialized: {walletInitialized}\nScene: {SceneManager.GetActiveScene().name}\n==================");
     }
 }

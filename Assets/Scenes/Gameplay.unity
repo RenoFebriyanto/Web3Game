@@ -1660,9 +1660,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 84be01c9117de554c9bb67a9e8bcf4a9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  maxLives: 3
-  currentLives: 3
-  invincibilityDuration: 2
+  maxLives: 999999
+  currentLives: 999999
+  invincibilityDuration: 1
   blinkFrequency: 10
   deathDelay: 0.9
   disableOnDeath: 1
@@ -3034,7 +3034,7 @@ MonoBehaviour:
   coin2xDuration: 10
   magnetDuration: 30
   magnetRange: 5
-  magnetPullSpeed: 10
+  magnetPullSpeed: 100
   speedBoostDuration: 10
   speedBoostMultiplier: 2
   timeFreezeDuration: 5
@@ -13724,7 +13724,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 0}
-  m_RaycastTarget: 1
+  m_RaycastTarget: 0
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
@@ -14102,7 +14102,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 0}
-  m_RaycastTarget: 1
+  m_RaycastTarget: 0
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:

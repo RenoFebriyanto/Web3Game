@@ -17,7 +17,7 @@ public class BoosterManager : MonoBehaviour
     public bool timeFreezeActive = false;
 
     [Header("Booster Settings")]
-    [Tooltip("Duration untuk Coin2x (menit)")]
+    [Tooltip("Duration untuk Coin2x (detik)")]
     public float coin2xDuration = 10f;
 
     [Tooltip("Duration untuk Magnet (detik)")]
@@ -115,7 +115,7 @@ public class BoosterManager : MonoBehaviour
         }
 
         coin2xActive = true;
-        coin2xTimer = coin2xDuration * 60f;
+        coin2xTimer = coin2xDuration;
 
         Debug.Log($"[BoosterManager] Coin2x activated for {coin2xDuration} minutes!");
         return true;

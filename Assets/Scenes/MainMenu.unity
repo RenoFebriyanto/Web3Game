@@ -19131,7 +19131,6 @@ MonoBehaviour:
   iconCoin: {fileID: 6765926063464852416, guid: c36ed03bf5abb2e45a972295e241e11a, type: 3}
   iconShard: {fileID: -4101916017452507219, guid: 17c51150cca33ca46bb76c4c0df5bffd, type: 3}
   iconEnergy: {fileID: -7213742777133032008, guid: ecb8ef9b287f24e4fb5ce589825d2010, type: 3}
-  companyWalletAddress: 9QM8aSCHFp76RacWXgXFQQxUKXt5Vf2zLzSkdMdQuByk
   scrollRect: {fileID: 120612900}
   scrollSpeed: 0.3
 --- !u!224 &412991435078888801 stripped
@@ -20066,6 +20065,10 @@ PrefabInstance:
     - target: {fileID: 873802375829494339, guid: 73ad6e0dceecba64baf5ee1157fab39a, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1320249762445993769, guid: 73ad6e0dceecba64baf5ee1157fab39a, type: 3}
+      propertyPath: defaultCoins
+      value: 500000
       objectReference: {fileID: 0}
     - target: {fileID: 1617463098990460765, guid: 73ad6e0dceecba64baf5ee1157fab39a, type: 3}
       propertyPath: m_Name

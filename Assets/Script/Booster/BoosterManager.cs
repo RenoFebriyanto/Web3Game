@@ -18,7 +18,7 @@ public class BoosterManager : MonoBehaviour
 
     [Header("Booster Settings")]
     [Tooltip("Duration untuk Coin2x (detik)")]
-    public float coin2xDuration = 10f;
+    public float coin2xDuration = 30f;
 
     [Tooltip("Duration untuk Magnet (detik)")]
     public float magnetDuration = 30f;
@@ -117,7 +117,7 @@ public class BoosterManager : MonoBehaviour
         coin2xActive = true;
         coin2xTimer = coin2xDuration;
 
-        Debug.Log($"[BoosterManager] Coin2x activated for {coin2xDuration} minutes!");
+        Debug.Log($"[BoosterManager] Coin2x activated for {coin2xDuration}seconds!");
         return true;
     }
 
@@ -402,7 +402,7 @@ public class BoosterManager : MonoBehaviour
     {
         switch (boosterType.ToLower())
         {
-            case "coin2x": return coin2xDuration * 60f;
+            case "coin2x": return coin2xDuration;
             case "magnet": return magnetDuration;
             case "speedboost":
             case "rocketboost": return speedBoostDuration;

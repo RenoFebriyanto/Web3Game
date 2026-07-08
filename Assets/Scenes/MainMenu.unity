@@ -387,8 +387,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 0, y: 0}
+  m_AnchoredPosition: {x: -0.0025024414, y: 0}
+  m_SizeDelta: {x: -0.0048828, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &36042561
 MonoBehaviour:
@@ -6671,8 +6671,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 0, y: 0}
+  m_AnchoredPosition: {x: -1.6699829, y: 2.0200195}
+  m_SizeDelta: {x: 3.34, y: 4.05}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &598434578
 MonoBehaviour:
@@ -10150,6 +10150,14 @@ PrefabInstance:
       propertyPath: m_Name
       value: PopupClaimQuest
       objectReference: {fileID: 0}
+    - target: {fileID: 7827103439361737068, guid: 4b4efcb264c13f349abf788ce1b75455, type: 3}
+      propertyPath: m_SizeDelta.x
+      value: -0.0048828
+      objectReference: {fileID: 0}
+    - target: {fileID: 7827103439361737068, guid: 4b4efcb264c13f349abf788ce1b75455, type: 3}
+      propertyPath: m_AnchoredPosition.x
+      value: -0.0025024414
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -10592,6 +10600,10 @@ PrefabInstance:
     - target: {fileID: 3224078289971244461, guid: c8e43d1d9a9cf0347b24f0575edef9ae, type: 3}
       propertyPath: m_Name
       value: SoundManager
+      objectReference: {fileID: 0}
+    - target: {fileID: 3224078289971244461, guid: c8e43d1d9a9cf0347b24f0575edef9ae, type: 3}
+      propertyPath: m_IsActive
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 7308420776061260157, guid: c8e43d1d9a9cf0347b24f0575edef9ae, type: 3}
       propertyPath: m_LocalPosition.x
@@ -17491,7 +17503,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 23.71, y: -13.25}
   m_SizeDelta: {x: 100, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &1874562655
@@ -19848,6 +19860,14 @@ PrefabInstance:
       propertyPath: m_AnchoredPosition.y
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 4959487262001394650, guid: f5f02582e7bb83c42a417f02b30dd481, type: 3}
+      propertyPath: m_SizeDelta.x
+      value: 0.00024414
+      objectReference: {fileID: 0}
+    - target: {fileID: 4959487262001394650, guid: f5f02582e7bb83c42a417f02b30dd481, type: 3}
+      propertyPath: m_AnchoredPosition.x
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 5554220791187699297, guid: f5f02582e7bb83c42a417f02b30dd481, type: 3}
       propertyPath: m_AnchorMax.y
       value: 0
@@ -20073,6 +20093,10 @@ PrefabInstance:
     - target: {fileID: 1617463098990460765, guid: 73ad6e0dceecba64baf5ee1157fab39a, type: 3}
       propertyPath: m_Name
       value: EconomyManager
+      objectReference: {fileID: 0}
+    - target: {fileID: 1617463098990460765, guid: 73ad6e0dceecba64baf5ee1157fab39a, type: 3}
+      propertyPath: m_IsActive
+      value: 1
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []

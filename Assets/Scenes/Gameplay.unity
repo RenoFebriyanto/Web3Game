@@ -1149,8 +1149,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 100, y: 0}
-  m_SizeDelta: {x: 200, y: 0}
+  m_AnchoredPosition: {x: 99.98303, y: 0}
+  m_SizeDelta: {x: 200.034, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &386644450
 MonoBehaviour:
@@ -3031,7 +3031,7 @@ MonoBehaviour:
   shieldActive: 0
   speedBoostActive: 0
   timeFreezeActive: 0
-  coin2xDuration: 10
+  coin2xDuration: 30
   magnetDuration: 30
   magnetRange: 5
   magnetPullSpeed: 100
@@ -5218,8 +5218,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 0, y: 0}
+  m_AnchoredPosition: {x: -2.0700073, y: -0.0025024414}
+  m_SizeDelta: {x: 4.12, y: 0.0050049}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1274035060
 MonoBehaviour:

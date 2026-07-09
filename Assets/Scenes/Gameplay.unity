@@ -15133,8 +15133,8 @@ RectTransform:
   - {fileID: 5590649946033781876}
   m_Father: {fileID: 613702872912989790}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0.25}
-  m_AnchorMax: {x: 1, y: 0.75}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
   m_AnchoredPosition: {x: -5.000061, y: 0}
   m_SizeDelta: {x: -20, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
@@ -15149,6 +15149,10 @@ PrefabInstance:
     - target: {fileID: 306846905927594683, guid: 907b466010d521b41b2d4e63512dffb0, type: 3}
       propertyPath: m_Name
       value: CooldownItem
+      objectReference: {fileID: 0}
+    - target: {fileID: 3908445597700872480, guid: 907b466010d521b41b2d4e63512dffb0, type: 3}
+      propertyPath: m_AnchoredPosition.y
+      value: 0.0000019073486
       objectReference: {fileID: 0}
     - target: {fileID: 7549513057323071809, guid: 907b466010d521b41b2d4e63512dffb0, type: 3}
       propertyPath: m_AnchorMax.x

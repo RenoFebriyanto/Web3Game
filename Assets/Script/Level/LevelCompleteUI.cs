@@ -104,6 +104,7 @@ public class LevelCompleteUI : MonoBehaviour
     // ✅ NEW: Store original button sprite
     private Image continueButtonImage;
     private Sprite originalContinueSprite;
+    
 
     void Awake()
     {

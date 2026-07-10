@@ -49,6 +49,7 @@ public class SpawnerController : MonoBehaviour
         {
             Debug.LogWarning("[SpawnerController] LevelGameSession not found!");
         }
+        
     }
 
     void OnDestroy()

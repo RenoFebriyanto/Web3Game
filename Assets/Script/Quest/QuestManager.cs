@@ -44,8 +44,19 @@ public class QuestManager : MonoBehaviour
 
     void Awake()
     {
-        if (Instance != null && Instance != this) { Destroy(gameObject); return; }
+        if (Instance != null && Instance != this)
+        {
+            // ✅ FIX: transfer referensi UI scene baru ke instance persisten,
+            // lalu render ulang, baru destroy duplikat.
+            // Ini mencegah QuestManager persisten (DontDestroyOnLoad) memegang
+            // referensi UI "hantu" dari scene lama yang sudah di-destroy.
+            Instance.RefreshSceneReferences(questItemPrefab, contentDaily, contentWeekly, dailyQuests, weeklyPool);
+            Destroy(gameObject);
+            return;
+        }
+
         Instance = this;
+        DontDestroyOnLoad(gameObject);
 
         // Initialize events if null
         if (OnQuestProgressChanged == null) OnQuestProgressChanged = new QuestProgressEvent();
@@ -57,6 +68,28 @@ public class QuestManager : MonoBehaviour
     {
         LoadProgress();
         PopulateUI();
+    }
+
+    /// <summary>
+    /// ✅ NEW: Dipanggil oleh QuestManager duplikat di scene yang baru saja di-load,
+    /// supaya instance persisten memakai referensi UI scene yang sedang aktif
+    /// (bukan referensi UI lama yang sudah destroyed).
+    /// </summary>
+    public void RefreshSceneReferences(GameObject prefab, Transform daily, Transform weekly,
+        List<QuestData> newDailyQuests, List<QuestData> newWeeklyPool)
+    {
+        questItemPrefab = prefab;
+        contentDaily = daily;
+        contentWeekly = weekly;
+
+        // Opsional: kalau data quest per-scene selalu sama, dua baris ini boleh dihapus
+        if (newDailyQuests != null && newDailyQuests.Count > 0) dailyQuests = newDailyQuests;
+        if (newWeeklyPool != null && newWeeklyPool.Count > 0) weeklyPool = newWeeklyPool;
+
+        spawnedUI.Clear(); // referensi UI lama sudah destroyed, buang dulu
+        PopulateUI();
+
+        Debug.Log("[QuestManager] ✓ Scene references refreshed, UI repopulated");
     }
 
     #region Populate UI

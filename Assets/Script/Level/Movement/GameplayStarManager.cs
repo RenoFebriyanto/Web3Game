@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using UnityEngine.Events;
+using TMPro;
 
 /// <summary>
 /// ✅ FIXED: GameplayStarManager - Remove direct call to KulinoCoinRewardSystem
@@ -11,6 +12,9 @@ public class GameplayStarManager : MonoBehaviour
 
     [Header("Star Settings")]
     public int totalStarsInLevel = 3;
+
+    [Header("UI")]
+    public TextMeshProUGUI starText;
 
     [Header("Events")]
     public UnityEvent<int> OnStarCollected;
@@ -35,6 +39,8 @@ public class GameplayStarManager : MonoBehaviour
 
         collectedStars += amount;
         collectedStars = Mathf.Clamp(collectedStars, 0, totalStarsInLevel);
+
+        starText.text = $"{collectedStars}/{totalStarsInLevel}";
 
         Debug.Log($"[GameplayStarManager] Star collected! Total: {collectedStars}/{totalStarsInLevel}");
 

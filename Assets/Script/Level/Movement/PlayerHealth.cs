@@ -2,6 +2,7 @@
 using System.Collections;
 using UnityEngine;
 using UnityEngine.Events;
+using UnityEngine.UI;
 
 public class PlayerHealth : MonoBehaviour
 {
@@ -10,6 +11,10 @@ public class PlayerHealth : MonoBehaviour
     [Header("Health")]
     public int maxLives = 3;
     public int currentLives = 3;
+
+    [Header("UI")]
+    public Image[] livesUI;
+    public Sprite[] livesSprites;
 
     [Header("Invincibility")]
     public float invincibilityDuration = 2f;
@@ -34,6 +39,9 @@ public class PlayerHealth : MonoBehaviour
         if (Instance != null && Instance != this) Destroy(this.gameObject);
         Instance = this;
         currentLives = Mathf.Clamp(currentLives, 0, maxLives);
+
+        // ✅ NEW: Reset flag gameplay setiap kali player baru spawn (level baru/retry)
+        GameplayState.IsRunning = true;
     }
 
     public bool IsInvincible() => invincible;
@@ -54,6 +62,18 @@ public class PlayerHealth : MonoBehaviour
         else
         {
             Debug.Log($"[PlayerHealth] Took damage -> lives {currentLives}/{maxLives}");
+        }
+
+        for(int i = 0; i < livesUI.Length; i++)
+        {
+            if (i < currentLives)
+            {
+                livesUI[i].sprite = livesSprites[1];
+            }
+            else
+            {
+                livesUI[i].sprite = livesSprites[0];
+            }
         }
     }
 
@@ -122,7 +142,7 @@ public class PlayerHealth : MonoBehaviour
 
     [ContextMenu("Debug Damage")]
     public void DebugDamage() => TakeDamage(1);
-    
+
     [ContextMenu("Debug Kill Player")]
     public void DebugKillPlayer()
     {

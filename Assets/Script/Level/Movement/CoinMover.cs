@@ -12,6 +12,9 @@ public class CoinMover : MonoBehaviour
 
     void Update()
     {
+        // ✅ NEW: Berhenti bergerak saat level sudah selesai (menang/kalah)
+        if (!GameplayState.IsRunning) return;
+
         // Get base speed from DifficultyManager
         if (useDynamicSpeed && DifficultyManager.Instance != null)
         {

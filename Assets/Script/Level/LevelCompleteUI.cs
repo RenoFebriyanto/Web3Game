@@ -82,7 +82,7 @@ public class LevelCompleteUI : MonoBehaviour
     [Header("🔄 NEW: Game Over Button Sprites")]
     [Tooltip("Sprite untuk button Continue (default - next level)")]
     public Sprite continueButtonSprite;
-    
+
     [Tooltip("Sprite untuk button Replay (game over mode)")]
     public Sprite replayButtonSprite;
 
@@ -104,7 +104,7 @@ public class LevelCompleteUI : MonoBehaviour
     // ✅ NEW: Store original button sprite
     private Image continueButtonImage;
     private Sprite originalContinueSprite;
-    
+
 
     void Awake()
     {
@@ -151,13 +151,13 @@ public class LevelCompleteUI : MonoBehaviour
         if (continueButton != null)
         {
             continueButtonImage = continueButton.GetComponent<Image>();
-            
+
             if (continueButtonImage != null && continueButtonImage.sprite != null)
             {
                 originalContinueSprite = continueButtonImage.sprite;
                 Log("✓ Stored original continue button sprite");
             }
-            
+
             // If continueButtonSprite is not assigned, use current sprite as default
             if (continueButtonSprite == null && continueButtonImage != null)
             {
@@ -247,6 +247,9 @@ public class LevelCompleteUI : MonoBehaviour
 
         isGameOverMode = false; // Normal mode
 
+        // ✅ NEW: Hentikan pergerakan player (bukan Time.timeScale, biar UI/animasi tetap jalan normal)
+        StopPlayerMovement();
+
         StopAllSpawners();
 
         if (SoundManager.Instance != null)
@@ -296,12 +299,18 @@ public class LevelCompleteUI : MonoBehaviour
         isGameOverMode = true; // Game Over mode
         earnedStars = 0; // NO STARS on game over
 
-        // ✅ CRITICAL: Reset gameplay coins (player tidak dapat apa-apa saat game over)
-        if (CoinCounterUI.Instance != null)
+        // ✅ NEW: Hentikan pergerakan player (bukan Time.timeScale, biar UI/animasi tetap jalan normal)
+        StopPlayerMovement();
+
+        long collectedCoins = CoinCounterUI.Instance.GetGameplayCoins();  // total koin yg sempat dikumpulin
+        long consolationCoins = Mathf.FloorToInt(collectedCoins / 3);                        // rasio 1:3
+
+        if (consolationCoins > 0 && PlayerEconomy.Instance != null)
         {
-            CoinCounterUI.Instance.ResetCounter();
-            Log("✓ Reset gameplay coins (Game Over - no rewards)");
+            PlayerEconomy.Instance.AddCoins(consolationCoins);
         }
+
+        CoinCounterUI.Instance.ResetCounter();  // tetap reset counter gameplay (UI mulai dari 0 lagi tiap level)
 
         StopAllSpawners();
 
@@ -311,6 +320,30 @@ public class LevelCompleteUI : MonoBehaviour
         generatedRewards.Clear(); // No rewards on game over
 
         StartCoroutine(ShowLevelCompleteUI());
+    }
+
+    // ✅ NEW: Matikan komponen gerak player (lane movement) + hentikan semua
+    // objek yang sedang bergerak (coin/planet/fragment) lewat GameplayState.
+    // Tidak pakai Time.timeScale supaya popup/animasi UI tetap berjalan normal.
+    void StopPlayerMovement()
+    {
+        // Hentikan semua CoinMover / PlanetMover / FragmentMover yang sedang di layar
+        GameplayState.IsRunning = false;
+        Log("✓ GameplayState.IsRunning = false (semua mover berhenti)");
+
+        if (PlayerHealth.Instance != null)
+        {
+            var laneMove = PlayerHealth.Instance.GetComponent<PlayerLaneMovement>();
+            if (laneMove != null)
+            {
+                laneMove.enabled = false;
+                Log("✓ Player movement stopped");
+            }
+        }
+        else
+        {
+            LogWarning("PlayerHealth.Instance is NULL, cannot stop player movement");
+        }
     }
 
     void StopAllSpawners()
@@ -349,7 +382,7 @@ public class LevelCompleteUI : MonoBehaviour
         generatedRewards.Clear();
 
         string savedRewardsJson = PlayerPrefs.GetString($"Kulino_LevelRewards_{currentLevelId}", "");
-        
+
         if (!string.IsNullOrEmpty(savedRewardsJson))
         {
             try
@@ -358,15 +391,15 @@ public class LevelCompleteUI : MonoBehaviour
                 if (rewardList != null && rewardList.rewards != null && rewardList.rewards.Count > 0)
                 {
                     generatedRewards.AddRange(rewardList.rewards);
-                    
+
                     foreach (var reward in generatedRewards)
                     {
                         AssignRewardIcon(reward);
                     }
-                    
+
                     PlayerPrefs.DeleteKey($"Kulino_LevelRewards_{currentLevelId}");
                     PlayerPrefs.Save();
-                    
+
                     Log($"✅ Loaded cached rewards from LevelPreview: {generatedRewards.Count} items");
                     return;
                 }
@@ -385,7 +418,7 @@ public class LevelCompleteUI : MonoBehaviour
         {
             int coinAmount = Random.Range(coinRewardRange.x, coinRewardRange.y + 1);
             generatedRewards.Add(new RewardData(
-                RewardType.Coin, 
+                RewardType.Coin,
                 coinAmount,
                 coinIcon,
                 "Coins"
@@ -712,10 +745,10 @@ public class LevelCompleteUI : MonoBehaviour
                 if (starParticleEffects[i] != null && starImages[i] != null)
                 {
                     Vector3 worldPos = ConvertUIToWorldPosition(starImages[i].rectTransform, targetCanvas);
-                    
+
                     starParticleEffects[i].transform.position = worldPos;
                     starParticleEffects[i].SetActive(true);
-                    
+
                     StartCoroutine(DisableParticleAfterDelay(starParticleEffects[i], 2f));
                 }
             }
@@ -729,25 +762,25 @@ public class LevelCompleteUI : MonoBehaviour
     Vector3 ConvertUIToWorldPosition(RectTransform uiElement, Canvas canvas)
     {
         if (canvas == null || uiElement == null) return Vector3.zero;
-        
+
         Vector3 screenPos = RectTransformUtility.WorldToScreenPoint(
             canvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : canvas.worldCamera,
             uiElement.position
         );
-        
+
         Camera mainCam = Camera.main;
         if (mainCam == null) return Vector3.zero;
-        
+
         float zDistance = 10f;
         Vector3 worldPos = mainCam.ScreenToWorldPoint(new Vector3(screenPos.x, screenPos.y, zDistance));
-        
+
         return worldPos;
     }
 
     IEnumerator DisableParticleAfterDelay(GameObject particleFX, float delay)
     {
         yield return new WaitForSeconds(delay);
-        
+
         if (particleFX != null)
         {
             particleFX.SetActive(false);

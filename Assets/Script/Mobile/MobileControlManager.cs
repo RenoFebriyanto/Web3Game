@@ -1,11 +1,12 @@
 using System.Runtime.InteropServices;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.SceneManagement;
 
 /// <summary>
-/// ✅ MobileControlManager - FIXED v3.0
-/// Attach ke: GameManager
-/// Assign di Inspector: drag Mobilecontrol → mobileControlsRoot
+/// ✅ MobileControlManager - FIXED v4.0
+/// Sekarang re-bind & re-apply visibility TIAP scene load (bukan cuma sekali),
+/// jadi gak nunggu restart buat kerja bener.
 /// </summary>
 public class MobileControlManager : MonoBehaviour
 {
@@ -24,7 +25,30 @@ public class MobileControlManager : MonoBehaviour
     private static extern int IsMobileBrowser();
 #endif
 
+    void OnEnable()
+    {
+        // ✅ Subscribe ke event scene load, bukan cuma ngandelin Start() sekali doang
+        SceneManager.sceneLoaded += OnSceneLoaded;
+    }
+
+    void OnDisable()
+    {
+        SceneManager.sceneLoaded -= OnSceneLoaded;
+    }
+
     void Start()
+    {
+        Setup();
+    }
+
+    void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        // ✅ Tiap scene (termasuk reload/restart Gameplay) → setup ulang
+        Log($"Scene loaded: {scene.name} → re-setup mobile controls");
+        Setup();
+    }
+
+    void Setup()
     {
         bool isMobile = CheckIsMobile();
         Log($"Browser: {(isMobile ? "MOBILE" : "DESKTOP")}");
@@ -35,7 +59,6 @@ public class MobileControlManager : MonoBehaviour
     bool CheckIsMobile()
     {
 #if UNITY_EDITOR
-        // Di Editor: gunakan forceMobileInEditor toggle dari Inspector
         if (forceMobileInEditor)
         {
             Log("Editor mode: forceMobileInEditor = true → MOBILE");
@@ -44,7 +67,8 @@ public class MobileControlManager : MonoBehaviour
         Log("Editor mode: forceMobileInEditor = false → DESKTOP");
         return false;
 #elif UNITY_WEBGL
-        return IsMobileBrowser() == 1;
+        try { return IsMobileBrowser() == 1; }
+        catch { return false; }
 #else
         return Application.isMobilePlatform;
 #endif
@@ -70,12 +94,12 @@ public class MobileControlManager : MonoBehaviour
             var m = rocket.GetComponent<PlayerLaneMovement>();
             if (m != null) return m;
         }
-        return FindFirstObjectByType<PlayerLaneMovement>();
+        // ✅ includeInactive biar tetap ketemu walau Rocket lagi nonaktif sesaat
+        return FindFirstObjectByType<PlayerLaneMovement>(FindObjectsInactive.Include);
     }
 
     Button FindButton(string btnName)
     {
-        // Case-insensitive search di dalam mobileControlsRoot
         if (mobileControlsRoot != null)
         {
             foreach (Transform t in mobileControlsRoot.GetComponentsInChildren<Transform>(true))
@@ -87,7 +111,6 @@ public class MobileControlManager : MonoBehaviour
                 }
             }
         }
-        // Fallback seluruh scene
         var go = GameObject.Find(btnName);
         return go != null ? go.GetComponent<Button>() : null;
     }

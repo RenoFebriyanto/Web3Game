@@ -1033,7 +1033,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 282100832}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: dc42885c54005d74694977f3c99675eb, type: 3}
   m_Name: 
@@ -1913,8 +1913,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 84be01c9117de554c9bb67a9e8bcf4a9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  maxLives: 999999
-  currentLives: 999999
+  maxLives: 3
+  currentLives: 3
   livesUI:
   - {fileID: 1668001377}
   - {fileID: 564062848}
@@ -5342,6 +5342,53 @@ RectTransform:
   m_AnchoredPosition: {x: 250, y: 0}
   m_SizeDelta: {x: 500, y: 136}
   m_Pivot: {x: 0.5, y: 0.5}
+--- !u!1 &1246334738
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1246334740}
+  - component: {fileID: 1246334739}
+  m_Layer: 0
+  m_Name: mobile manager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1246334739
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1246334738}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dc42885c54005d74694977f3c99675eb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MobileControlManager
+  mobileControlsRoot: {fileID: 2045890979}
+  forceMobileInEditor: 0
+  enableDebugLogs: 1
+--- !u!4 &1246334740
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1246334738}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -0.40893, y: -1.59009, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1254843956
 GameObject:
   m_ObjectHideFlags: 0
@@ -17961,6 +18008,7 @@ SceneRoots:
   m_ObjectHideFlags: 0
   m_Roots:
   - {fileID: 76729730}
+  - {fileID: 1246334740}
   - {fileID: 1337906659}
   - {fileID: 282100833}
   - {fileID: 486920327}

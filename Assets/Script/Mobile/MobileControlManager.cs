@@ -1,4 +1,3 @@
-using System.Runtime.InteropServices;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
@@ -13,17 +12,8 @@ public class MobileControlManager : MonoBehaviour
     [Header("Assign Mobilecontrol GameObject di sini")]
     public GameObject mobileControlsRoot;
 
-    [Header("Editor Testing")]
-    [Tooltip("Centang ini agar MobileControl AKTIF saat Play di Editor (untuk test resolusi HP)")]
-    public bool forceMobileInEditor = true;
-
     [Header("Debug")]
     public bool enableDebugLogs = true;
-
-#if UNITY_WEBGL && !UNITY_EDITOR
-    [DllImport("__Internal")]
-    private static extern int IsMobileBrowser();
-#endif
 
     void OnEnable()
     {
@@ -58,20 +48,16 @@ public class MobileControlManager : MonoBehaviour
 
     bool CheckIsMobile()
     {
-#if UNITY_EDITOR
-        if (forceMobileInEditor)
+        // ✅ Sekarang baca dari PlatformDetector (single source of truth),
+        // bukan deteksi sendiri lagi.
+        if (PlatformDetector.Instance != null)
         {
-            Log("Editor mode: forceMobileInEditor = true → MOBILE");
-            return true;
+            Log($"PlatformDetector → {(PlatformDetector.Instance.IsMobile ? "MOBILE" : "DESKTOP")}");
+            return PlatformDetector.Instance.IsMobile;
         }
-        Log("Editor mode: forceMobileInEditor = false → DESKTOP");
+
+        Log("⚠️ PlatformDetector.Instance belum ada (pastikan ada di scene awal, execution order -1000). Fallback ke DESKTOP.");
         return false;
-#elif UNITY_WEBGL
-        try { return IsMobileBrowser() == 1; }
-        catch { return false; }
-#else
-        return Application.isMobilePlatform;
-#endif
     }
 
     void BindButtons()

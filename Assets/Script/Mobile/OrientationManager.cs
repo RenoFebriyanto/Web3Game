@@ -67,6 +67,15 @@ public class OrientationManager : MonoBehaviour
 
     void DetectPlatform()
     {
+        // ✅ Baca dari PlatformDetector (single source of truth) alih-alih deteksi sendiri
+        if (PlatformDetector.Instance != null)
+        {
+            isMobileDevice = PlatformDetector.Instance.IsMobile;
+            Log($"Platform dari PlatformDetector: {(isMobileDevice ? "MOBILE" : "DESKTOP")}");
+            return;
+        }
+
+        Log("⚠️ PlatformDetector.Instance belum ada, pakai fallback lokal");
 #if UNITY_WEBGL && !UNITY_EDITOR
         try
         {
@@ -74,7 +83,6 @@ public class OrientationManager : MonoBehaviour
         }
         catch
         {
-            // Fallback
             isMobileDevice = Application.isMobilePlatform || Screen.width < 900;
         }
 #elif UNITY_ANDROID || UNITY_IOS
@@ -82,7 +90,7 @@ public class OrientationManager : MonoBehaviour
 #else
         isMobileDevice = Screen.width < 900;
 #endif
-        
+
         Log($"Platform: {(isMobileDevice ? "MOBILE" : "DESKTOP")}");
     }
 

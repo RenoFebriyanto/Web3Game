@@ -126,7 +126,7 @@ public class MobileInputHelper : MonoBehaviour
         if (forceMobileMode)
         {
             isMobile = true;
-            Log("Platform: FORCED MOBILE MODE");
+            Log("Platform: FORCED MOBILE MODE (local override)");
             return;
         }
 
@@ -136,15 +136,17 @@ public class MobileInputHelper : MonoBehaviour
             return;
         }
 
-#if UNITY_ANDROID || UNITY_IOS
-        isMobile = true;
-#elif UNITY_WEBGL
-        isMobile = Application.isMobilePlatform;
-#else
-        isMobile = false;
-#endif
-
-        Log($"Auto-detected platform: {(isMobile ? "Mobile" : "Desktop")}");
+        // ✅ Baca dari PlatformDetector (single source of truth) alih-alih deteksi sendiri
+        if (PlatformDetector.Instance != null)
+        {
+            isMobile = PlatformDetector.Instance.IsMobile;
+            Log($"Platform dari PlatformDetector: {(isMobile ? "Mobile" : "Desktop")}");
+        }
+        else
+        {
+            isMobile = Application.isMobilePlatform;
+            Log($"⚠️ PlatformDetector.Instance belum ada, fallback Application.isMobilePlatform → {(isMobile ? "Mobile" : "Desktop")}");
+        }
     }
 
     void ConfigureMobileInput()

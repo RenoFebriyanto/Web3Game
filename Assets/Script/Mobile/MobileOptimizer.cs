@@ -117,19 +117,21 @@ public class MobileOptimizer : MonoBehaviour
         if (forceMobileMode)
         {
             isMobileDevice = true;
-            Log("Platform: FORCED MOBILE MODE");
+            Log("Platform: FORCED MOBILE MODE (local override)");
             return;
         }
 
-#if UNITY_ANDROID || UNITY_IOS
-        isMobileDevice = true;
-#elif UNITY_WEBGL
-        isMobileDevice = Application.isMobilePlatform;
-#else
-        isMobileDevice = false;
-#endif
-
-        Log($"Platform detected: {(isMobileDevice ? "MOBILE" : "DESKTOP")}");
+        // ✅ Baca dari PlatformDetector (single source of truth) alih-alih deteksi sendiri
+        if (PlatformDetector.Instance != null)
+        {
+            isMobileDevice = PlatformDetector.Instance.IsMobile;
+            Log($"Platform dari PlatformDetector: {(isMobileDevice ? "MOBILE" : "DESKTOP")}");
+        }
+        else
+        {
+            isMobileDevice = Application.isMobilePlatform;
+            Log($"⚠️ PlatformDetector.Instance belum ada, fallback Application.isMobilePlatform → {(isMobileDevice ? "MOBILE" : "DESKTOP")}");
+        }
     }
 
     void ApplyOptimizations()

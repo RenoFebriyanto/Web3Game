@@ -21,11 +21,47 @@ using System.Runtime.InteropServices;
 [DefaultExecutionOrder(-1000)]
 public class PlatformDetector : MonoBehaviour
 {
-    public static PlatformDetector Instance { get; private set; }
+    private static PlatformDetector _instance;
+
+    /// <summary>
+    /// ✅ Auto-bootstrap: kalau belum ada PlatformDetector di scene (lupa ditaruh manual),
+    /// otomatis dibuatkan sendiri. Jadi TIDAK WAJIB lagi manual taruh GameObject di scene.
+    /// </summary>
+    public static PlatformDetector Instance
+    {
+        get
+        {
+            if (_instance == null)
+            {
+                _instance = FindFirstObjectByType<PlatformDetector>();
+                if (_instance == null)
+                {
+                    var go = new GameObject("[PlatformDetector]");
+                    _instance = go.AddComponent<PlatformDetector>();
+                }
+            }
+            return _instance;
+        }
+    }
+
+    /// <summary>
+    /// ✅ Dipanggil otomatis oleh Unity SEBELUM scene manapun di-load (lebih awal dari
+    /// Awake() semua script lain), supaya IsMobile sudah pasti siap dipakai script lain.
+    /// Ini jaring pengaman kalau kamu memang lupa taruh GameObject-nya secara manual.
+    /// </summary>
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+    private static void Bootstrap()
+    {
+        if (_instance == null)
+        {
+            var go = new GameObject("[PlatformDetector]");
+            _instance = go.AddComponent<PlatformDetector>();
+        }
+    }
 
     [Header("Editor Testing")]
     [Tooltip("Centang ini agar dianggap MOBILE saat Play di Editor (untuk test tampilan/kontrol HP)")]
-    public bool forceMobileInEditor = true;
+    public bool forceMobileInEditor = false;
 
     [Header("Manual Override (opsional, semua platform)")]
     [Tooltip("Kalau dicentang, override hasil auto-detect dengan nilai manualIsMobile di bawah")]
@@ -50,12 +86,12 @@ public class PlatformDetector : MonoBehaviour
     void Awake()
     {
         // Singleton + persist antar scene, sama seperti manager mobile lainnya
-        if (Instance != null && Instance != this)
+        if (_instance != null && _instance != this)
         {
             Destroy(gameObject);
             return;
         }
-        Instance = this;
+        _instance = this;
         if (transform.parent != null) transform.SetParent(null);
         DontDestroyOnLoad(gameObject);
         gameObject.name = "[PlatformDetector]";

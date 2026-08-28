@@ -13,6 +13,7 @@ public class MobileInputHelper : MonoBehaviour
 
     [Header("📱 Platform Detection")]
     [SerializeField] private bool autoDetectPlatform = true;
+    [Tooltip("Override LOKAL cuma untuk komponen ini — tidak mempengaruhi tombol UI (MobileControlManager) atau MobileOptimizer. Untuk kontrol utama, pakai PlatformDetector.")]
     [SerializeField] private bool forceMobileMode = false;
 
     [Header("📱 Touch Settings")]
@@ -68,6 +69,26 @@ public class MobileInputHelper : MonoBehaviour
         DetectPlatform();
 
         Log("✅ MobileInputHelper initialized");
+    }
+
+    void OnEnable()
+    {
+        // ✅ Kalau PlatformDetector di-force mobile/desktop SAAT game sudah jalan,
+        // komponen ini ikut update juga (bukan cuma sekali di Awake)
+        PlatformDetector.OnPlatformDetected += OnPlatformChanged;
+    }
+
+    void OnDisable()
+    {
+        PlatformDetector.OnPlatformDetected -= OnPlatformChanged;
+    }
+
+    void OnPlatformChanged(bool platformIsMobile)
+    {
+        if (forceMobileMode) return; // override lokal menang, jangan ditimpa
+        DetectPlatform();
+        if (isMobile) ConfigureMobileInput();
+        Log($"PlatformDetector berubah → re-detect: {(isMobile ? "Mobile" : "Desktop")}");
     }
 
     void Start()

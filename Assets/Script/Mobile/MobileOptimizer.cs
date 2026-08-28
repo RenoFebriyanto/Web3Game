@@ -9,7 +9,7 @@ public class MobileOptimizer : MonoBehaviour
     public static MobileOptimizer Instance { get; private set; }
 
     [Header("📱 Platform Detection")]
-    [Tooltip("Force mobile mode? (for testing)")]
+    [Tooltip("Override LOKAL cuma untuk komponen ini (performa/kualitas) — tidak mempengaruhi tombol UI (MobileControlManager). Untuk kontrol utama, pakai PlatformDetector.")]
     public bool forceMobileMode = false;
 
     [Header("🎮 Performance Settings")]
@@ -73,6 +73,26 @@ public class MobileOptimizer : MonoBehaviour
         lastScreenHeight = Screen.height;
 
         Log("✅ MobileOptimizer initialized");
+    }
+
+    void OnEnable()
+    {
+        // ✅ Kalau PlatformDetector di-force mobile/desktop SAAT game sudah jalan,
+        // optimizer ikut re-apply setting juga
+        PlatformDetector.OnPlatformDetected += OnPlatformChanged;
+    }
+
+    void OnDisable()
+    {
+        PlatformDetector.OnPlatformDetected -= OnPlatformChanged;
+    }
+
+    void OnPlatformChanged(bool platformIsMobile)
+    {
+        if (forceMobileMode) return; // override lokal menang, jangan ditimpa
+        DetectPlatform();
+        ApplyOptimizations();
+        Log($"PlatformDetector berubah → re-apply optimizations: {(isMobileDevice ? "MOBILE" : "DESKTOP")}");
     }
 
     void Update()

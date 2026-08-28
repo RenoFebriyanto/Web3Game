@@ -3,9 +3,10 @@ using UnityEngine.UI;
 using UnityEngine.SceneManagement;
 
 /// <summary>
-/// ✅ MobileControlManager - FIXED v4.0
-/// Sekarang re-bind & re-apply visibility TIAP scene load (bukan cuma sekali),
-/// jadi gak nunggu restart buat kerja bener.
+/// ✅ MobileControlManager - FIXED v4.1
+/// - Re-bind & re-apply visibility TIAP scene load (bukan cuma sekali).
+/// - FIX double-trigger: tidak lagi bind onClick sendiri ke tombol; MobileButton.cs
+///   (nempel langsung di BTNLEFT/BTNRIGHT) adalah satu-satunya jalur input gerak.
 /// </summary>
 public class MobileControlManager : MonoBehaviour
 {
@@ -19,11 +20,21 @@ public class MobileControlManager : MonoBehaviour
     {
         // ✅ Subscribe ke event scene load, bukan cuma ngandelin Start() sekali doang
         SceneManager.sceneLoaded += OnSceneLoaded;
+        // ✅ Subscribe ke PlatformDetector, jadi kalau force-mobile di-toggle SAAT game
+        // sudah jalan (bukan cuma sebelum Play), tombol langsung ikut berubah
+        PlatformDetector.OnPlatformDetected += OnPlatformChanged;
     }
 
     void OnDisable()
     {
         SceneManager.sceneLoaded -= OnSceneLoaded;
+        PlatformDetector.OnPlatformDetected -= OnPlatformChanged;
+    }
+
+    void OnPlatformChanged(bool isMobile)
+    {
+        Log($"PlatformDetector berubah → {(isMobile ? "MOBILE" : "DESKTOP")}, re-setup mobile controls");
+        Setup();
     }
 
     void Start()
@@ -42,7 +53,7 @@ public class MobileControlManager : MonoBehaviour
     {
         bool isMobile = CheckIsMobile();
         Log($"Browser: {(isMobile ? "MOBILE" : "DESKTOP")}");
-        BindButtons();
+        VerifyButtons();
         ApplyVisibility(isMobile);
     }
 
@@ -60,28 +71,32 @@ public class MobileControlManager : MonoBehaviour
         return false;
     }
 
-    void BindButtons()
+    void VerifyButtons()
     {
-        var movement = FindMovement();
-        if (movement == null) { Log("❌ PlayerLaneMovement tidak ditemukan!"); return; }
+        // ✅ FIX double-trigger: dulu di sini di-bind onClick ke MoveLeft/MoveRight,
+        // PADAHAL MobileButton.cs yang nempel di BTNLEFT/BTNRIGHT sudah menangani
+        // gerakan lewat OnPointerDown. Kalau dua-duanya aktif bareng → 1 tap = 2 trigger
+        // (OnPointerDown langsung saat ditekan + onClick saat dilepas) → karakter geser 2x.
+        //
+        // Sekarang MobileButton.cs jadi SATU-SATUNYA jalur input gerak.
+        // Fungsi ini cuma untuk verifikasi setup + bersih-bersih listener lama.
 
         var btnLeft  = FindButton("BTNLEFT");
         var btnRight = FindButton("BTNRIGHT");
 
-        if (btnLeft  != null) { btnLeft.onClick.RemoveAllListeners();  btnLeft.onClick.AddListener(movement.MoveLeft);  Log("✓ BTNLEFT  → MoveLeft()");  }
-        if (btnRight != null) { btnRight.onClick.RemoveAllListeners(); btnRight.onClick.AddListener(movement.MoveRight); Log("✓ BTNRIGHT → MoveRight()"); }
-    }
+        // Bersihkan onClick listener runtime yang mungkin ke-attach dari versi lama
+        if (btnLeft  != null) btnLeft.onClick.RemoveAllListeners();
+        if (btnRight != null) btnRight.onClick.RemoveAllListeners();
 
-    PlayerLaneMovement FindMovement()
-    {
-        var rocket = GameObject.Find("Rocket");
-        if (rocket != null)
-        {
-            var m = rocket.GetComponent<PlayerLaneMovement>();
-            if (m != null) return m;
-        }
-        // ✅ includeInactive biar tetap ketemu walau Rocket lagi nonaktif sesaat
-        return FindFirstObjectByType<PlayerLaneMovement>(FindObjectsInactive.Include);
+        if (btnLeft != null && btnLeft.GetComponent<MobileButton>() == null)
+            Log("⚠️ BTNLEFT tidak punya komponen MobileButton! Gerakan mobile tidak akan berfungsi — attach MobileButton.cs ke GameObject BTNLEFT (Direction = Left).");
+        else if (btnLeft != null)
+            Log("✓ BTNLEFT punya MobileButton, siap dipakai");
+
+        if (btnRight != null && btnRight.GetComponent<MobileButton>() == null)
+            Log("⚠️ BTNRIGHT tidak punya komponen MobileButton! Gerakan mobile tidak akan berfungsi — attach MobileButton.cs ke GameObject BTNRIGHT (Direction = Right).");
+        else if (btnRight != null)
+            Log("✓ BTNRIGHT punya MobileButton, siap dipakai");
     }
 
     Button FindButton(string btnName)

@@ -51,6 +51,22 @@ public class OrientationManager : MonoBehaviour
         Log("✅ Initialized v3.0");
     }
 
+    void OnEnable()
+    {
+        PlatformDetector.OnPlatformDetected += OnPlatformChanged;
+    }
+
+    void OnDisable()
+    {
+        PlatformDetector.OnPlatformDetected -= OnPlatformChanged;
+    }
+
+    void OnPlatformChanged(bool platformIsMobile)
+    {
+        DetectPlatform();
+        Log($"PlatformDetector berubah → {(isMobileDevice ? "MOBILE" : "DESKTOP")}");
+    }
+
     void Start()
     {
         CheckOrientation();

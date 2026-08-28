@@ -1882,7 +1882,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 69e44789f4fafd24ab2bcf2ac9edaa56, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  forceMobileMode: 0
+  forceMobileMode: 1
   mobileTargetFPS: 60
   desktopTargetFPS: 60
   mobileQualityLevel: 2
@@ -6474,10 +6474,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7fbf023fe8a7f0d41a888fed6835ddf3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlatformDetector
-  forceMobileInEditor: 0
+  forceMobileInEditor: 1
   manualOverride: 0
   manualIsMobile: 0
-  enableDebugLogs: 1
+  enableDebugLogs: 0
 --- !u!4 &568262554
 Transform:
   m_ObjectHideFlags: 0
